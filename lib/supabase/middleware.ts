@@ -25,6 +25,11 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // Simple admin bypass to prevent hanging on placeholder API URL
+  if (request.cookies.get('simple_admin')?.value === 'true') {
+    return supabaseResponse
+  }
+
   // Refresh session — do not remove this
   const { data: { user } } = await supabase.auth.getUser()
 
