@@ -14,6 +14,8 @@ interface SettingsState {
   deliveryFee: number
   freeDeliveryAbove: number
   taxRate: number
+  gstinNumber: string
+  fssaiNumber: string
   
   // Social Links
   facebookUrl: string
@@ -50,6 +52,8 @@ export const useSettingsStore = create<SettingsState>()(
       deliveryFee: 40,
       freeDeliveryAbove: 499,
       taxRate: 5,
+      gstinNumber: '09ABCDE1234F1Z5',
+      fssaiNumber: '12723999000123',
 
       facebookUrl: '',
       instagramUrl: '',

@@ -20,6 +20,8 @@ export default function AdminSettingsPage() {
     deliveryFee: 0,
     freeDeliveryAbove: 0,
     taxRate: 0,
+    gstinNumber: '',
+    fssaiNumber: '',
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
@@ -43,6 +45,8 @@ export default function AdminSettingsPage() {
       deliveryFee: storeSettings.deliveryFee,
       freeDeliveryAbove: storeSettings.freeDeliveryAbove,
       taxRate: storeSettings.taxRate,
+      gstinNumber: storeSettings.gstinNumber || '09ABCDE1234F1Z5',
+      fssaiNumber: storeSettings.fssaiNumber || '12723999000123',
       facebookUrl: storeSettings.facebookUrl,
       instagramUrl: storeSettings.instagramUrl,
       twitterUrl: storeSettings.twitterUrl,
@@ -257,20 +261,28 @@ export default function AdminSettingsPage() {
         {/* Pricing & Tax */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
           <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
-            <CreditCard size={18} className="text-[#1C1917]" /> Tax & Delivery Charges
+            <CreditCard size={18} className="text-[#1C1917]" /> Tax & Delivery Charges Configuration
           </h2>
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Delivery Fee (₹)</label>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Standard Delivery Fee (₹)</label>
               <input type="number" value={formData.deliveryFee} onChange={(e) => setFormData({ ...formData, deliveryFee: Number(e.target.value) })} className="input-field" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Free Delivery Above (₹)</label>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Free Delivery Order Threshold (₹)</label>
               <input type="number" value={formData.freeDeliveryAbove} onChange={(e) => setFormData({ ...formData, freeDeliveryAbove: Number(e.target.value) })} className="input-field" required />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">GST Tax Rate (%)</label>
               <input type="number" value={formData.taxRate} onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })} className="input-field" required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Store GSTIN Registration No.</label>
+              <input type="text" value={formData.gstinNumber} onChange={(e) => setFormData({ ...formData, gstinNumber: e.target.value })} className="input-field" placeholder="09ABCDE1234F1Z5" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">FSSAI License No.</label>
+              <input type="text" value={formData.fssaiNumber} onChange={(e) => setFormData({ ...formData, fssaiNumber: e.target.value })} className="input-field" placeholder="12723999000123" />
             </div>
           </div>
         </div>
