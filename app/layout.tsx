@@ -40,7 +40,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <a href="#main-content" className="skip-link">Skip to main content</a>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-[#B91C1C] focus:text-white focus:rounded-md focus:shadow-lg text-xs font-bold font-sans"
+        >
+          Skip to main content
+        </a>
         {children}
         <Toaster
           position="top-right"
