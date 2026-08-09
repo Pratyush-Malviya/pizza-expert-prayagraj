@@ -28,6 +28,11 @@ export default function AdminSettingsPage() {
     googleReviewsLink: '',
     googleMapsEmbedUrl: '',
     enableInstagramCarousel: false,
+    enableFlashBanner: true,
+    flashBannerText: '',
+    flashBannerBadge: '',
+    flashBannerLink: '',
+    flashBannerImageUrl: '',
     enableRazorpay: false,
     razorpayKeyId: '',
     razorpayKeySecret: '',
@@ -36,28 +41,35 @@ export default function AdminSettingsPage() {
   // Hydrate local state from global store on mount
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setFormData({
-      businessName: storeSettings.businessName,
-      phone: storeSettings.phone,
-      whatsapp: storeSettings.whatsapp,
-      email: storeSettings.email,
-      address: storeSettings.address,
-      deliveryFee: storeSettings.deliveryFee,
-      freeDeliveryAbove: storeSettings.freeDeliveryAbove,
-      taxRate: storeSettings.taxRate,
-      gstinNumber: storeSettings.gstinNumber || '09ABCDE1234F1Z5',
-      fssaiNumber: storeSettings.fssaiNumber || '12723999000123',
-      facebookUrl: storeSettings.facebookUrl,
-      instagramUrl: storeSettings.instagramUrl,
-      twitterUrl: storeSettings.twitterUrl,
-      googleReviewsLink: storeSettings.googleReviewsLink,
-      googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl,
-      enableInstagramCarousel: storeSettings.enableInstagramCarousel,
-      enableRazorpay: storeSettings.enableRazorpay,
-      razorpayKeyId: storeSettings.razorpayKeyId,
-      razorpayKeySecret: storeSettings.razorpayKeySecret,
+    queueMicrotask(() => {
+      setFormData({
+        businessName: storeSettings.businessName,
+        phone: storeSettings.phone,
+        whatsapp: storeSettings.whatsapp,
+        email: storeSettings.email,
+        address: storeSettings.address,
+        deliveryFee: storeSettings.deliveryFee,
+        freeDeliveryAbove: storeSettings.freeDeliveryAbove,
+        taxRate: storeSettings.taxRate,
+        gstinNumber: storeSettings.gstinNumber || '09ABCDE1234F1Z5',
+        fssaiNumber: storeSettings.fssaiNumber || '12723999000123',
+        facebookUrl: storeSettings.facebookUrl,
+        instagramUrl: storeSettings.instagramUrl,
+        twitterUrl: storeSettings.twitterUrl,
+        googleReviewsLink: storeSettings.googleReviewsLink,
+        googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl,
+        enableInstagramCarousel: storeSettings.enableInstagramCarousel,
+        enableFlashBanner: storeSettings.enableFlashBanner ?? true,
+        flashBannerText: storeSettings.flashBannerText || '🔥 FLAT 20% OFF on all Wood-Fired Pizzas! Use coupon code: PIZZA20',
+        flashBannerBadge: storeSettings.flashBannerBadge || 'FLASH OFFER',
+        flashBannerLink: storeSettings.flashBannerLink || '/menu',
+        flashBannerImageUrl: storeSettings.flashBannerImageUrl || '',
+        enableRazorpay: storeSettings.enableRazorpay,
+        razorpayKeyId: storeSettings.razorpayKeyId,
+        razorpayKeySecret: storeSettings.razorpayKeySecret,
+      })
+      setMounted(true)
     })
-    setMounted(true)
   }, [storeSettings])
 
   const handleSave = (e: React.FormEvent) => {
@@ -79,6 +91,23 @@ export default function AdminSettingsPage() {
     reader.onloadend = () => {
       setLogoDataUrl(reader.result as string)
       toast.success('Logo updated successfully!')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleOfferImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Offer image must be less than 2MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFormData({ ...formData, flashBannerImageUrl: reader.result as string })
+      toast.success('Offer image added')
     }
     reader.readAsDataURL(file)
   }
@@ -197,7 +226,7 @@ export default function AdminSettingsPage() {
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Google Reviews URL</label>
               <input type="url" value={formData.googleReviewsLink} onChange={(e) => setFormData({ ...formData, googleReviewsLink: e.target.value })} className="input-field" placeholder="https://g.page/r/..." />
-              <p className="text-xs text-[#57534E] mt-1">Used for the "Leave a Review" button.</p>
+              <p className="text-xs text-[#57534E] mt-1">Used for the &quot;Leave a Review&quot; button.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Google Maps Embed URL</label>
@@ -210,8 +239,81 @@ export default function AdminSettingsPage() {
         {/* Features & Modules */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
           <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
-            <LayoutTemplate size={18} className="text-[#7C3AED]" /> Features & Modules
+            <LayoutTemplate size={18} className="text-[#7C3AED]" /> Features & Announcement Banners
           </h2>
+          
+          {/* Top Flash Offer Banner Settings */}
+          <div className="p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm text-[#1C1917] flex items-center gap-1.5">
+                  🔥 Top Flash Offer Banner
+                </p>
+                <p className="text-xs text-[#57534E]">Show a prominent announcement bar at the top of all website pages.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={formData.enableFlashBanner} onChange={(e) => setFormData({ ...formData, enableFlashBanner: e.target.checked })} />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#e10600]"></div>
+              </label>
+            </div>
+
+            {formData.enableFlashBanner && (
+              <div className="grid sm:grid-cols-3 gap-3 border-t border-[#E7E0D8] pt-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">Offer Text / Message</label>
+                  <input type="text" value={formData.flashBannerText} onChange={(e) => setFormData({ ...formData, flashBannerText: e.target.value })} className="input-field bg-white" placeholder="e.g. FLAT 20% OFF on all Wood-Fired Pizzas! Use code: PIZZA20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">Badge Text</label>
+                  <input type="text" value={formData.flashBannerBadge} onChange={(e) => setFormData({ ...formData, flashBannerBadge: e.target.value })} className="input-field bg-white" placeholder="FLASH OFFER" />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">Action Link URL</label>
+                  <input type="text" value={formData.flashBannerLink} onChange={(e) => setFormData({ ...formData, flashBannerLink: e.target.value })} className="input-field bg-white" placeholder="/menu" />
+                </div>
+                <div className="sm:col-span-3 grid sm:grid-cols-[96px_1fr] gap-4 items-start">
+                  <div className="relative w-24 h-16 rounded-lg border border-[#E7E0D8] bg-white overflow-hidden flex items-center justify-center">
+                    {formData.flashBannerImageUrl ? (
+                      <Image src={formData.flashBannerImageUrl} alt="Offer preview" fill className="object-cover" />
+                    ) : (
+                      <ImageIcon size={24} className="text-[#A8A29E]" />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-[#1C1917]">Offer Image</label>
+                    <input
+                      type="text"
+                      value={formData.flashBannerImageUrl}
+                      onChange={(e) => setFormData({ ...formData, flashBannerImageUrl: e.target.value })}
+                      className="input-field bg-white"
+                      placeholder="Paste image URL or upload an image"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="btn btn-outline btn-sm inline-flex items-center gap-2 cursor-pointer relative overflow-hidden text-xs">
+                        <Upload size={14} /> Upload Image
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={handleOfferImageUpload}
+                        />
+                      </label>
+                      {formData.flashBannerImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, flashBannerImageUrl: '' })}
+                          className="btn btn-outline btn-sm text-xs"
+                        >
+                          Remove Image
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg">
             <div className="flex items-center gap-3">
               <Camera className="text-[#E1306C]" size={20} />

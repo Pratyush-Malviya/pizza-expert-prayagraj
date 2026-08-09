@@ -26,8 +26,13 @@ interface SettingsState {
   googleReviewsLink: string
   googleMapsEmbedUrl: string
   
-  // Features
+  // Features & Flash Banner
   enableInstagramCarousel: boolean
+  enableFlashBanner: boolean
+  flashBannerText: string
+  flashBannerBadge: string
+  flashBannerLink: string
+  flashBannerImageUrl: string
   
   // Payment Gateways
   enableRazorpay: boolean
@@ -63,6 +68,11 @@ export const useSettingsStore = create<SettingsState>()(
       googleMapsEmbedUrl: 'https://maps.google.com/maps?q=Allapur,+Prayagraj,+Uttar+Pradesh&t=&z=14&ie=UTF8&iwloc=&output=embed',
 
       enableInstagramCarousel: false,
+      enableFlashBanner: true,
+      flashBannerText: '🔥 FLAT 20% OFF on all Wood-Fired Pizzas! Use coupon code: PIZZA20',
+      flashBannerBadge: 'FLASH OFFER',
+      flashBannerLink: '/menu',
+      flashBannerImageUrl: '',
 
       enableRazorpay: false,
       razorpayKeyId: '',
