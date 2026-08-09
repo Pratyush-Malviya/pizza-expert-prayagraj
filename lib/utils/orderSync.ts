@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { notifyOrderStatusChange } from '@/lib/utils/notifications'
 
 /**
  * Universal order status sync helper.
@@ -17,10 +18,11 @@ export async function syncOrderStatus(orderId: string, newStatus: string) {
     console.warn('Localstorage sync note:', err)
   }
 
-  // 2. Dispatch cross-tab / window custom event
+  // 2. Dispatch cross-tab / window custom event & trigger notification
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('orderStatusUpdated', { detail: { orderId, newStatus } }))
     window.dispatchEvent(new Event('storage'))
+    notifyOrderStatusChange(orderId, newStatus)
   }
 
   // 3. Sync to Supabase Database

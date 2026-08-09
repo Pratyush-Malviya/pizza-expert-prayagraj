@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Clock, MapPin, ChefHat, CheckCircle2, Flame, Truck, Home } from 'lucide-react'
+import { Search, Clock, MapPin, ChefHat, CheckCircle2, Flame, Truck, Home, Bell, BellRing } from 'lucide-react'
+import { requestNotificationPermission, notifyOrderStatusChange } from '@/lib/utils/notifications'
 
 function TrackOrderContent() {
   const searchParams = useSearchParams()
@@ -13,6 +14,7 @@ function TrackOrderContent() {
   const [currentStatus, setCurrentStatus] = useState<string>('preparing')
   const [addressStr, setAddressStr] = useState<string>('House 42, Civil Lines, Prayagraj')
   const [orderId, setOrderId] = useState<string>(initialOrderId || 'ORD-982143')
+  const [notiGranted, setNotiGranted] = useState<boolean>(false)
   const supabase = createClient()
 
   // Fetch initial status & setup Supabase Realtime subscription
@@ -141,14 +143,35 @@ function TrackOrderContent() {
         {/* Live Tracking Card */}
         {orderId && (
           <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E7E0D8] shadow-xs space-y-6">
-            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-4">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-4 flex-wrap gap-2">
               <div>
                 <span className="text-[10px] text-[#A8A29E] uppercase font-bold tracking-wider block">Tracking Order</span>
                 <span className="font-mono font-bold text-[#1C1917] text-lg">{orderId}</span>
               </div>
-              <div className="bg-[#FFFBEB] text-[#D97706] px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#D97706]/30 uppercase font-mono">
-                <span className="w-2 h-2 rounded-full bg-[#D97706] animate-ping" />
-                {currentStatus.replace(/_/g, ' ')}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const granted = await requestNotificationPermission()
+                    setNotiGranted(granted)
+                    if (granted) {
+                      notifyOrderStatusChange(orderId, currentStatus)
+                    }
+                  }}
+                  title={notiGranted ? "Notifications Enabled" : "Enable Live Status Notifications"}
+                  className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    notiGranted 
+                      ? 'bg-[#E6F4EA] border-[#137333] text-[#137333]' 
+                      : 'bg-white border-[#E7E0D8] text-[#57534E] hover:border-[#e10600]'
+                  }`}
+                >
+                  {notiGranted ? <BellRing size={16} className="text-[#137333]" /> : <Bell size={16} />}
+                  <span className="hidden sm:inline">{notiGranted ? 'Alerts Active' : 'Enable Alerts'}</span>
+                </button>
+
+                <div className="bg-[#FFFBEB] text-[#D97706] px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#D97706]/30 uppercase font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#D97706] animate-ping" />
+                  {currentStatus.replace(/_/g, ' ')}
+                </div>
               </div>
             </div>
 
