@@ -4,6 +4,7 @@ import PromoCards from '@/components/home/PromoCards'
 import CategoryTabs from '@/components/home/CategoryTabs'
 import FeatureIcons from '@/components/home/FeatureIcons'
 import GoogleReviews from '@/components/home/GoogleReviews'
+import InstagramCarousel from '@/components/home/InstagramCarousel'
 import FaqSnippet from '@/components/home/FaqSnippet'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import type { Category, Product } from '@/types'
@@ -308,6 +309,9 @@ export default async function HomePage() {
 
       {/* 5. Dark Social Proof Section */}
       <GoogleReviews />
+
+      {/* Instagram Carousel (Toggleable from settings) */}
+      <InstagramCarousel />
 
       {/* 6. Light FAQ Section */}
       <FaqSnippet />

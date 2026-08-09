@@ -1,28 +1,64 @@
 'use client'
 
-import { useState } from 'react'
-import { Save, Building, CreditCard, Image as ImageIcon, Upload } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Save, Building, CreditCard, Image as ImageIcon, Upload, Link as LinkIcon, MapPin, Instagram, LayoutTemplate } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
 
 export default function AdminSettingsPage() {
-  const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
-  const setLogoDataUrl = useSettingsStore((state) => state.setLogoDataUrl)
+  const storeSettings = useSettingsStore()
+  const { logoDataUrl, setLogoDataUrl, updateSettings } = storeSettings
 
-  const [settings, setSettings] = useState({
-    businessName: 'Pizza Expert Prayagraj',
-    phone: '+91-9999999999',
-    whatsapp: '919999999999',
-    email: 'info@pizzaexpert.in',
-    address: 'Allapur, Prayagraj, Uttar Pradesh 211006',
-    deliveryFee: 30,
-    freeDeliveryAbove: 499,
-    taxRate: 5,
+  // Local state for the form so we don't update the global store on every keystroke
+  const [formData, setFormData] = useState({
+    businessName: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    address: '',
+    deliveryFee: 0,
+    freeDeliveryAbove: 0,
+    taxRate: 0,
+    facebookUrl: '',
+    instagramUrl: '',
+    twitterUrl: '',
+    googleReviewsLink: '',
+    googleMapsEmbedUrl: '',
+    enableInstagramCarousel: false,
+    enableRazorpay: false,
+    razorpayKeyId: '',
+    razorpayKeySecret: '',
   })
+
+  // Hydrate local state from global store on mount
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setFormData({
+      businessName: storeSettings.businessName,
+      phone: storeSettings.phone,
+      whatsapp: storeSettings.whatsapp,
+      email: storeSettings.email,
+      address: storeSettings.address,
+      deliveryFee: storeSettings.deliveryFee,
+      freeDeliveryAbove: storeSettings.freeDeliveryAbove,
+      taxRate: storeSettings.taxRate,
+      facebookUrl: storeSettings.facebookUrl,
+      instagramUrl: storeSettings.instagramUrl,
+      twitterUrl: storeSettings.twitterUrl,
+      googleReviewsLink: storeSettings.googleReviewsLink,
+      googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl,
+      enableInstagramCarousel: storeSettings.enableInstagramCarousel,
+      enableRazorpay: storeSettings.enableRazorpay,
+      razorpayKeyId: storeSettings.razorpayKeyId,
+      razorpayKeySecret: storeSettings.razorpayKeySecret,
+    })
+    setMounted(true)
+  }, [storeSettings])
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+    updateSettings(formData)
     toast.success('Settings saved successfully!')
   }
 
@@ -43,18 +79,21 @@ export default function AdminSettingsPage() {
     reader.readAsDataURL(file)
   }
 
+  if (!mounted) return null
+
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl pb-12">
       <div>
         <h1 className="text-3xl font-serif font-bold text-[#1C1917]">
           Store Settings
         </h1>
         <p className="text-[#57534E] text-xs sm:text-sm">
-          Configure business details, tax rates, delivery charges, and contact info.
+          Configure business details, integrations, and payment gateways.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+        
         {/* Brand Logo */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
           <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
@@ -95,106 +134,149 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* General Info */}
+        {/* Business Info */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
           <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
             <Building size={18} className="text-[#B91C1C]" /> Business Info
           </h2>
-
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Business Name</label>
-              <input
-                type="text"
-                value={settings.businessName}
-                onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
-                className="input-field"
-              />
+              <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="input-field" required />
             </div>
-
             <div>
-              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Phone</label>
-              <input
-                type="text"
-                value={settings.phone}
-                onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                className="input-field"
-              />
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Phone Number</label>
+              <input type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input-field" required />
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">WhatsApp Number</label>
-              <input
-                type="text"
-                value={settings.whatsapp}
-                onChange={(e) => setSettings({ ...settings, whatsapp: e.target.value })}
-                className="input-field"
-              />
+              <input type="text" value={formData.whatsapp} onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })} className="input-field" />
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Contact Email</label>
-              <input
-                type="email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                className="input-field"
-              />
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input-field" />
             </div>
-
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Address</label>
-              <input
-                type="text"
-                value={settings.address}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                className="input-field"
-              />
+              <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="input-field" required />
             </div>
           </div>
+        </div>
+
+        {/* Social Media Links */}
+        <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
+            <LinkIcon size={18} className="text-[#0284C7]" /> Social Media Links
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Instagram URL</label>
+              <input type="url" value={formData.instagramUrl} onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })} className="input-field" placeholder="https://instagram.com/..." />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Facebook URL</label>
+              <input type="url" value={formData.facebookUrl} onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })} className="input-field" placeholder="https://facebook.com/..." />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Twitter / X URL</label>
+              <input type="url" value={formData.twitterUrl} onChange={(e) => setFormData({ ...formData, twitterUrl: e.target.value })} className="input-field" placeholder="https://twitter.com/..." />
+            </div>
+          </div>
+        </div>
+
+        {/* Integrations & Maps */}
+        <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
+            <MapPin size={18} className="text-[#D97706]" /> Integrations & Maps
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Google Reviews URL</label>
+              <input type="url" value={formData.googleReviewsLink} onChange={(e) => setFormData({ ...formData, googleReviewsLink: e.target.value })} className="input-field" placeholder="https://g.page/r/..." />
+              <p className="text-xs text-[#57534E] mt-1">Used for the "Leave a Review" button.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-1">Google Maps Embed URL</label>
+              <textarea rows={2} value={formData.googleMapsEmbedUrl} onChange={(e) => setFormData({ ...formData, googleMapsEmbedUrl: e.target.value })} className="input-field" placeholder="https://maps.google.com/maps?..." />
+              <p className="text-xs text-[#57534E] mt-1">The `src` attribute from a Google Maps embed iframe.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Features & Modules */}
+        <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
+            <LayoutTemplate size={18} className="text-[#7C3AED]" /> Features & Modules
+          </h2>
+          <div className="flex items-center justify-between p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg">
+            <div className="flex items-center gap-3">
+              <Instagram className="text-[#E1306C]" size={20} />
+              <div>
+                <p className="font-semibold text-sm text-[#1C1917]">Instagram Carousel</p>
+                <p className="text-xs text-[#57534E]">Show a simulated Instagram feed on the homepage.</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={formData.enableInstagramCarousel} onChange={(e) => setFormData({ ...formData, enableInstagramCarousel: e.target.checked })} />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#B91C1C]"></div>
+            </label>
+          </div>
+        </div>
+
+        {/* Payment Gateways */}
+        <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
+            <CreditCard size={18} className="text-[#15803D]" /> Payment Gateways
+          </h2>
+          
+          <div className="flex items-center justify-between p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg mb-4">
+            <div>
+              <p className="font-semibold text-sm text-[#1C1917]">Razorpay Integration</p>
+              <p className="text-xs text-[#57534E]">Enable Razorpay for accepting online payments.</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={formData.enableRazorpay} onChange={(e) => setFormData({ ...formData, enableRazorpay: e.target.checked })} />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#15803D]"></div>
+            </label>
+          </div>
+
+          {formData.enableRazorpay && (
+            <div className="grid sm:grid-cols-2 gap-4 border-t border-[#E7E0D8] pt-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Razorpay Key ID</label>
+                <input type="text" value={formData.razorpayKeyId} onChange={(e) => setFormData({ ...formData, razorpayKeyId: e.target.value })} className="input-field" placeholder="rzp_test_..." />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Razorpay Key Secret</label>
+                <input type="password" value={formData.razorpayKeySecret} onChange={(e) => setFormData({ ...formData, razorpayKeySecret: e.target.value })} className="input-field" placeholder="Enter secret key" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pricing & Tax */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
           <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
-            <CreditCard size={18} className="text-[#15803D]" /> Tax & Delivery Charges
+            <CreditCard size={18} className="text-[#1C1917]" /> Tax & Delivery Charges
           </h2>
-
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Delivery Fee (₹)</label>
-              <input
-                type="number"
-                value={settings.deliveryFee}
-                onChange={(e) => setSettings({ ...settings, deliveryFee: Number(e.target.value) })}
-                className="input-field"
-              />
+              <input type="number" value={formData.deliveryFee} onChange={(e) => setFormData({ ...formData, deliveryFee: Number(e.target.value) })} className="input-field" required />
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Free Delivery Above (₹)</label>
-              <input
-                type="number"
-                value={settings.freeDeliveryAbove}
-                onChange={(e) => setSettings({ ...settings, freeDeliveryAbove: Number(e.target.value) })}
-                className="input-field"
-              />
+              <input type="number" value={formData.freeDeliveryAbove} onChange={(e) => setFormData({ ...formData, freeDeliveryAbove: Number(e.target.value) })} className="input-field" required />
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">GST Tax Rate (%)</label>
-              <input
-                type="number"
-                value={settings.taxRate}
-                onChange={(e) => setSettings({ ...settings, taxRate: Number(e.target.value) })}
-                className="input-field"
-              />
+              <input type="number" value={formData.taxRate} onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })} className="input-field" required />
             </div>
           </div>
         </div>
 
         <button type="submit" className="btn btn-primary btn-lg flex items-center gap-2">
-          <Save size={17} /> Save Settings
+          <Save size={17} /> Save All Settings
         </button>
       </form>
     </div>

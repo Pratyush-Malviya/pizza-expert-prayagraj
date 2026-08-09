@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion'
 import { Star } from 'lucide-react'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import { useState, useEffect } from 'react'
 
 const REVIEWS = [
   {
@@ -22,6 +24,13 @@ const REVIEWS = [
 ]
 
 export default function GoogleReviews() {
+  const [mounted, setMounted] = useState(false)
+  const googleReviewsLink = useSettingsStore((state) => state.googleReviewsLink)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <section className="section-py bg-[var(--bg-dark)]" aria-labelledby="reviews-heading">
       <div className="container-custom">
@@ -40,7 +49,7 @@ export default function GoogleReviews() {
           </div>
           
           <a
-            href="https://g.page/r/pizzaexpert-prayagraj/review"
+            href={mounted ? googleReviewsLink : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-secondary-inverse shrink-0 self-start md:self-auto"

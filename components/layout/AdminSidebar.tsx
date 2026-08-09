@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
   Settings, LogOut, ExternalLink,
-  ChevronRight
+  ChevronRight, CreditCard
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ const ADMIN_LINKS = [
   { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
   { label: 'Products', href: '/admin/products', icon: Pizza },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+  { label: 'Payments', href: '/admin/payments', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 

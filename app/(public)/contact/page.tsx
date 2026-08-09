@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MapPin, Phone, Clock, Send, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 
 export default function ContactPage() {
+  const storeSettings = useSettingsStore()
+  const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,6 +16,10 @@ export default function ContactPage() {
     message: '',
   })
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,6 +30,13 @@ export default function ContactPage() {
     setLoading(false)
   }
 
+  // Fallbacks if not mounted
+  const businessName = mounted ? storeSettings.businessName : 'Pizza Expert'
+  const phone = mounted ? storeSettings.phone : '+91-9999999999'
+  const whatsapp = mounted ? storeSettings.whatsapp : '919999999999'
+  const address = mounted ? storeSettings.address : 'Allapur, Prayagraj, Uttar Pradesh 211006'
+  const mapUrl = mounted ? storeSettings.googleMapsEmbedUrl : 'https://maps.google.com/maps?q=Allapur,+Prayagraj,+Uttar+Pradesh&t=&z=14&ie=UTF8&iwloc=&output=embed'
+
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
       <div className="container-custom">
@@ -31,10 +45,10 @@ export default function ContactPage() {
             Get in Touch
           </span>
           <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[#1C1917] mb-3">
-            Contact Pizza Expert
+            Contact {businessName}
           </h1>
           <p className="text-[#57534E] text-xs sm:text-sm max-w-lg mx-auto">
-            Have questions about your order, party catering, or feedback? Reach out to our team in Allapur, Prayagraj!
+            Have questions about your order, party catering, or feedback? Reach out to our team!
           </p>
         </div>
 
@@ -48,7 +62,9 @@ export default function ContactPage() {
               <div>
                 <h3 className="font-serif font-bold text-[#1C1917] text-sm mb-1">Store Location</h3>
                 <p className="text-[#57534E] text-xs leading-relaxed">
-                  Allapur, Prayagraj,<br />Uttar Pradesh 211006
+                  {address.split(',').map((line, i) => (
+                    <span key={i}>{line}{i !== address.split(',').length - 1 && <br />}</span>
+                  ))}
                 </p>
               </div>
             </div>
@@ -59,8 +75,8 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-serif font-bold text-[#1C1917] text-sm mb-1">Call Us Directly</h3>
-                <p className="text-[#57534E] text-xs mb-1 font-mono">+91-9999999999</p>
-                <a href="tel:+919999999999" className="text-xs font-semibold text-[#B91C1C] hover:underline">
+                <p className="text-[#57534E] text-xs mb-1 font-mono">{phone}</p>
+                <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`} className="text-xs font-semibold text-[#B91C1C] hover:underline">
                   Click to Call →
                 </a>
               </div>
@@ -78,7 +94,7 @@ export default function ContactPage() {
             </div>
 
             <a
-              href="https://wa.me/919999999999"
+              href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-whatsapp w-full py-3 rounded-lg flex items-center justify-center gap-2 font-semibold"
@@ -179,11 +195,11 @@ export default function ContactPage() {
 
         {/* Google Maps Location */}
         <div className="bg-white rounded-xl border border-[#E7E0D8] p-4 shadow-xs overflow-hidden">
-          <h3 className="font-serif font-bold text-[#1C1917] text-base mb-3 px-1">Location Map — Allapur, Prayagraj</h3>
+          <h3 className="font-serif font-bold text-[#1C1917] text-base mb-3 px-1">Location Map — {businessName}</h3>
           <div className="w-full h-72 rounded-lg overflow-hidden border border-[#E7E0D8] bg-[#F4EFEA]">
             <iframe
-              title="Pizza Expert Prayagraj Location Map"
-              src="https://maps.google.com/maps?q=Allapur,+Prayagraj,+Uttar+Pradesh&t=&z=14&ie=UTF8&iwloc=&output=embed"
+              title={`${businessName} Location Map`}
+              src={mapUrl}
               width="100%"
               height="100%"
               style={{ border: 0 }}
