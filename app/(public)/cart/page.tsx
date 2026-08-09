@@ -60,7 +60,7 @@ export default function CartPage() {
             Your Cart is Empty
           </h2>
           <p className="text-[#57534E] text-xs sm:text-sm mb-6">
-            Looks like you haven't added any wood-fired pizzas or burgers yet.
+            Looks like you haven&apos;t added any wood-fired pizzas or burgers yet.
           </p>
           <Link href="/menu" className="btn btn-primary btn-lg w-full">
             Browse Menu

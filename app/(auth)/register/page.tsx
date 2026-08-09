@@ -21,7 +21,7 @@ export default function RegisterPage() {
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -38,7 +38,7 @@ export default function RegisterPage() {
         toast.success('Registration successful! Check your email to confirm.')
         router.push('/login')
       }
-    } catch (err) {
+    } catch {
       toast.error('Registration error. Please try again.')
     } finally {
       setLoading(false)

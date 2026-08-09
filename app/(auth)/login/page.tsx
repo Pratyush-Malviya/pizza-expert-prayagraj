@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -30,7 +30,7 @@ export default function LoginPage() {
         toast.success('Logged in successfully!')
         router.push('/admin')
       }
-    } catch (err) {
+    } catch {
       toast.error('Login error. Please try again.')
     } finally {
       setLoading(false)
@@ -108,7 +108,7 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center pt-2 border-t border-[#E7E0D8] text-xs text-[#57534E]">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/register" className="font-semibold text-[#B91C1C] hover:underline">
             Register here
           </Link>
