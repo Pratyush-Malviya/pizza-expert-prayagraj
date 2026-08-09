@@ -65,6 +65,17 @@ export default function DeliveriesAdminPage() {
 
   useEffect(() => {
     loadDeliveryData()
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadDeliveryData()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   const assignDriverToOrder = async (orderId: string, driverId: string) => {

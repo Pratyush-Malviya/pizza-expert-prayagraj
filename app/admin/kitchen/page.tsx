@@ -85,8 +85,17 @@ export default function KitchenDisplayPage() {
       })
       .subscribe()
 
+    // Refresh data automatically when switching back to this browser tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
