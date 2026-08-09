@@ -4,6 +4,9 @@ import Link from 'next/link'
 import {
   MapPin, Clock, Phone
 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import Image from 'next/image'
 
 const QUICK_LINKS = [
   { label: 'Home',        href: '/' },
@@ -15,6 +18,13 @@ const QUICK_LINKS = [
 ]
 
 export default function Footer() {
+  const [mounted, setMounted] = useState(false)
+  const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <footer className="bg-[var(--bg-dark)] text-[#A8A29E] pt-20 pb-10" role="contentinfo">
       <div className="container-custom">
@@ -22,13 +32,21 @@ export default function Footer() {
           
           {/* Brand */}
           <div className="space-y-6 lg:col-span-1">
-            <Link href="/" className="group flex flex-col w-fit">
-              <span className="font-serif font-bold text-3xl leading-none text-white transition-colors">
-                Pizza Expert
-              </span>
-              <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[var(--primary)] mt-1.5 font-bold">
-                Prayagraj
-              </span>
+            <Link href="/" className="group flex flex-col w-fit relative z-50">
+              {mounted && logoDataUrl ? (
+                <div className="relative w-40 h-16">
+                  <Image src={logoDataUrl} alt="Store Logo" fill className="object-contain object-left" />
+                </div>
+              ) : (
+                <>
+                  <span className="font-serif font-bold text-3xl leading-none text-white transition-colors">
+                    Pizza Expert
+                  </span>
+                  <span className="font-sans text-[11px] uppercase tracking-[0.2em] text-[var(--primary)] mt-1.5 font-bold">
+                    Prayagraj
+                  </span>
+                </>
+              )}
             </Link>
             <p className="text-sm leading-relaxed max-w-sm">
               Authentic wood-fired pizzas and handcrafted food, made fresh daily in Allapur since 2018. 

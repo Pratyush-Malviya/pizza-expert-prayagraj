@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingCart, User, Menu, X } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
@@ -25,6 +27,7 @@ export default function Header() {
 
   const itemCount = useCartStore((s) => s.getItemCount())
   const toggleCart = useCartStore((s) => s.toggleCart)
+  const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
 
   useEffect(() => {
     setMounted(true)
@@ -43,14 +46,22 @@ export default function Header() {
         )}
       >
         <div className="container-custom flex items-center justify-between">
-          {/* Editorial Logo */}
-          <Link href="/" className="group flex flex-col">
-            <span className="font-serif font-bold text-2xl leading-none text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
-              Pizza Expert
-            </span>
-            <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] mt-1">
-              Prayagraj
-            </span>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group z-50 relative shrink-0">
+            {mounted && logoDataUrl ? (
+              <div className="relative w-32 h-10">
+                <Image src={logoDataUrl} alt="Store Logo" fill className="object-contain object-left" />
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <span className="font-serif font-bold text-2xl leading-none text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
+                  Pizza Expert
+                </span>
+                <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] mt-1">
+                  Prayagraj
+                </span>
+              </div>
+            )}
           </Link>
 
           {/* Desktop Nav */}

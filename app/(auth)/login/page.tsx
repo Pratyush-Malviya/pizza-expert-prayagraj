@@ -1,17 +1,26 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Pizza, Lock, Mail, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,17 +59,25 @@ export default function LoginPage() {
         {/* Brand */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-3 group">
-            <div className="w-10 h-10 bg-[#B91C1C] rounded-lg flex items-center justify-center text-white">
-              <Pizza size={22} />
-            </div>
-            <div className="text-left">
-              <span className="block font-serif font-bold text-lg leading-tight text-[#1C1917]">
-                Pizza Expert
-              </span>
-              <span className="block text-[9px] text-[#B91C1C] font-bold tracking-widest uppercase">
-                Prayagraj
-              </span>
-            </div>
+            {mounted && logoDataUrl ? (
+              <div className="relative w-32 h-10 mb-2">
+                <Image src={logoDataUrl} alt="Store Logo" fill className="object-contain" />
+              </div>
+            ) : (
+              <>
+                <div className="w-10 h-10 bg-[#B91C1C] rounded-lg flex items-center justify-center text-white">
+                  <Pizza size={22} />
+                </div>
+                <div className="text-left">
+                  <span className="block font-serif font-bold text-lg leading-tight text-[#1C1917]">
+                    Pizza Expert
+                  </span>
+                  <span className="block text-[9px] text-[#B91C1C] font-bold tracking-widest uppercase">
+                    Prayagraj
+                  </span>
+                </div>
+              </>
+            )}
           </Link>
           <h1 className="text-2xl font-serif font-bold text-[#1C1917] mt-2">
             Sign In to Your Account
