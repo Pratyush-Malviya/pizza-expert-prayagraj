@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Pizza, Lock, Mail, User, Phone, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTarget = searchParams.get('redirect') || ''
+
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -35,8 +38,8 @@ export default function RegisterPage() {
       if (error) {
         toast.error(error.message || 'Registration failed')
       } else {
-        toast.success('Registration successful! Check your email to confirm.')
-        router.push('/login')
+        toast.success('Registration successful! Please sign in.')
+        router.push(redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login')
       }
     } catch {
       toast.error('Registration error. Please try again.')
@@ -99,7 +102,7 @@ export default function RegisterPage() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 99999 99999"
+                placeholder="+91 98765 43210"
                 className="input-field pl-10"
               />
             </div>
@@ -133,7 +136,7 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
+                placeholder="••••••••"
                 className="input-field pl-10"
               />
             </div>
@@ -144,17 +147,29 @@ export default function RegisterPage() {
             disabled={loading}
             className="btn btn-primary btn-lg w-full flex items-center justify-center gap-2 mt-2"
           >
-            {loading ? 'Creating Account...' : 'Register'} <ArrowRight size={17} />
+            {loading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={17} />
           </button>
         </form>
 
         <div className="text-center pt-2 border-t border-[#E7E0D8] text-xs text-[#57534E]">
           Already have an account?{' '}
-          <Link href="/login" className="font-semibold text-[#B91C1C] hover:underline">
-            Sign in here
+          <Link href={`/login${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`} className="font-semibold text-[#B91C1C] hover:underline">
+            Sign In
           </Link>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FBF9F5]">
+        <div className="w-8 h-8 border-2 border-[#B91C1C] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   )
 }

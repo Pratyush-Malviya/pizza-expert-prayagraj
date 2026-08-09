@@ -1,16 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Pizza, Lock, Mail, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTarget = searchParams.get('redirect') || '/admin'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,8 +33,8 @@ export default function LoginPage() {
       const supabase = createClient()
       if (email === 'admin@demo.com' && password === 'admin') {
         document.cookie = "simple_admin=true; path=/; max-age=86400"
-        toast.success('Logged in successfully (Simple Admin)!')
-        router.push('/admin')
+        toast.success('Logged in successfully!')
+        router.push(redirectTarget)
         return
       }
 
@@ -44,7 +47,7 @@ export default function LoginPage() {
         toast.error(error.message || 'Invalid login credentials')
       } else {
         toast.success('Logged in successfully!')
-        router.push('/admin')
+        router.push(redirectTarget)
       }
     } catch {
       toast.error('Login error. Please try again.')
@@ -133,11 +136,23 @@ export default function LoginPage() {
 
         <div className="text-center pt-2 border-t border-[#E7E0D8] text-xs text-[#57534E]">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="font-semibold text-[#B91C1C] hover:underline">
+          <Link href={`/register${redirectTarget !== '/admin' ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`} className="font-semibold text-[#B91C1C] hover:underline">
             Register here
           </Link>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FBF9F5]">
+        <div className="w-8 h-8 border-2 border-[#B91C1C] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
