@@ -8,6 +8,7 @@ import {
   AlertCircle, ChefHat, RefreshCw, Volume2, Printer
 } from 'lucide-react'
 import { handlePrintInvoice } from '@/lib/utils/printInvoice'
+import { syncOrderStatus } from '@/lib/utils/orderSync'
 
 const STAGE_COLUMNS: { label: string; status: OrderStatus; color: string; icon: any }[] = [
   { label: 'New Orders', status: 'confirmed', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400', icon: Clock },
@@ -105,17 +106,8 @@ export default function KitchenDisplayPage() {
       prev.map((ord) => (ord.id === orderId ? { ...ord, status: nextStatus } : ord))
     )
 
-    const { error } = await supabase.from('orders').update({ status: nextStatus }).eq('id', orderId)
-    if (error) {
-      console.error('Failed to update order status:', error.message)
-    } else {
-      // Record history entry
-      await supabase.from('order_status_history').insert({
-        order_id: orderId,
-        status: nextStatus,
-        notes: `Kitchen updated status to ${nextStatus}`,
-      })
-    }
+    // Universal sync helper for Supabase + local storage + tracking events
+    await syncOrderStatus(orderId, nextStatus)
   }
 
   const getNextAction = (status: OrderStatus) => {

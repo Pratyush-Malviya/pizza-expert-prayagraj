@@ -7,7 +7,7 @@ import {
   Truck, UserCheck, MapPin, Clock, CheckCircle2,
   Navigation, UserX, AlertTriangle, ShieldCheck
 } from 'lucide-react'
-
+import { syncOrderStatus } from '@/lib/utils/orderSync'
 export default function DeliveriesAdminPage() {
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [unassignedOrders, setUnassignedOrders] = useState<Order[]>([])
@@ -86,7 +86,7 @@ export default function DeliveriesAdminPage() {
     })
 
     if (!error) {
-      await supabase.from('orders').update({ status: 'out_for_delivery' }).eq('id', orderId)
+      await syncOrderStatus(orderId, 'out_for_delivery')
       await supabase.from('drivers').update({ is_busy: true }).eq('id', driverId)
       loadDeliveryData()
     }

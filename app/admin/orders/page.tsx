@@ -6,6 +6,7 @@ import { Search, Printer, Trash2, Eye, X, User, Phone, MapPin, CreditCard, Clock
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { handlePrintInvoice } from '@/lib/utils/printInvoice'
+import { syncOrderStatus } from '@/lib/utils/orderSync'
 
 export interface OrderItemDetail {
   id: string
@@ -172,12 +173,12 @@ export default function AdminOrdersPage() {
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     )
 
-    try {
-      const supabase = createClient()
-      await supabase.from('orders').update({ status: newStatus }).eq('id', orderId)
-    } catch {
-      // Ignore if offline
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
     }
+
+    // Universal sync helper for Supabase + local storage + tracking events
+    await syncOrderStatus(orderId, newStatus)
 
     toast.success(`Updated order ${orderId} status to ${newStatus}`)
   }

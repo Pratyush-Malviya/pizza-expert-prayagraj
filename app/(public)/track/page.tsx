@@ -20,6 +20,20 @@ function TrackOrderContent() {
     if (!orderId) return
 
     const fetchStatus = async () => {
+      // Check local storage fallback first for instant update
+      try {
+        const savedStatus = localStorage.getItem(`order_status_${orderId}`)
+        if (savedStatus) {
+          setCurrentStatus(savedStatus)
+        }
+        const localOrders = JSON.parse(localStorage.getItem('pizza_orders') || '[]')
+        const match = localOrders.find((o: any) => o.id === orderId || o.order_id === orderId)
+        if (match && match.status) {
+          setCurrentStatus(match.status)
+        }
+      } catch {}
+
+      // Fetch from Supabase
       const { data } = await supabase
         .from('orders')
         .select('*')
@@ -41,17 +55,31 @@ function TrackOrderContent() {
       .channel(`order-track-${orderId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        (payload) => {
-          if (payload.new && payload.new.status) {
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload: any) => {
+          if (payload.new && (payload.new.id === orderId || payload.new.order_id === orderId) && payload.new.status) {
             setCurrentStatus(payload.new.status)
           }
         }
       )
       .subscribe()
 
+    // Custom Event Listener for local status changes
+    const handleStatusSync = (e: any) => {
+      if (e.detail?.orderId === orderId && e.detail?.newStatus) {
+        setCurrentStatus(e.detail.newStatus)
+      } else {
+        fetchStatus()
+      }
+    }
+
+    window.addEventListener('orderStatusUpdated', handleStatusSync)
+    window.addEventListener('storage', handleStatusSync)
+
     return () => {
       supabase.removeChannel(channel)
+      window.removeEventListener('orderStatusUpdated', handleStatusSync)
+      window.removeEventListener('storage', handleStatusSync)
     }
   }, [orderId])
 
