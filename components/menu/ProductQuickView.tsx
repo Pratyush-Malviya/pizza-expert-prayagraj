@@ -50,14 +50,26 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
 
   const handleAddToCart = () => {
     const formattedOptions: CartItemOption[] = Object.entries(selectedOptions).map(
-      ([name, val]) => ({
-        name,
+      ([optionName, val]) => ({
+        optionName,
         choice: val.choice,
-        price_delta: val.priceDelta,
+        priceDelta: val.priceDelta,
       })
     )
 
-    addItem(product, quantity, formattedOptions)
+    const imageUrl = FOOD_IMAGES[product.slug] || FOOD_IMAGES['margherita-pizza']
+
+    addItem({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      imageUrl,
+      isVeg: product.is_veg,
+      quantity,
+      selectedOptions: formattedOptions,
+    })
+
     toast.success(`Added ${quantity}x ${product.name} to cart!`)
     onClose()
     openCart()
