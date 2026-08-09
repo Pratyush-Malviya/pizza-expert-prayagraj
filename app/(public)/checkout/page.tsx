@@ -77,7 +77,7 @@ export default function CheckoutPage() {
         clearCart()
         router.push(`/order/${orderId}`)
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to place order. Please try again.')
     } finally {
       setLoading(false)

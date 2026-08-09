@@ -8,9 +8,22 @@ import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { toast } from 'sonner'
-import type { CartItemOption } from '@/types'
+import type { CartItemOption, ProductOption, OptionChoice } from '@/types'
 
-const FULL_PRODUCTS_DATABASE: Record<string, any> = {
+const FULL_PRODUCTS_DATABASE: Record<string, {
+  id: string
+  name: string
+  slug: string
+  category: string
+  categoryName: string
+  description: string
+  price: number
+  is_veg: boolean
+  is_spicy: boolean
+  ingredients: string
+  nutrition: Record<string, string>
+  options?: ProductOption[]
+}> = {
   'margherita-pizza': {
     id: 'p1',
     name: 'Margherita Pizza',
@@ -139,7 +152,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [selectedOptions, setSelectedOptions] = useState<Record<string, { choice: string; priceDelta: number }>>(() => {
     const initial: Record<string, { choice: string; priceDelta: number }> = {}
-    product.options?.forEach((opt: any) => {
+    product.options?.forEach((opt: ProductOption) => {
       if (opt.choices[0]) {
         initial[opt.name] = {
           choice: opt.choices[0].label,
@@ -255,13 +268,13 @@ export default function ProductDetailPage() {
               {/* Customization Options */}
               {product.options && product.options.length > 0 && (
                 <div className="space-y-4 pt-4 border-t border-[#E7E0D8]">
-                  {product.options.map((opt: any) => (
+                  {product.options.map((opt: ProductOption) => (
                     <div key={opt.id}>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#A8A29E] mb-2">
                         Select {opt.name}
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {opt.choices.map((choice: any) => {
+                        {opt.choices.map((choice: OptionChoice) => {
                           const isSelected = selectedOptions[opt.name]?.choice === choice.label
                           return (
                             <button

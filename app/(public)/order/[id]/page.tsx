@@ -25,7 +25,7 @@ export default function OrderConfirmationPage() {
               Thank You For Your Order!
             </h1>
             <p className="text-[#57534E] text-xs sm:text-sm">
-              We've received your order and our kitchen in Allapur is preparing it with care.
+              We&apos;ve received your order and our kitchen in Allapur is preparing it with care.
             </p>
           </div>
 

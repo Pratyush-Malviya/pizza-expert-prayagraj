@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Phone, Mail, Clock, Send, MessageCircle } from 'lucide-react'
+import { MapPin, Phone, Clock, Send, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function ContactPage() {

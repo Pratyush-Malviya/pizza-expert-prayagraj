@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Tag, Copy, Check, Sparkles } from 'lucide-react'
+import { Copy, Check, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 

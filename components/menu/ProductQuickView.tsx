@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingCart } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
@@ -14,27 +14,33 @@ interface ProductQuickViewProps {
   onClose: () => void
 }
 
+function getInitialOptions(product: Product | null): Record<string, { choice: string; priceDelta: number }> {
+  if (!product) return {}
+  const initial: Record<string, { choice: string; priceDelta: number }> = {}
+  product.options?.forEach((opt) => {
+    if (opt.choices[0]) {
+      initial[opt.name] = {
+        choice: opt.choices[0].label,
+        priceDelta: opt.choices[0].price_delta,
+      }
+    }
+  })
+  return initial
+}
+
 export default function ProductQuickView({ product, onClose }: ProductQuickViewProps) {
   const addItem = useCartStore((s) => s.addItem)
   const openCart = useCartStore((s) => s.openCart)
 
   const [quantity, setQuantity] = useState(1)
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, { choice: string; priceDelta: number }>>({})
+  const [selectedOptions, setSelectedOptions] = useState(() => getInitialOptions(product))
+  const [prevProductId, setPrevProductId] = useState<string | null>(product?.id || null)
 
-  useEffect(() => {
-    if (!product) return
+  if (product && product.id !== prevProductId) {
+    setPrevProductId(product.id)
     setQuantity(1)
-    const initial: Record<string, { choice: string; priceDelta: number }> = {}
-    product.options?.forEach((opt) => {
-      if (opt.choices[0]) {
-        initial[opt.name] = {
-          choice: opt.choices[0].label,
-          priceDelta: opt.choices[0].price_delta,
-        }
-      }
-    })
-    setSelectedOptions(initial)
-  }, [product])
+    setSelectedOptions(getInitialOptions(product))
+  }
 
   if (!product) return null
 

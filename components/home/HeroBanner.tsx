@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, Star, Clock, Truck, Flame, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Star, Truck, Flame, ShieldCheck } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 
 export default function HeroBanner() {
