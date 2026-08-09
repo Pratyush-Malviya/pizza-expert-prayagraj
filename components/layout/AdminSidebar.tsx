@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
   Settings, LogOut, ExternalLink,
-  ChevronRight, CreditCard, UtensilsCrossed, Truck
+  ChevronRight, CreditCard, UtensilsCrossed, Truck, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,72 +20,110 @@ const ADMIN_LINKS = [
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  mobileOpen?: boolean
+  setMobileOpen?: (open: boolean) => void
+}
+
+export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-60 bg-[#18181B] text-white flex flex-col min-h-screen border-r border-[#27272A] flex-shrink-0">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-[#27272A]">
-        <Link href="/admin" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#B91C1C] rounded-md flex items-center justify-center font-bold text-white font-serif">
-            PE
-          </div>
-          <div>
-            <span className="block font-serif font-bold text-base text-white">
-              Pizza Expert
-            </span>
-            <span className="block text-[9px] text-[#B91C1C] font-bold tracking-widest uppercase">
-              Admin Portal
-            </span>
-          </div>
-        </Link>
-      </div>
+    <>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen?.(false)}
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs transition-opacity"
+        />
+      )}
 
-      {/* Nav Links */}
-      <nav className="flex-1 p-3 space-y-1">
-        {ADMIN_LINKS.map((link) => {
-          const Icon = link.icon
-          const isActive = pathname === link.href
+      {/* Sidebar Container */}
+      <aside
+        className={cn(
+          'w-64 bg-[#18181B] text-white flex flex-col border-r border-[#27272A] flex-shrink-0 z-50 transition-transform duration-300 ease-in-out',
+          // Desktop behavior: fixed layout, always visible
+          'lg:static lg:translate-x-0 lg:min-h-screen',
+          // Mobile drawer behavior: fixed overlay sliding from left
+          'fixed inset-y-0 left-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {/* Brand Header */}
+        <div className="p-5 border-b border-[#27272A] flex items-center justify-between">
+          <Link
+            href="/admin"
+            onClick={() => setMobileOpen?.(false)}
+            className="flex items-center gap-3"
+          >
+            <div className="w-9 h-9 bg-[#B91C1C] rounded-md flex items-center justify-center font-bold text-white font-serif">
+              PE
+            </div>
+            <div>
+              <span className="block font-serif font-bold text-base text-white">
+                Pizza Expert
+              </span>
+              <span className="block text-[9px] text-[#B91C1C] font-bold tracking-widest uppercase">
+                Admin Portal
+              </span>
+            </div>
+          </Link>
 
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'flex items-center justify-between px-3.5 py-2.5 rounded-md text-xs sm:text-sm font-semibold transition-all',
-                isActive
-                  ? 'bg-[#B91C1C] text-white'
-                  : 'text-[#A8A29E] hover:text-white hover:bg-[#27272A]'
-              )}
-            >
-              <div className="flex items-center gap-2.5">
-                <Icon size={16} />
-                <span>{link.label}</span>
-              </div>
-              {isActive && <ChevronRight size={14} />}
-            </Link>
-          )
-        })}
-      </nav>
+          {/* Close Button for Mobile */}
+          <button
+            onClick={() => setMobileOpen?.(false)}
+            className="lg:hidden p-1.5 rounded-md text-[#A8A29E] hover:text-white hover:bg-[#27272A]"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-      {/* Footer Links */}
-      <div className="p-3 border-t border-[#27272A] space-y-1">
-        <Link
-          href="/"
-          target="_blank"
-          className="flex items-center justify-between px-3.5 py-2 rounded-md text-xs font-semibold text-[#A8A29E] hover:text-white hover:bg-[#27272A] transition-all"
-        >
-          <span>Public Website</span>
-          <ExternalLink size={13} />
-        </Link>
-        <Link
-          href="/login"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold text-[#B91C1C] hover:bg-[#FEF2F2]/10 transition-all"
-        >
-          <LogOut size={15} /> Sign Out
-        </Link>
-      </div>
-    </aside>
+        {/* Nav Links */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {ADMIN_LINKS.map((link) => {
+            const Icon = link.icon
+            const isActive = pathname === link.href
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen?.(false)}
+                className={cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-md text-xs sm:text-sm font-semibold transition-all',
+                  isActive
+                    ? 'bg-[#B91C1C] text-white shadow-xs'
+                    : 'text-[#A8A29E] hover:text-white hover:bg-[#27272A]'
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon size={16} />
+                  <span>{link.label}</span>
+                </div>
+                {isActive && <ChevronRight size={14} />}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer Links */}
+        <div className="p-3 border-t border-[#27272A] space-y-1">
+          <Link
+            href="/"
+            target="_blank"
+            className="flex items-center justify-between px-3.5 py-2 rounded-md text-xs font-semibold text-[#A8A29E] hover:text-white hover:bg-[#27272A] transition-all"
+          >
+            <span>Public Website</span>
+            <ExternalLink size={13} />
+          </Link>
+          <Link
+            href="/login"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold text-[#B91C1C] hover:bg-[#FEF2F2]/10 transition-all"
+          >
+            <LogOut size={15} /> Sign Out
+          </Link>
+        </div>
+      </aside>
+    </>
   )
 }
