@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Order, OrderStatus } from '@/types'
 import {
   UtensilsCrossed, Clock, CheckCircle2, Flame,
-  AlertCircle, ChefHat, RefreshCw, Volume2
+  AlertCircle, ChefHat, RefreshCw, Volume2, Printer
 } from 'lucide-react'
+import { handlePrintInvoice } from '@/lib/utils/printInvoice'
 
 const STAGE_COLUMNS: { label: string; status: OrderStatus; color: string; icon: any }[] = [
   { label: 'New Orders', status: 'confirmed', color: 'bg-amber-500/10 border-amber-500/30 text-amber-400', icon: Clock },
@@ -187,9 +188,41 @@ export default function KitchenDisplayPage() {
                       <div key={ord.id} className="p-4 rounded-lg bg-[#27272A]/50 border border-[#3F3F46] hover:border-[#52525B] transition-all space-y-3">
                         <div className="flex items-center justify-between border-b border-[#3F3F46] pb-2">
                           <span className="font-mono font-bold text-sm text-[#F43F5E]">#{ord.id.slice(-6).toUpperCase()}</span>
-                          <span className="text-[11px] text-[#A8A29E] flex items-center gap-1 font-semibold">
-                            <Clock size={12} /> {minutesAgo}m ago
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-[#A8A29E] flex items-center gap-1 font-semibold">
+                              <Clock size={12} /> {minutesAgo}m ago
+                            </span>
+                            <button
+                              onClick={() => {
+                                const addr = (ord as any).address_json || {}
+                                handlePrintInvoice({
+                                  id: ord.id,
+                                  customer: addr.name || 'Customer',
+                                  phone: addr.phone || '',
+                                  address: [addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj',
+                                  notes: ord.notes || undefined,
+                                  items_detail: ord.items?.map((i) => ({
+                                    product_name: i.product?.name || 'Pizza Item',
+                                    quantity: i.quantity,
+                                    unit_price: i.unit_price,
+                                    selected_options: i.selected_options,
+                                  })),
+                                  subtotal: Number(ord.subtotal) || 0,
+                                  tax: Number(ord.tax) || 0,
+                                  delivery_fee: Number(ord.delivery_fee) || 0,
+                                  discount: Number(ord.discount) || 0,
+                                  total: Number(ord.total) || 0,
+                                  status: ord.status,
+                                  payment_method: addr.paymentMethod || 'razorpay',
+                                  created_at: ord.created_at,
+                                })
+                              }}
+                              className="p-1 text-[#A8A29E] hover:text-white transition-colors"
+                              title="Print Kitchen Ticket"
+                            >
+                              <Printer size={14} />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Items list */}

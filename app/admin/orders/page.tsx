@@ -5,6 +5,7 @@ import { formatPrice } from '@/lib/utils'
 import { Search, Printer, Trash2, Eye, X, User, Phone, MapPin, CreditCard, Clock, FileText, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { handlePrintInvoice } from '@/lib/utils/printInvoice'
 
 export interface OrderItemDetail {
   id: string
@@ -322,7 +323,7 @@ export default function AdminOrdersPage() {
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => toast.info(`Printing invoice for ${order.id}...`)}
+                          onClick={() => handlePrintInvoice(order)}
                           className="p-1.5 text-[#57534E] hover:text-[#1C1917] hover:bg-gray-100 rounded-md transition-colors"
                           title="Print Invoice"
                         >
@@ -502,7 +503,7 @@ export default function AdminOrdersPage() {
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => toast.info(`Printing invoice for ${selectedOrder.id}...`)}
+                  onClick={() => handlePrintInvoice(selectedOrder)}
                   className="btn btn-secondary text-xs flex items-center gap-1.5"
                 >
                   <Printer size={14} /> Print Invoice
