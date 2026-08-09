@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Check } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, Check, Sparkles } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
@@ -53,63 +54,91 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   }
 
   return (
-    <div 
-      className="group flex flex-col cursor-pointer"
+    <motion.div
+      whileHover={{ y: -6 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="group flex flex-col cursor-pointer bg-white rounded-[20px] p-3.5 border border-[#E7E0D8] hover:border-[#B91C1C]/40 hover:shadow-xl transition-all duration-300"
       onClick={() => onQuickView && onQuickView(product)}
     >
       {/* Image Container */}
-      <div className="relative bg-[var(--bg-subtle)] aspect-square rounded-[16px] overflow-hidden mb-5">
-        <img
+      <div className="relative bg-[var(--bg-subtle)] aspect-square rounded-[16px] overflow-hidden mb-4">
+        <motion.img
           src={imageUrl}
           alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
         />
 
-        {/* Dietary Badge */}
-        <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10 pointer-events-none">
-          <span className={`badge ${product.is_veg ? 'badge-veg' : 'badge-nonveg'}`}>
+        {/* Dietary & Highlight Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
+          <span className={`badge ${product.is_veg ? 'badge-veg' : 'badge-nonveg'} shadow-xs`}>
             {product.is_veg ? 'Veg' : 'Non-Veg'}
           </span>
-          {product.is_spicy && <span className="badge badge-spicy">Spicy</span>}
+          {product.is_spicy && <span className="badge badge-spicy shadow-xs">Spicy</span>}
         </div>
+
+        {/* Bestseller Badge */}
+        {product.sort_order === 1 && (
+          <div className="absolute top-3 right-3 bg-amber-400 text-black px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-md z-10">
+            <Sparkles size={11} /> Bestseller
+          </div>
+        )}
       </div>
 
       {/* Content Section */}
       <div className="flex flex-col flex-1 px-1">
         <Link
           href={`/product/${product.slug}`}
-          className="font-serif font-bold text-[var(--text-primary)] text-xl leading-snug group-hover:text-[var(--primary)] transition-colors line-clamp-1 mb-2"
+          className="font-serif font-bold text-[var(--text-primary)] text-lg sm:text-xl leading-snug group-hover:text-[var(--primary)] transition-colors line-clamp-1 mb-1.5"
           onClick={(e) => e.stopPropagation()}
         >
           {product.name}
         </Link>
-        <p className="text-[var(--text-secondary)] text-sm leading-relaxed line-clamp-2 mb-4">
+        <p className="text-[var(--text-secondary)] text-xs sm:text-sm leading-relaxed line-clamp-2 mb-4">
           {product.description}
         </p>
 
         {/* Footer Row */}
-        <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-sans font-semibold text-[var(--text-primary)] text-lg">
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#F4EFEA]">
+          <span className="font-sans font-extrabold text-[var(--text-primary)] text-lg sm:text-xl font-mono">
             {formatPrice(product.price)}
           </span>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={handleAddToCart}
-            className={`btn btn-sm rounded-full font-semibold px-5 transition-all shadow-sm ${
+            className={`btn btn-sm rounded-full font-semibold px-4 py-1.5 text-xs transition-all shadow-xs ${
               added
-                ? 'bg-[#15803D] text-white border-[#15803D]'
-                : 'btn-secondary bg-white'
+                ? 'bg-emerald-700 text-white border-emerald-700'
+                : 'btn-primary'
             }`}
             aria-label={`Add ${product.name} to cart`}
           >
-            {added ? (
-              <span className="flex items-center gap-1"><Check size={16} /> Added</span>
-            ) : (
-              <span className="flex items-center gap-1"><Plus size={16} /> Add</span>
-            )}
-          </button>
+            <AnimatePresence mode="wait">
+              {added ? (
+                <motion.span
+                  key="added"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  className="flex items-center gap-1"
+                >
+                  <Check size={14} /> Added
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="add"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  className="flex items-center gap-1"
+                >
+                  <Plus size={14} /> Add
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

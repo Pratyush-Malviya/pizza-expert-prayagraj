@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Toaster } from 'sonner'
+import FloatingCartButton from '@/components/shared/FloatingCartButton'
+import CartDrawer from '@/components/cart/CartDrawer'
 
 export const metadata: Metadata = {
   title: {
@@ -47,6 +49,8 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        <FloatingCartButton />
+        <CartDrawer />
         <Toaster
           position="top-right"
           toastOptions={{
