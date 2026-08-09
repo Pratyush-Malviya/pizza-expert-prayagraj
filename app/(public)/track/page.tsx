@@ -1,53 +1,92 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, Clock, MapPin, ChefHat } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Search, Clock, MapPin, ChefHat, CheckCircle2, Flame, Truck, Home } from 'lucide-react'
 
 function TrackOrderContent() {
   const searchParams = useSearchParams()
   const initialOrderId = searchParams.get('orderId') || ''
 
   const [inputQuery, setInputQuery] = useState(initialOrderId)
-  const [trackedOrder, setTrackedOrder] = useState<{
-    id: string
-    status: 'placed' | 'preparing' | 'out_for_delivery' | 'delivered'
-    statusLabel: string
-    eta: string
-    address: string
-  } | null>(() => {
-    if (initialOrderId.trim()) {
-      return {
-        id: initialOrderId.trim().toUpperCase(),
-        status: 'preparing',
-        statusLabel: 'Chef is baking your wood-fired pizza',
-        eta: '20–25 minutes',
-        address: 'House 42, Civil Lines, Prayagraj',
+  const [currentStatus, setCurrentStatus] = useState<string>('preparing')
+  const [addressStr, setAddressStr] = useState<string>('House 42, Civil Lines, Prayagraj')
+  const [orderId, setOrderId] = useState<string>(initialOrderId || 'ORD-982143')
+  const supabase = createClient()
+
+  // Fetch initial status & setup Supabase Realtime subscription
+  useEffect(() => {
+    if (!orderId) return
+
+    const fetchStatus = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
+
+      if (data) {
+        setCurrentStatus(data.status)
+        if (data.address_json?.line1) {
+          setAddressStr(`${data.address_json.line1}, ${data.address_json.city || 'Prayagraj'}`)
+        }
       }
     }
-    return null
-  })
+
+    fetchStatus()
+
+    // Realtime WebSocket Subscription
+    const channel = supabase
+      .channel(`order-track-${orderId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
+        (payload) => {
+          if (payload.new && payload.new.status) {
+            setCurrentStatus(payload.new.status)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [orderId])
 
   const handleSearch = (query: string) => {
     if (!query.trim()) return
-    setTrackedOrder({
-      id: query.trim().toUpperCase(),
-      status: 'preparing',
-      statusLabel: 'Chef is baking your wood-fired pizza',
-      eta: '20–25 minutes',
-      address: 'House 42, Civil Lines, Prayagraj',
-    })
+    setOrderId(query.trim())
   }
+
+  const getStatusStepIndex = (status: string) => {
+    switch (status) {
+      case 'pending':
+      case 'confirmed':
+        return 1
+      case 'preparing':
+        return 2
+      case 'out_for_delivery':
+        return 3
+      case 'delivered':
+        return 4
+      default:
+        return 2
+    }
+  }
+
+  const stepIndex = getStatusStepIndex(currentStatus)
 
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
       <div className="container-custom max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1C1917] mb-2">
-            Track Your Order
+            Live Order Tracking
           </h1>
           <p className="text-[#57534E] text-xs sm:text-sm">
-            Enter your Order ID or phone number to see real-time status updates from our kitchen.
+            Watch your order progress live from our wood-fired oven in Allapur straight to your doorstep.
           </p>
         </div>
 
@@ -59,7 +98,7 @@ function TrackOrderContent() {
               type="text"
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
-              placeholder="Enter Order ID (e.g. ORD-982143)..."
+              placeholder="Enter Order ID..."
               className="input-field pl-10 pr-3 py-2.5 text-xs sm:text-sm border-none bg-[#FBF9F5]"
             />
           </div>
@@ -71,16 +110,17 @@ function TrackOrderContent() {
           </button>
         </div>
 
-        {/* Tracking Details */}
-        {trackedOrder && (
+        {/* Live Tracking Card */}
+        {orderId && (
           <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E7E0D8] shadow-xs space-y-6">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-4">
               <div>
                 <span className="text-[10px] text-[#A8A29E] uppercase font-bold tracking-wider block">Tracking Order</span>
-                <span className="font-mono font-bold text-[#1C1917] text-lg">{trackedOrder.id}</span>
+                <span className="font-mono font-bold text-[#1C1917] text-lg">{orderId}</span>
               </div>
-              <div className="bg-[#FFFBEB] text-[#D97706] px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1 border border-[#D97706]/30">
-                <ChefHat size={14} /> {trackedOrder.statusLabel}
+              <div className="bg-[#FFFBEB] text-[#D97706] px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#D97706]/30 uppercase font-mono">
+                <span className="w-2 h-2 rounded-full bg-[#D97706] animate-ping" />
+                {currentStatus.replace(/_/g, ' ')}
               </div>
             </div>
 
@@ -91,61 +131,71 @@ function TrackOrderContent() {
                   <Clock size={18} />
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#57534E] uppercase font-bold tracking-wider block">Estimated Arrival</span>
-                  <span className="font-bold text-[#1C1917] text-sm sm:text-base font-mono">{trackedOrder.eta}</span>
+                  <span className="text-[10px] text-[#57534E] uppercase font-bold tracking-wider block">Estimated Delivery</span>
+                  <span className="font-bold text-[#1C1917] text-sm sm:text-base font-mono">
+                    {stepIndex === 4 ? 'Delivered!' : '20–25 Minutes'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Status Steps Progress */}
-            <div className="py-2">
+            {/* Live Status Timeline */}
+            <div className="py-4">
               <div className="space-y-6 relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E7E0D8]">
-                <div className="flex items-start gap-4 relative">
-                  <div className="w-7 h-7 rounded-full bg-[#15803D] text-white flex items-center justify-center text-xs font-bold z-10">
-                    ✓
+                {/* Step 1: Placed */}
+                <div className={`flex items-start gap-4 relative ${stepIndex >= 1 ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 1 ? 'bg-[#15803D] text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                    <CheckCircle2 size={16} />
                   </div>
                   <div>
-                    <h4 className="font-serif font-bold text-[#1C1917] text-sm">Order Placed & Confirmed</h4>
-                    <p className="text-xs text-[#57534E]">Sent to our Allapur kitchen.</p>
+                    <h4 className="font-serif font-bold text-[#1C1917] text-sm">Order Confirmed</h4>
+                    <p className="text-xs text-[#57534E]">Received by restaurant & sent to kitchen.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 relative">
-                  <div className="w-7 h-7 rounded-full bg-[#B91C1C] text-white flex items-center justify-center text-xs font-bold z-10">
-                    🔥
+                {/* Step 2: Preparing / Baking */}
+                <div className={`flex items-start gap-4 relative ${stepIndex >= 2 ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 2 ? 'bg-[#B91C1C] text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                    <Flame size={16} />
                   </div>
                   <div>
-                    <h4 className="font-serif font-bold text-[#B91C1C] text-sm">Baking in Oven</h4>
-                    <p className="text-xs text-[#57534E]">Hand-tossed dough baking with fresh mozzarella.</p>
+                    <h4 className={`font-serif font-bold text-sm ${stepIndex === 2 ? 'text-[#B91C1C]' : 'text-[#1C1917]'}`}>
+                      Baking in Oven {stepIndex === 2 && '(Live Step)'}
+                    </h4>
+                    <p className="text-xs text-[#57534E]">Hand-tossed dough baking with premium mozzarella.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 relative opacity-40">
-                  <div className="w-7 h-7 rounded-full bg-[#E7E0D8] text-[#57534E] flex items-center justify-center text-xs font-bold z-10">
-                    🛵
+                {/* Step 3: Out for Delivery */}
+                <div className={`flex items-start gap-4 relative ${stepIndex >= 3 ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 3 ? 'bg-purple-600 text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                    <Truck size={16} />
                   </div>
                   <div>
-                    <h4 className="font-serif font-bold text-[#1C1917] text-sm">Out for Delivery</h4>
-                    <p className="text-xs text-[#57534E]">Rider will pick up soon.</p>
+                    <h4 className={`font-serif font-bold text-sm ${stepIndex === 3 ? 'text-purple-600' : 'text-[#1C1917]'}`}>
+                      Out for Delivery {stepIndex === 3 && '(Rider En Route)'}
+                    </h4>
+                    <p className="text-xs text-[#57534E]">Delivery partner has picked up your fresh hot order.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 relative opacity-40">
-                  <div className="w-7 h-7 rounded-full bg-[#E7E0D8] text-[#57534E] flex items-center justify-center text-xs font-bold z-10">
-                    🏡
+                {/* Step 4: Delivered */}
+                <div className={`flex items-start gap-4 relative ${stepIndex >= 4 ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 4 ? 'bg-emerald-600 text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                    <Home size={16} />
                   </div>
                   <div>
                     <h4 className="font-serif font-bold text-[#1C1917] text-sm">Delivered</h4>
-                    <p className="text-xs text-[#57534E]">Enjoy your hot wood-fired pizza!</p>
+                    <p className="text-xs text-[#57534E]">Enjoy your delicious meal!</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Delivery Location */}
+            {/* Address Footer */}
             <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between text-xs text-[#57534E]">
               <span className="flex items-center gap-1.5">
-                <MapPin size={14} className="text-[#B91C1C]" /> Address: {trackedOrder.address}
+                <MapPin size={14} className="text-[#B91C1C]" /> Delivery Address: {addressStr}
               </span>
             </div>
           </div>
