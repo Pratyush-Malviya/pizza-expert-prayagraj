@@ -80,7 +80,7 @@ export default function PromoCards() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               
-              <div className="px-2">
+              <div className="p-4 bg-white rounded-b-[16px] shadow-sm -mt-2 relative z-10 border border-[var(--border)] border-t-0">
                 <h3 className="font-serif font-bold text-2xl text-[var(--text-primary)] mb-2 group-hover:text-[var(--primary)] transition-colors">
                   {promo.title}
                 </h3>

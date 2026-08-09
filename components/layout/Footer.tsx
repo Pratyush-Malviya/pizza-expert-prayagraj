@@ -22,7 +22,7 @@ export default function Footer() {
           
           {/* Brand */}
           <div className="space-y-6 lg:col-span-1">
-            <Link href="/" className="group flex flex-col inline-block">
+            <Link href="/" className="group flex flex-col w-fit">
               <span className="font-serif font-bold text-3xl leading-none text-white transition-colors">
                 Pizza Expert
               </span>

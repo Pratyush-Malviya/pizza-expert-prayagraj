@@ -21,11 +21,13 @@ export default function Header() {
   const router = useRouter()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const itemCount = useCartStore((s) => s.getItemCount())
   const toggleCart = useCartStore((s) => s.toggleCart)
 
   useEffect(() => {
+    setMounted(true)
     const handler = () => setIsScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
@@ -94,7 +96,7 @@ export default function Header() {
             >
               <ShoppingCart size={18} strokeWidth={2} />
               <span className="hidden sm:inline font-bold">Cart</span>
-              {itemCount > 0 && (
+              {mounted && itemCount > 0 && (
                 <span className="bg-white text-[var(--primary)] font-bold text-xs w-[22px] h-[22px] rounded-full flex items-center justify-center">
                   {itemCount}
                 </span>

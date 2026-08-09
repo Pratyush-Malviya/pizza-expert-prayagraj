@@ -95,10 +95,10 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
           <button
             onClick={handleAddToCart}
-            className={`btn btn-sm px-4 rounded-full font-semibold transition-all shadow-sm ${
+            className={`btn btn-sm rounded-full font-semibold px-5 transition-all shadow-sm ${
               added
                 ? 'bg-[#15803D] text-white border-[#15803D]'
-                : 'bg-white text-[var(--text-primary)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]'
+                : 'btn-secondary bg-white'
             }`}
             aria-label={`Add ${product.name} to cart`}
           >

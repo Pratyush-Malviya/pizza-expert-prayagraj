@@ -31,7 +31,7 @@ export default function WhatsAppButton() {
           href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(MESSAGE)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-[#15803D] text-white p-3.5 rounded-full shadow-md hover:bg-[#14532D] hover:shadow-lg transition-all flex items-center justify-center group"
+          className="fixed bottom-6 right-6 z-50 bg-white text-[#15803D] p-3.5 rounded-full shadow-[0_4px_16px_rgba(21,128,61,0.2)] hover:scale-105 border border-[#15803D]/20 transition-all flex items-center justify-center group"
           aria-label="Order on WhatsApp"
         >
           <MessageCircle size={24} strokeWidth={1.5} />
