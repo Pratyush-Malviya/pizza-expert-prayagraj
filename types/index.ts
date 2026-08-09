@@ -23,7 +23,7 @@ export interface Category {
 
 export interface ProductOption {
   id: string
-  product_id: string
+  product_id?: string
   name: string           // e.g. "Size", "Crust"
   choices: OptionChoice[]
 }
