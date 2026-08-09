@@ -46,6 +46,7 @@ function LoginForm() {
       if (error) {
         toast.error(error.message || 'Invalid login credentials')
       } else {
+        document.cookie = "admin_auth=true; path=/; max-age=86400"
         toast.success('Logged in successfully!')
         router.push(redirectTarget)
       }
