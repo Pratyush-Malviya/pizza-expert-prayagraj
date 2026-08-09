@@ -189,6 +189,64 @@ export interface CartItem {
   totalPrice: number    // (base + options deltas) * quantity
 }
 
+export interface OrderStatusHistory {
+  id: string
+  order_id: string
+  status: OrderStatus
+  changed_by: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Driver {
+  id: string
+  name: string
+  phone: string
+  vehicle_type: string
+  vehicle_number: string | null
+  is_online: boolean
+  is_busy: boolean
+  current_lat: number | null
+  current_lng: number | null
+  last_location_update: string | null
+  created_at: string
+}
+
+export type DeliveryStatus = 'unassigned' | 'assigned' | 'accepted' | 'picked_up' | 'arrived' | 'delivered' | 'failed'
+
+export interface Delivery {
+  id: string
+  order_id: string
+  driver_id: string | null
+  status: DeliveryStatus
+  pickup_time: string | null
+  delivered_time: string | null
+  otp_code: string | null
+  proof_photo: string | null
+  notes: string | null
+  created_at: string
+  driver?: Driver
+  order?: Order
+}
+
+export interface ModifierGroup {
+  id: string
+  name: string
+  min_selection: number
+  max_selection: number
+  is_required: boolean
+  modifiers?: Modifier[]
+}
+
+export interface Modifier {
+  id: string
+  group_id: string
+  name: string
+  price: number
+  is_available: boolean
+  is_veg: boolean
+}
+
 // ─── API Response Types ───────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
