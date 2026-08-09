@@ -86,11 +86,7 @@ export default function CheckoutPage() {
         clearCart()
         router.push(`/order/${res.orderId}`)
       } else {
-        // Fallback for demonstration if Supabase is offline
-        const mockOrderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000)
-        toast.success('Order placed successfully!')
-        clearCart()
-        router.push(`/order/${mockOrderId}`)
+        toast.error(res.error || 'Failed to place order on backend.')
       }
     } catch {
       toast.error('Failed to place order. Please try again.')

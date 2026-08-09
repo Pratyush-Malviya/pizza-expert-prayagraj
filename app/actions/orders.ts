@@ -163,14 +163,25 @@ export async function createOrder(payload: {
       return { success: false, error: orderErr.message }
     }
 
-    // 4. Insert order items
-    const orderItems = payload.cartItems.map((item) => ({
-      order_id: order.id,
-      product_id: item.id,
-      quantity: item.quantity,
-      unit_price: item.price,
-      selected_options: item.selectedOptions || {},
-    }))
+    // Fetch products to map slugs/IDs if needed
+    const { data: dbProducts } = await supabase
+      .from('products')
+      .select('id, slug')
+      .in('slug', payload.cartItems.map((i) => i.slug))
+
+    // 4. Insert order items with UUID validation
+    const orderItems = payload.cartItems.map((item) => {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
+      const matchedDbProd = dbProducts?.find((p: { id: string; slug: string }) => p.slug === item.slug || p.id === item.id)
+
+      return {
+        order_id: order.id,
+        product_id: isUuid ? item.id : (matchedDbProd?.id || null),
+        quantity: item.quantity,
+        unit_price: item.price,
+        selected_options: item.selectedOptions || {},
+      }
+    })
 
     const { error: itemsErr } = await supabase.from('order_items').insert(orderItems)
 
