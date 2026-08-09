@@ -1,48 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
 
 @import "tailwindcss";
 
 @layer base {
-  /* ─── Italian Pizzeria Design Tokens ───────────────────────── */
+  /* ─── Impossible Foods / Punk-Wine Design Tokens ─────────────── */
   :root {
     /* Brand Palette */
-    --primary:         #B91C1C; /* Deep Tomato Crimson */
-    --primary-hover:   #991B1B;
-    --primary-light:   #FEF2F2;
+    --color-velvet-wine:     #260212; /* Canvas / Deep Floor */
+    --color-burgundy-stage:  #4f0423; /* Cards & Section Surfaces */
+    --color-impossible-red:  #e10600; /* Primary Action & Display Punctuation */
+    --color-blush-highlight: #ffc7c6; /* Secondary Text & Pill Off-State */
+    --color-butcher-black:   #000000; /* Top Nav & Hairline Borders */
+    --color-bone-white:      #ffffff; /* Main Body Copy & Inverted Labels */
+
+    /* Mapped Theme Tokens */
+    --primary:         #e10600;
+    --primary-hover:   #c40500;
+    --primary-light:   #4f0423;
 
     /* Backgrounds & Surfaces */
-    --bg-primary:      #FBF9F5; /* Warm Ivory / Cream */
-    --bg-surface:      #FFFFFF; /* Clean White for Cards */
-    --bg-subtle:       #F4EFEA; /* Warm Beige / Off-White */
-    --bg-dark:         #18181B; /* Hearth Charcoal */
+    --bg-primary:      #260212;
+    --bg-surface:      #4f0423;
+    --bg-subtle:       #370318;
+    --bg-dark:         #000000;
     
     /* Text Colors */
-    --text-primary:    #1C1917; /* Deep Espresso */
-    --text-secondary:  #57534E; /* Warm Slate */
-    --text-muted:      #A8A29E; /* Stone Gray */
-    --text-white:      #FFFFFF;
+    --text-primary:    #ffffff;
+    --text-secondary:  #ffc7c6;
+    --text-muted:      #e7a2a6;
+    --text-white:      #ffffff;
 
-    /* Borders & Shadows */
-    --border:          #E7E0D8; /* Warm Neutral Border */
-    --border-focus:    #B91C1C;
-
-    /* Restrained Shadows */
-    --shadow-sm:       0 2px 8px rgba(28, 25, 23, 0.04);
-    --shadow-md:       0 8px 24px rgba(28, 25, 23, 0.06);
+    /* Borders & Hairlines */
+    --border:          #000000;
+    --border-subtle:   rgba(255, 199, 198, 0.2);
+    --border-focus:    #e10600;
 
     /* Typography */
-    --font-heading:    'Playfair Display', Georgia, serif;
-    --font-body:       'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading:    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-body:       'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-mono:       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* Simplified Radii System */
+    /* Radii Tokens from Design Spec */
+    --radius-nav:      15px;
+    --radius-cards:    12px;
+    --radius-buttons:  15px;
+    --radius-toggles:  15px;
+    --radius-feature-cards: 38px;
     --radius-sm:       8px;
-    --radius-md:       12px; /* Standard for Cards */
-    --radius-lg:       20px; /* Large Imagery */
+    --radius-md:       12px;
+    --radius-lg:       15px;
     --radius-full:     9999px;
 
     /* Transitions */
-    --transition:      300ms ease;
+    --transition:      200ms ease;
   }
 
   /* ─── Base Reset & Defaults ──────────────────────────────── */
@@ -71,8 +81,9 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 700;
-    line-height: 1.15;
+    line-height: 1.1;
     color: var(--text-primary);
+    letter-spacing: 0.02em;
   }
 
   a {
@@ -102,7 +113,7 @@
   /* ─── Global Containers & Layout ─────────────────────────── */
   .container-custom {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     padding: 0 1.25rem;
   }
@@ -121,138 +132,128 @@
     }
   }
 
-  /* Clean Editorial Section Headings */
+  /* Punk Manifesto Headlines */
   .section-title {
     font-family: var(--font-heading);
-    font-size: clamp(2.25rem, 4vw, 3rem);
+    font-size: clamp(2.5rem, 5vw, 4rem);
     font-weight: 800;
-    color: var(--text-primary);
-    line-height: 1.1;
+    color: var(--color-impossible-red);
+    line-height: 0.85;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     margin-bottom: 1rem;
   }
 
   .section-subtitle {
     font-family: var(--font-body);
     font-size: 1.125rem;
-    color: var(--text-secondary);
+    color: var(--color-blush-highlight);
     max-width: 600px;
-    line-height: 1.6;
+    line-height: 1.5;
   }
 
-  /* ─── Standardized Button System (Only 3 Types) ──────────── */
+  /* ─── Punk-Wine Button System ────────────────────────────── */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.875rem 1.75rem;
-    border-radius: var(--radius-sm);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-buttons);
     font-family: var(--font-body);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     transition: all var(--transition);
-    min-height: 48px;
+    min-height: 46px;
     cursor: pointer;
     border: 1px solid transparent;
   }
 
-  /* 1. Primary Button */
+  /* 1. Primary Button (#e10600 Impossible Red) */
   .btn-primary {
-    background-color: var(--primary);
-    color: var(--text-white);
-    border-color: var(--primary);
+    background-color: var(--color-impossible-red);
+    color: var(--color-bone-white);
+    border-color: var(--color-impossible-red);
   }
   .btn-primary:hover {
-    background-color: var(--primary-hover);
-    border-color: var(--primary-hover);
+    background-color: #c40500;
+    border-color: #c40500;
   }
 
-  /* 2. Secondary Button */
-  .btn-secondary {
+  /* 2. Ghost Button (White border, white text) */
+  .btn-secondary, .btn-secondary-inverse {
     background-color: transparent;
-    color: var(--text-primary);
-    border-color: var(--text-primary);
+    color: var(--color-bone-white);
+    border-color: var(--color-bone-white);
   }
-  .btn-secondary:hover {
-    background-color: var(--text-primary);
-    color: var(--text-white);
+  .btn-secondary:hover, .btn-secondary-inverse:hover {
+    background-color: var(--color-bone-white);
+    color: var(--color-butcher-black);
   }
 
-  /* 3. Tertiary Button (Text Link) */
-  .btn-tertiary {
+  /* 3. Filter Pill Toggle */
+  .pill-toggle {
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-toggles);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    transition: all var(--transition);
+    border: 1px solid transparent;
+  }
+  .pill-toggle-active {
+    background-color: var(--color-impossible-red);
+    color: var(--color-bone-white);
+  }
+  .pill-toggle-default {
     background-color: transparent;
-    color: var(--text-primary);
-    padding: 0.5rem 0;
-    min-height: auto;
-    border-radius: 0;
-    border-bottom: 1px solid var(--text-primary);
+    color: var(--color-blush-highlight);
+    border-color: rgba(255, 199, 198, 0.25);
   }
-  .btn-tertiary:hover {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+  .pill-toggle-default:hover {
+    color: var(--color-bone-white);
+    border-color: var(--color-bone-white);
   }
 
-  /* Optional Dark mode inverse buttons */
-  .btn-secondary-inverse {
-    background-color: transparent;
-    color: var(--text-white);
-    border-color: var(--text-white);
+  /* Form Field Dark styling */
+  .input-field {
+    width: 100%;
+    background-color: #370318;
+    border: 1px solid #000000;
+    color: #ffffff;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color var(--transition);
   }
-  .btn-secondary-inverse:hover {
-    background-color: var(--text-white);
-    color: var(--text-primary);
+  .input-field:focus {
+    border-color: #e10600;
   }
 
-  /* Sizes */
-  .btn-sm { padding: 0.625rem 1.25rem; font-size: 0.875rem; min-height: 40px; }
-
-  /* ─── Simplified Badges ──────────────────────────────────── */
+  /* Badges */
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    font-family: var(--font-body);
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
-
   .badge-veg {
-    background-color: #F0FDF4;
-    color: #15803D;
+    background-color: #15803d;
+    color: #ffffff;
   }
   .badge-nonveg {
-    background-color: #FEF2F2;
-    color: #B91C1C;
+    background-color: #e10600;
+    color: #ffffff;
   }
   .badge-spicy {
-    background-color: #FFF7ED;
-    color: #C2410C;
-  }
-
-  /* ─── Standard Input Fields ──────────────────────────────── */
-  .input-field {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 1rem;
-    color: var(--text-primary);
-    background-color: var(--bg-surface);
-    transition: border-color var(--transition);
-    outline: none;
-  }
-  .input-field:focus {
-    border-color: var(--border-focus);
-  }
-  .input-field::placeholder {
-    color: var(--text-muted);
+    background-color: #d97706;
+    color: #ffffff;
   }
 }
-
-/* ─── Scrollbar Customization ────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #A8A29E; }

@@ -57,11 +57,11 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="group flex flex-col cursor-pointer bg-white rounded-[20px] p-3.5 border border-[#E7E0D8] hover:border-[#B91C1C]/40 hover:shadow-xl transition-all duration-300"
+      className="group flex flex-col cursor-pointer bg-[#4f0423] rounded-[12px] p-4 border border-[#000000] hover:border-[#e10600]/80 shadow-xl transition-all duration-300"
       onClick={() => onQuickView && onQuickView(product)}
     >
       {/* Image Container */}
-      <div className="relative bg-[var(--bg-subtle)] aspect-square rounded-[16px] overflow-hidden mb-4">
+      <div className="relative bg-[#370318] aspect-square rounded-[10px] overflow-hidden mb-4 border border-black">
         <motion.img
           src={imageUrl}
           alt={product.name}
@@ -78,35 +78,35 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
         {/* Bestseller Badge */}
         {product.sort_order === 1 && (
-          <div className="absolute top-3 right-3 bg-amber-400 text-black px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-md z-10">
+          <div className="absolute top-3 right-3 bg-[#e10600] text-white px-2.5 py-1 rounded-[15px] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md z-10">
             <Sparkles size={11} /> Bestseller
           </div>
         )}
       </div>
 
       {/* Content Section */}
-      <div className="flex flex-col flex-1 px-1">
+      <div className="flex flex-col flex-1 px-0.5">
         <Link
           href={`/product/${product.slug}`}
-          className="font-serif font-bold text-[var(--text-primary)] text-lg sm:text-xl leading-snug group-hover:text-[var(--primary)] transition-colors line-clamp-1 mb-1.5"
+          className="font-serif font-bold text-[#ffc7c6] text-lg sm:text-xl leading-snug group-hover:text-white transition-colors line-clamp-1 mb-1.5 uppercase tracking-wider"
           onClick={(e) => e.stopPropagation()}
         >
           {product.name}
         </Link>
-        <p className="text-[var(--text-secondary)] text-xs sm:text-sm leading-relaxed line-clamp-2 mb-4">
+        <p className="text-[#ffc7c6]/80 text-xs sm:text-sm leading-relaxed line-clamp-2 mb-4">
           {product.description}
         </p>
 
         {/* Footer Row */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#F4EFEA]">
-          <span className="font-sans font-extrabold text-[var(--text-primary)] text-lg sm:text-xl font-mono">
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-black">
+          <span className="font-mono font-black text-white text-lg sm:text-xl">
             {formatPrice(product.price)}
           </span>
 
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleAddToCart}
-            className={`btn btn-sm rounded-full font-semibold px-4 py-1.5 text-xs transition-all shadow-xs ${
+            className={`btn btn-sm rounded-[15px] font-bold px-4 py-1.5 text-xs uppercase tracking-wider transition-all shadow-xs ${
               added
                 ? 'bg-emerald-700 text-white border-emerald-700'
                 : 'btn-primary'

@@ -6,7 +6,7 @@ import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
 
 export default function FloatingCartButton() {
-  const { items, openCart, getItemCount, getSubtotal } = useCartStore()
+  const { openCart, getItemCount, getSubtotal } = useCartStore()
   const itemCount = getItemCount()
   const subtotal = getSubtotal()
 
@@ -25,7 +25,7 @@ export default function FloatingCartButton() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={openCart}
-          className="flex items-center gap-3 bg-[#B91C1C] hover:bg-[#991B1B] text-white px-5 py-3.5 rounded-full shadow-xl shadow-red-900/30 border border-red-500/30 transition-all font-semibold"
+          className="flex items-center gap-3 bg-[#e10600] hover:bg-[#c40500] text-white px-5 py-3.5 rounded-[15px] shadow-2xl border border-white/20 transition-all font-bold uppercase tracking-wider text-xs"
         >
           <div className="relative flex items-center justify-center">
             <ShoppingBag size={20} />
@@ -33,22 +33,22 @@ export default function FloatingCartButton() {
               key={itemCount}
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              className="absolute -top-2 -right-2 bg-amber-400 text-black font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#B91C1C]"
+              className="absolute -top-2.5 -right-2.5 bg-white text-[#e10600] font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#260212]"
             >
               {itemCount}
             </motion.span>
           </div>
 
           <div className="flex flex-col text-left pr-1">
-            <span className="text-[10px] uppercase font-bold text-red-200 tracking-wider">
-              {itemCount} {itemCount === 1 ? 'Item' : 'Items'}
+            <span className="text-[9px] uppercase font-bold text-[#ffc7c6] tracking-wider">
+              {itemCount} {itemCount === 1 ? 'ITEM' : 'ITEMS'}
             </span>
-            <span className="font-mono text-sm font-bold leading-none">
+            <span className="font-mono text-sm font-black leading-none">
               {formatPrice(subtotal)}
             </span>
           </div>
 
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-[12px] bg-white/20 flex items-center justify-center">
             <ArrowRight size={14} />
           </div>
         </motion.button>

@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import {
-  MapPin, Clock, Phone
-} from 'lucide-react'
+import { MapPin, Clock, Phone } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import Image from 'next/image'
 
 const InstagramIcon = ({ size = 24 }: { size?: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -22,17 +23,14 @@ const TwitterIcon = ({ size = 24 }: { size?: number }) => (
     <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
   </svg>
 )
-import { useState, useEffect } from 'react'
-import { useSettingsStore } from '@/lib/store/useSettingsStore'
-import Image from 'next/image'
 
 const QUICK_LINKS = [
-  { label: 'Home',        href: '/' },
-  { label: 'Menu',        href: '/menu' },
-  { label: 'Offers',      href: '/offers' },
-  { label: 'About Us',    href: '/about' },
-  { label: 'Contact Us',  href: '/contact' },
-  { label: 'FAQs',        href: '/faq' },
+  { label: 'HOME',        href: '/' },
+  { label: 'MENU',        href: '/menu' },
+  { label: 'OFFERS',      href: '/offers' },
+  { label: 'ABOUT US',    href: '/about' },
+  { label: 'CONTACT US',  href: '/contact' },
+  { label: 'FAQS',        href: '/faq' },
 ]
 
 export default function Footer() {
@@ -44,7 +42,7 @@ export default function Footer() {
   }, [])
 
   return (
-    <footer className="bg-[var(--bg-dark)] text-[#A8A29E] pt-20 pb-10" role="contentinfo">
+    <footer className="bg-[#140109] text-[#ffc7c6] pt-20 pb-10 border-t border-[#260212]" role="contentinfo">
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16 mb-16">
           
@@ -56,30 +54,30 @@ export default function Footer() {
                   <Image src={storeSettings.logoDataUrl} alt="Store Logo" fill className="object-contain object-left" />
                 </div>
               ) : (
-                <span className="font-serif font-bold text-2xl leading-tight text-white transition-colors">
+                <span className="font-serif font-black text-2xl uppercase tracking-wider leading-tight text-[#e10600]">
                   {mounted ? storeSettings.businessName : 'Pizza Expert Prayagraj'}
                 </span>
               )}
             </Link>
-            <p className="text-sm leading-relaxed max-w-sm">
-              Authentic wood-fired pizzas and handcrafted food, made fresh daily since 2018. 
+            <p className="text-sm leading-relaxed max-w-sm text-[#ffc7c6]">
+              Authentic wood-fired pizzas crafted daily in Allapur with slow-fermented 48-hour dough and fresh ingredients.
             </p>
             {/* Social Icons */}
             {mounted && (storeSettings.instagramUrl || storeSettings.facebookUrl || storeSettings.twitterUrl) && (
-              <div className="flex items-center gap-4 pt-2">
+              <div className="flex items-center gap-3 pt-2">
                 {storeSettings.instagramUrl && (
-                  <a href={storeSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <InstagramIcon size={18} />
+                  <a href={storeSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-[15px] bg-[#260212] border border-white/10 flex items-center justify-center text-white hover:bg-[#e10600] transition-colors">
+                    <InstagramIcon size={16} />
                   </a>
                 )}
                 {storeSettings.facebookUrl && (
-                  <a href={storeSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <FacebookIcon size={18} />
+                  <a href={storeSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-[15px] bg-[#260212] border border-white/10 flex items-center justify-center text-white hover:bg-[#e10600] transition-colors">
+                    <FacebookIcon size={16} />
                   </a>
                 )}
                 {storeSettings.twitterUrl && (
-                  <a href={storeSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <TwitterIcon size={18} />
+                  <a href={storeSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-[15px] bg-[#260212] border border-white/10 flex items-center justify-center text-white hover:bg-[#e10600] transition-colors">
+                    <TwitterIcon size={16} />
                   </a>
                 )}
               </div>
@@ -88,11 +86,11 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-serif text-white text-lg mb-6">Menu & Links</h3>
-            <ul className="space-y-4 text-sm">
+            <h3 className="font-serif font-bold text-white text-base uppercase tracking-wider mb-6">Menu & Navigation</h3>
+            <ul className="space-y-3.5 text-xs font-bold uppercase tracking-wider">
               {QUICK_LINKS.map(({ label, href }) => (
                 <li key={href}>
-                  <Link href={href} className="hover:text-white transition-colors">
+                  <Link href={href} className="hover:text-[#e10600] transition-colors">
                     {label}
                   </Link>
                 </li>
@@ -102,18 +100,18 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="font-serif text-white text-lg mb-6">Visit Us</h3>
-            <ul className="space-y-4 text-sm">
+            <h3 className="font-serif font-bold text-white text-base uppercase tracking-wider mb-6">Pizzeria Location</h3>
+            <ul className="space-y-4 text-xs font-semibold">
               <li className="flex items-start gap-3">
-                <MapPin size={18} strokeWidth={1.5} className="text-[var(--primary)] shrink-0 mt-0.5" />
-                <span>
-                  {mounted ? storeSettings.address : 'Loading address...'}
+                <MapPin size={18} className="text-[#e10600] shrink-0 mt-0.5" />
+                <span className="leading-relaxed">
+                  {mounted ? storeSettings.address : 'Allapur, Prayagraj, Uttar Pradesh - 211006'}
                 </span>
               </li>
               <li className="flex items-center gap-3">
-                <Phone size={18} strokeWidth={1.5} className="text-[var(--primary)] shrink-0" />
-                <a href={`tel:${mounted ? storeSettings.phone : ''}`} className="hover:text-white transition-colors">
-                  {mounted ? storeSettings.phone : '...'}
+                <Phone size={18} className="text-[#e10600] shrink-0" />
+                <a href={`tel:${mounted ? storeSettings.phone : ''}`} className="hover:text-white transition-colors font-mono">
+                  {mounted ? storeSettings.phone : '+91 99999 99999'}
                 </a>
               </li>
             </ul>
@@ -121,15 +119,15 @@ export default function Footer() {
 
           {/* Hours */}
           <div>
-            <h3 className="font-serif text-white text-lg mb-6">Opening Hours</h3>
-            <ul className="space-y-4 text-sm">
+            <h3 className="font-serif font-bold text-white text-base uppercase tracking-wider mb-6">Opening Hours</h3>
+            <ul className="space-y-4 text-xs font-semibold">
               <li className="flex items-start gap-3">
-                <Clock size={18} strokeWidth={1.5} className="text-[var(--primary)] shrink-0 mt-0.5" />
+                <Clock size={18} className="text-[#e10600] shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-white font-medium mb-1">Monday – Friday</p>
-                  <p>11:00 AM – 11:00 PM</p>
-                  <p className="text-white font-medium mb-1 mt-3">Saturday – Sunday</p>
-                  <p>10:00 AM – 11:30 PM</p>
+                  <p className="text-white font-bold uppercase mb-1">Monday – Friday</p>
+                  <p className="font-mono text-[#ffc7c6]">11:00 AM – 11:00 PM</p>
+                  <p className="text-white font-bold uppercase mb-1 mt-3">Saturday – Sunday</p>
+                  <p className="font-mono text-[#ffc7c6]">10:00 AM – 11:30 PM</p>
                 </div>
               </li>
             </ul>
@@ -137,8 +135,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-[#27272A] flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
-          <p>© {new Date().getFullYear()} {mounted ? storeSettings.businessName : 'Pizza Expert'}. All rights reserved.</p>
+        <div className="pt-8 border-t border-[#260212] flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-[#ffc7c6]/70">
+          <p>© {new Date().getFullYear()} {mounted ? storeSettings.businessName : 'Pizza Expert Prayagraj'}. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
