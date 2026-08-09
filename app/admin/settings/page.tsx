@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Building, CreditCard, Image as ImageIcon, Upload, Link as LinkIcon, MapPin, Instagram, LayoutTemplate } from 'lucide-react'
+import { Save, Building, CreditCard, Image as ImageIcon, Upload, Link as LinkIcon, MapPin, Camera, LayoutTemplate } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
@@ -210,7 +210,7 @@ export default function AdminSettingsPage() {
           </h2>
           <div className="flex items-center justify-between p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg">
             <div className="flex items-center gap-3">
-              <Instagram className="text-[#E1306C]" size={20} />
+              <Camera className="text-[#E1306C]" size={20} />
               <div>
                 <p className="font-semibold text-sm text-[#1C1917]">Instagram Carousel</p>
                 <p className="text-xs text-[#57534E]">Show a simulated Instagram feed on the homepage.</p>

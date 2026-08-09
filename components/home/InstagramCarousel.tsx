@@ -3,8 +3,14 @@
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { Heart, MessageCircle, Instagram } from 'lucide-react'
+import { Heart, MessageCircle } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
+
+const InstagramIcon = ({ className, size = 24 }: { className?: string, size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+)
 
 const INSTA_POSTS = [
   { id: 1, image: FOOD_IMAGES['margherita-pizza'], likes: 142, comments: 12 },
@@ -31,7 +37,7 @@ export default function InstagramCarousel() {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] rounded-full p-[2px]">
               <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                <Instagram size={24} className="text-[#DD2A7B]" />
+                <InstagramIcon size={24} className="text-[#DD2A7B]" />
               </div>
             </div>
             <div>

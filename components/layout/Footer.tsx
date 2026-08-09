@@ -2,8 +2,26 @@
 
 import Link from 'next/link'
 import {
-  MapPin, Clock, Phone, Instagram, Facebook, Twitter
+  MapPin, Clock, Phone
 } from 'lucide-react'
+
+const InstagramIcon = ({ size = 24 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+)
+
+const FacebookIcon = ({ size = 24 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+  </svg>
+)
+
+const TwitterIcon = ({ size = 24 }: { size?: number }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
+  </svg>
+)
 import { useState, useEffect } from 'react'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
@@ -51,17 +69,17 @@ export default function Footer() {
               <div className="flex items-center gap-4 pt-2">
                 {storeSettings.instagramUrl && (
                   <a href={storeSettings.instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <Instagram size={18} />
+                    <InstagramIcon size={18} />
                   </a>
                 )}
                 {storeSettings.facebookUrl && (
                   <a href={storeSettings.facebookUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <Facebook size={18} />
+                    <FacebookIcon size={18} />
                   </a>
                 )}
                 {storeSettings.twitterUrl && (
                   <a href={storeSettings.twitterUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[#27272A] flex items-center justify-center text-white hover:bg-[var(--primary)] transition-colors">
-                    <Twitter size={18} />
+                    <TwitterIcon size={18} />
                   </a>
                 )}
               </div>
