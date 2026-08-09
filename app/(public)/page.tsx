@@ -5,15 +5,13 @@ import CategoryTabs from '@/components/home/CategoryTabs'
 import FeatureIcons from '@/components/home/FeatureIcons'
 import GoogleReviews from '@/components/home/GoogleReviews'
 import FaqSnippet from '@/components/home/FaqSnippet'
-import Link from 'next/link'
-import { ArrowRight, Truck } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import type { Category, Product } from '@/types'
 
 export const metadata: Metadata = {
-  title: 'Pizza Expert Prayagraj – Wood-Fired Pizza, Burgers & Fast Food | Order Online',
+  title: 'Pizza Expert Prayagraj – Authentic Wood-Fired Pizzeria',
   description:
-    'Order fresh wood-fired pizza, burgers, pasta & more from Pizza Expert Prayagraj. Rated 4.9★ on Google. Free delivery above ₹499. Order online!',
+    'Order fresh wood-fired pizza, burgers, pasta & more from Pizza Expert Prayagraj. Handcrafted daily with 24-hour fermented dough. Rated 4.9★',
 }
 
 // Homepage Categories
@@ -293,56 +291,25 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(restaurantSchema) }}
       />
 
-      {/* Hero Section */}
+      {/* 1. Dark Hero Section */}
       <HeroBanner />
 
-      {/* Free Delivery Banner */}
-      <div className="bg-[#18181B] text-[#E7E0D8] py-3.5 px-4 border-y border-[#27272A]">
-        <div className="container-custom flex items-center justify-center gap-3 text-xs sm:text-sm font-medium">
-          <Truck size={17} className="text-[#B91C1C]" />
-          <span>FREE express delivery on orders above ₹499! Use coupon code <strong className="text-white underline font-mono">WELCOME20</strong> for 20% OFF.</span>
-        </div>
-      </div>
-
-      {/* Promos */}
-      <PromoCards />
-
-      {/* Category Tabs */}
+      {/* 2. Light Menu Section */}
       <CategoryTabs
         categories={HOMEPAGE_CATEGORIES}
         productsByCategory={PRODUCTS_BY_CATEGORY}
       />
 
-      {/* Artisanal CTA Banner */}
-      <section className="py-16 bg-[#B91C1C] text-white relative overflow-hidden">
-        <div className="container-custom relative text-center max-w-3xl">
-          <span className="text-xs font-bold tracking-widest uppercase text-[#FFFBEB] mb-2 block font-mono">
-            30-Minute Guaranteed Delivery
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-            Craving Fresh Wood-Fired Pizza Right Now?
-          </h2>
-          <p className="text-white/90 text-sm sm:text-base mb-8 max-w-xl mx-auto leading-relaxed">
-            Order online in under 60 seconds and track your order live from our Allapur kitchen to your doorstep.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/menu" id="home-order-now-btn" className="btn btn-secondary btn-lg">
-              Order Online Now <ArrowRight size={17} />
-            </Link>
-            <Link href="/offers" id="home-view-offers-btn" className="btn btn-outline border-white text-white hover:bg-white hover:text-[#1C1917] btn-lg">
-              View Special Deals
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* 3. Surface Offers Section */}
+      <PromoCards />
 
-      {/* Feature Icons */}
+      {/* 4. Subtle Brand Story Section */}
       <FeatureIcons />
 
-      {/* Guest Reviews */}
+      {/* 5. Dark Social Proof Section */}
       <GoogleReviews />
 
-      {/* FAQ Snippet */}
+      {/* 6. Light FAQ Section */}
       <FaqSnippet />
     </>
   )

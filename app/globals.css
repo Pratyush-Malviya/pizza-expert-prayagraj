@@ -8,24 +8,13 @@
   --primary:         #B91C1C; /* Deep Tomato Crimson */
   --primary-hover:   #991B1B;
   --primary-light:   #FEF2F2;
-  --primary-glow:    rgba(185, 28, 28, 0.15);
-
-  --secondary:       #18181B; /* Hearth Charcoal */
-  --secondary-hover: #27272A;
-  
-  --accent:          #D97706; /* Golden Crust */
-  --accent-light:    #FFFBEB;
-
-  --veg:             #15803D; /* Fresh Basil Green */
-  --veg-bg:          #F0FDF4;
 
   /* Backgrounds & Surfaces */
-  --bg-primary:      #FBF9F5; /* Artisanal Flour / Warm Off-White */
-  --bg-surface:      #FFFFFF; /* Clean White */
-  --bg-subtle:       #F4EFEA; /* Stone / Sand Surface */
-  --bg-dark:         #18181B; /* Hearth Dark */
-  --bg-dark-surface: #27272A;
-
+  --bg-primary:      #FBF9F5; /* Warm Ivory / Cream */
+  --bg-surface:      #FFFFFF; /* Clean White for Cards */
+  --bg-subtle:       #F4EFEA; /* Warm Beige / Off-White */
+  --bg-dark:         #18181B; /* Hearth Charcoal */
+  
   /* Text Colors */
   --text-primary:    #1C1917; /* Deep Espresso */
   --text-secondary:  #57534E; /* Warm Slate */
@@ -34,27 +23,25 @@
 
   /* Borders & Shadows */
   --border:          #E7E0D8; /* Warm Neutral Border */
-  --border-dark:     #3F3F46;
   --border-focus:    #B91C1C;
 
-  --shadow-sm:       0 1px 3px rgba(28, 25, 23, 0.04);
-  --shadow-md:       0 4px 14px rgba(28, 25, 23, 0.08);
-  --shadow-lg:       0 12px 32px rgba(28, 25, 23, 0.12);
-  --shadow-xl:       0 20px 48px rgba(28, 25, 23, 0.16);
+  /* Restrained Shadows */
+  --shadow-sm:       0 2px 8px rgba(28, 25, 23, 0.04);
+  --shadow-md:       0 8px 24px rgba(28, 25, 23, 0.06);
 
   /* Typography */
   --font-heading:    'Playfair Display', Georgia, serif;
   --font-body:       'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Radii System */
-  --radius-sm:       6px;
-  --radius-md:       10px;
-  --radius-lg:       16px;
-  --radius-xl:       24px;
+  /* Simplified Radii System */
+  --radius-sm:       8px;
+  --radius-md:       12px; /* Standard for Cards */
+  --radius-lg:       20px; /* Large Imagery */
   --radius-full:     9999px;
 
   /* Transitions */
-  --transition:      200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition:      300ms ease;
 }
 
 /* ─── Base Reset & Defaults ──────────────────────────────── */
@@ -85,7 +72,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.15;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
 }
 
 a {
@@ -107,30 +93,13 @@ button {
 
 input, textarea, select {
   font-family: var(--font-body);
-  font-size: 15px;
-}
-
-/* ─── Accessibility ──────────────────────────────────────── */
-.skip-link {
-  position: absolute;
-  top: -60px;
-  left: 1rem;
-  background: var(--primary);
-  color: white;
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  z-index: 9999;
-  transition: top var(--transition);
-}
-.skip-link:focus {
-  top: 1rem;
+  font-size: 16px;
 }
 
 /* ─── Global Containers & Layout ─────────────────────────── */
 .container-custom {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.25rem;
 }
@@ -149,207 +118,137 @@ input, textarea, select {
   }
 }
 
+/* Clean Editorial Section Headings */
 .section-title {
   font-family: var(--font-heading);
-  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  font-size: clamp(2.25rem, 4vw, 3rem);
   font-weight: 800;
   color: var(--text-primary);
-  text-align: center;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.1;
+  margin-bottom: 1rem;
 }
 
 .section-subtitle {
   font-family: var(--font-body);
-  font-size: 1.05rem;
+  font-size: 1.125rem;
   color: var(--text-secondary);
-  text-align: center;
-  margin-top: 0.75rem;
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 600px;
+  line-height: 1.6;
 }
 
-.section-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin: 1.25rem 0 2.5rem;
-}
-
-.section-divider::before,
-.section-divider::after {
-  content: '';
-  height: 1px;
-  width: 60px;
-  background: var(--border);
-}
-.section-divider span {
-  width: 6px;
-  height: 6px;
-  background: var(--primary);
-  border-radius: 50%;
-}
-
-/* ─── Standardized Buttons ───────────────────────────────── */
+/* ─── Standardized Button System (Only 3 Types) ──────────── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
+  padding: 0.875rem 1.75rem;
+  border-radius: var(--radius-sm);
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   transition: all var(--transition);
-  border: 1px solid transparent;
-  white-space: nowrap;
-  min-height: 46px;
+  min-height: 48px;
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
+  border: 1px solid transparent;
 }
 
+/* 1. Primary Button */
 .btn-primary {
   background-color: var(--primary);
-  color: #FFFFFF;
+  color: var(--text-white);
   border-color: var(--primary);
-  box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover {
   background-color: var(--primary-hover);
   border-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.btn-primary:active {
-  transform: translateY(0);
 }
 
+/* 2. Secondary Button */
 .btn-secondary {
-  background-color: var(--secondary);
-  color: #FFFFFF;
-  border-color: var(--secondary);
+  background-color: transparent;
+  color: var(--text-primary);
+  border-color: var(--text-primary);
 }
 .btn-secondary:hover {
-  background-color: var(--secondary-hover);
-  border-color: var(--secondary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: var(--text-primary);
+  color: var(--text-white);
 }
 
-.btn-outline {
+/* 3. Tertiary Button (Text Link) */
+.btn-tertiary {
   background-color: transparent;
   color: var(--text-primary);
-  border-color: var(--border);
+  padding: 0.5rem 0;
+  min-height: auto;
+  border-radius: 0;
+  border-bottom: 1px solid var(--text-primary);
 }
-.btn-outline:hover {
-  background-color: var(--bg-subtle);
-  border-color: var(--text-secondary);
+.btn-tertiary:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
-.btn-ghost {
+/* Optional Dark mode inverse buttons */
+.btn-secondary-inverse {
   background-color: transparent;
-  color: var(--text-secondary);
-  border-color: transparent;
+  color: var(--text-white);
+  border-color: var(--text-white);
 }
-.btn-ghost:hover {
-  background-color: rgba(28, 25, 23, 0.05);
+.btn-secondary-inverse:hover {
+  background-color: var(--text-white);
   color: var(--text-primary);
 }
 
-.btn-whatsapp {
-  background-color: #166534;
-  color: #FFFFFF;
-  border-color: #166534;
-}
-.btn-whatsapp:hover {
-  background-color: #14532D;
-  box-shadow: var(--shadow-md);
-}
+/* Sizes */
+.btn-sm { padding: 0.625rem 1.25rem; font-size: 0.875rem; min-height: 40px; }
 
-.btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; min-height: 38px; }
-.btn-lg { padding: 0.9rem 2rem; font-size: 1.05rem; min-height: 52px; }
-
-/* ─── Cards & Surface Elevation ──────────────────────────── */
-.card-base {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  transition: all var(--transition);
-}
-
-.card-hover {
-  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-}
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: rgba(185, 28, 28, 0.2);
-}
-
-/* ─── Dietary & Status Badges ────────────────────────────── */
+/* ─── Simplified Badges ──────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.65rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.725rem;
-  font-weight: 700;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
   font-family: var(--font-body);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .badge-veg {
-  background-color: var(--veg-bg);
-  color: var(--veg);
-  border: 1px solid rgba(21, 128, 61, 0.3);
+  background-color: #F0FDF4;
+  color: #15803D;
 }
-
 .badge-nonveg {
-  background-color: var(--primary-light);
-  color: var(--primary);
-  border: 1px solid rgba(185, 28, 28, 0.3);
+  background-color: #FEF2F2;
+  color: #B91C1C;
 }
-
 .badge-spicy {
   background-color: #FFF7ED;
   color: #C2410C;
-  border: 1px solid rgba(194, 65, 12, 0.3);
-}
-
-.badge-accent {
-  background-color: var(--accent-light);
-  color: var(--accent);
-  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
 /* ─── Standard Input Fields ──────────────────────────────── */
 .input-field {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
   color: var(--text-primary);
   background-color: var(--bg-surface);
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: border-color var(--transition);
   outline: none;
 }
 .input-field:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.1);
 }
 .input-field::placeholder {
   color: var(--text-muted);
 }
 
 /* ─── Scrollbar Customization ────────────────────────────── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #A8A29E; }

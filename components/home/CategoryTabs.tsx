@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import ProductCard from '@/components/menu/ProductCard'
 import type { Category, Product } from '@/types'
 
@@ -28,22 +27,23 @@ export default function CategoryTabs({
   const activeProducts = productsByCategory[activeSlug] || []
 
   return (
-    <section className="section-py bg-[#FBF9F5]" aria-labelledby="categories-heading">
+    <section className="section-py bg-[var(--bg-primary)]" aria-labelledby="menu-heading">
       <div className="container-custom">
-        <div className="text-center mb-12">
-          <span className="text-xs font-bold tracking-widest text-[#B91C1C] uppercase block mb-2 font-mono">
-            Crafted To Order
-          </span>
-          <h2 id="categories-heading" className="section-title">Explore Our Artisan Menu</h2>
-          <div className="section-divider"><span /></div>
-          <p className="section-subtitle">
-            From classic wood-fired pizzas to gourmet burgers and creamy hand-tossed pasta.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+          <div className="max-w-xl">
+            <h2 id="menu-heading" className="section-title">Explore the Menu</h2>
+            <p className="section-subtitle">
+              From classic wood-fired pizzas to gourmet burgers and creamy hand-tossed pasta.
+            </p>
+          </div>
+          <Link href={`/menu?category=${activeSlug}`} className="btn btn-secondary shrink-0 self-start md:self-auto">
+            View Full Menu
+          </Link>
         </div>
 
-        {/* Category Tabs */}
+        {/* Category Underline Tabs */}
         <div
-          className="flex gap-2 overflow-x-auto pb-4 mb-10 scrollbar-none justify-start md:justify-center"
+          className="flex gap-8 overflow-x-auto pb-4 mb-10 scrollbar-none border-b border-[var(--border)]"
           role="tablist"
         >
           {categories.map((cat) => {
@@ -55,13 +55,17 @@ export default function CategoryTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveSlug(cat.slug)}
-                className={`relative px-5 py-2.5 rounded-md font-semibold text-sm whitespace-nowrap transition-all flex-shrink-0 ${
-                  isActive
-                    ? 'bg-[#B91C1C] text-white shadow-xs'
-                    : 'bg-white text-[#57534E] hover:text-[#1C1917] border border-[#E7E0D8]'
+                className={`relative pb-4 font-sans font-semibold text-sm transition-colors whitespace-nowrap ${
+                  isActive ? 'text-[var(--primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {cat.name}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeCategory"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--primary)]"
+                  />
+                )}
               </button>
             )
           })}
@@ -85,26 +89,15 @@ export default function CategoryTabs({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="bg-white rounded-xl p-5 border border-[#E7E0D8] space-y-4">
-                  <div className="bg-[#F4EFEA] aspect-[4/3] rounded-lg animate-pulse" />
-                  <div className="h-5 bg-[#F4EFEA] rounded-md w-3/4 animate-pulse" />
-                  <div className="h-4 bg-[#F4EFEA] rounded-md w-1/2 animate-pulse" />
+                <div key={n} className="bg-white rounded-xl p-5 border border-[var(--border)] space-y-4">
+                  <div className="bg-[var(--bg-subtle)] aspect-[4/3] rounded-lg animate-pulse" />
+                  <div className="h-5 bg-[var(--bg-subtle)] rounded-md w-3/4 animate-pulse" />
+                  <div className="h-4 bg-[var(--bg-subtle)] rounded-md w-1/2 animate-pulse" />
                 </div>
               ))}
             </div>
           )}
         </AnimatePresence>
-
-        {/* View All Button */}
-        <div className="text-center mt-12">
-          <Link
-            href={`/menu?category=${activeSlug}`}
-            className="btn btn-outline btn-lg font-semibold"
-          >
-            Browse Full {categories.find((c) => c.slug === activeSlug)?.name || 'Menu'}
-            <ArrowRight size={17} />
-          </Link>
-        </div>
       </div>
     </section>
   )

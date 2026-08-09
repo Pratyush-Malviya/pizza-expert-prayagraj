@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, HelpCircle } from 'lucide-react'
-import Link from 'next/link'
 
 const FAQS = [
   {
@@ -32,42 +30,26 @@ export default function FaqSnippet() {
   const [openId, setOpenId] = useState<string | null>(FAQS[0].id)
 
   return (
-    <section className="section-py bg-[#FBF9F5]" aria-labelledby="faq-snippet-heading">
+    <section className="section-py bg-[var(--bg-primary)]" aria-labelledby="faq-heading">
       <div className="container-custom max-w-3xl">
-        <div className="text-center mb-12">
-          <div className="w-10 h-10 bg-[#FEF2F2] text-[#B91C1C] rounded-md flex items-center justify-center mx-auto mb-3">
-            <HelpCircle size={20} />
-          </div>
-          <h2 id="faq-snippet-heading" className="section-title">Frequently Asked Questions</h2>
-          <div className="section-divider"><span /></div>
-          <p className="section-subtitle">Got questions? We have answers.</p>
+        <div className="text-center mb-16">
+          <h2 id="faq-heading" className="section-title">Common Questions</h2>
         </div>
 
-        <div className="space-y-3" role="list">
+        <div className="border-t border-[var(--border)]" role="list">
           {FAQS.map((faq) => {
             const isOpen = openId === faq.id
             return (
-              <div
-                key={faq.id}
-                className={`bg-white rounded-xl border transition-colors overflow-hidden ${
-                  isOpen ? 'border-[#B91C1C]/40 shadow-xs' : 'border-[#E7E0D8]'
-                }`}
-              >
+              <div key={faq.id} className="border-b border-[var(--border)]">
                 <button
-                  className="w-full flex items-center justify-between p-5 text-left font-serif font-bold text-[#1C1917] text-base sm:text-lg"
+                  className="w-full flex items-center justify-between py-6 text-left font-serif font-bold text-[var(--text-primary)] text-lg md:text-xl group"
                   onClick={() => setOpenId(isOpen ? null : faq.id)}
                   aria-expanded={isOpen}
                 >
-                  <span className="pr-4">{faq.question}</span>
-                  <motion.div
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
-                      isOpen ? 'bg-[#B91C1C] text-white' : 'bg-[#F4EFEA] text-[#57534E]'
-                    }`}
-                  >
-                    <ChevronDown size={16} />
-                  </motion.div>
+                  <span className="pr-4 group-hover:text-[var(--primary)] transition-colors">{faq.question}</span>
+                  <span className="text-[var(--text-secondary)] font-sans font-light text-2xl leading-none">
+                    {isOpen ? '−' : '+'}
+                  </span>
                 </button>
 
                 <AnimatePresence>
@@ -78,7 +60,7 @@ export default function FaqSnippet() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <div className="px-5 pb-5 text-[#57534E] text-xs sm:text-sm leading-relaxed border-t border-[#E7E0D8]/60 pt-3">
+                      <div className="pb-8 text-[var(--text-secondary)] text-sm md:text-base leading-relaxed">
                         {faq.answer}
                       </div>
                     </motion.div>
@@ -87,12 +69,6 @@ export default function FaqSnippet() {
               </div>
             )
           })}
-        </div>
-
-        <div className="text-center mt-8">
-          <Link href="/faq" id="view-all-faqs-btn" className="btn btn-outline">
-            View All FAQs
-          </Link>
         </div>
       </div>
     </section>

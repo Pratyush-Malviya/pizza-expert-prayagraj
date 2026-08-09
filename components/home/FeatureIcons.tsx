@@ -1,70 +1,70 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Award, Clock, ChefHat, ShieldCheck } from 'lucide-react'
 
 const FEATURES = [
   {
-    icon: Award,
+    num: '01',
     title: '100% Real Mozzarella',
     desc: 'Crafted with authentic mozzarella cheese, organic tomato passata, and fresh basil.',
   },
   {
-    icon: Clock,
-    title: '30-Min Express Delivery',
-    desc: 'Piping hot pizza delivered from oven to your door in Prayagraj & Allapur.',
+    num: '02',
+    title: '24-Hour Fermented Dough',
+    desc: 'Dough fermented slowly to achieve the perfect light, crispy, and airy crust.',
   },
   {
-    icon: ChefHat,
-    title: 'Artisanal Hand-Tossed',
-    desc: 'Dough fermented slowly for 24 hours to achieve the perfect light, crispy crust.',
+    num: '03',
+    title: 'Wood-Fired Oven',
+    desc: 'Baked at 400°C for that signature smoky flavor and perfect leopard spotting.',
   },
   {
-    icon: ShieldCheck,
-    title: '5-Star Hygiene Kitchen',
-    desc: '100% separate preparation areas & ovens for Vegetarian and Non-Vegetarian orders.',
+    num: '04',
+    title: 'Hygienic Kitchen',
+    desc: '100% separate preparation areas and ovens for Vegetarian and Non-Vegetarian orders.',
   },
 ]
 
 export default function FeatureIcons() {
   return (
-    <section className="section-py bg-[#FBF9F5]" aria-labelledby="features-heading">
+    <section className="section-py bg-[var(--bg-subtle)]" aria-labelledby="brand-story-heading">
       <div className="container-custom">
-        <div className="text-center mb-12">
-          <span className="text-xs font-bold tracking-widest text-[#B91C1C] uppercase block mb-2 font-mono">
-            Craft Commitment
-          </span>
-          <h2 id="features-heading" className="section-title">The Secret to Our Slices</h2>
-          <div className="section-divider"><span /></div>
-          <p className="section-subtitle">
-            Uncompromising quality standards from our Allapur kitchen to your table.
-          </p>
-        </div>
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          
+          {/* Left: Brand Story Headline */}
+          <div className="lg:col-span-5 sticky top-32">
+            <h2 id="brand-story-heading" className="section-title mb-6">
+              The Secret to <br />Our Slices.
+            </h2>
+            <p className="text-[var(--text-secondary)] leading-relaxed max-w-sm">
+              We believe great pizza requires patience. From our 24-hour slow-fermented dough to our wood-fired hearth, every pizza is an authentic craft experience right here in Prayagraj.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {FEATURES.map((feature, i) => {
-            const Icon = feature.icon
-            return (
+          {/* Right: Numbered Principles */}
+          <div className="lg:col-span-7 grid sm:grid-cols-2 gap-x-8 gap-y-12">
+            {FEATURES.map((feature, i) => (
               <motion.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="bg-white rounded-xl p-6 border border-[#E7E0D8] text-center hover:border-[#B91C1C]/30 hover:shadow-md transition-all"
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="group"
               >
-                <div className="w-12 h-12 rounded-lg bg-[#FEF2F2] text-[#B91C1C] flex items-center justify-center mx-auto mb-4">
-                  <Icon size={24} />
+                <div className="font-sans font-bold text-sm text-[var(--primary)] mb-3 pb-3 border-b border-[var(--border)] tracking-widest">
+                  {feature.num}
                 </div>
-                <h3 className="font-serif font-bold text-[#1C1917] text-lg mb-2">
+                <h3 className="font-serif font-bold text-[var(--text-primary)] text-xl mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-[#57534E] text-xs leading-relaxed">
+                <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
                   {feature.desc}
                 </p>
               </motion.div>
-            )
-          })}
+            ))}
+          </div>
+
         </div>
       </div>
     </section>
