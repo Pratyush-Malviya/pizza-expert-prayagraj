@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Search, Clock, MapPin, ChefHat } from 'lucide-react'
 
@@ -17,13 +17,7 @@ function TrackOrderContent() {
     address: string
   } | null>(null)
 
-  useEffect(() => {
-    if (initialOrderId) {
-      handleSearch(initialOrderId)
-    }
-  }, [initialOrderId])
-
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     if (!query.trim()) return
     setTrackedOrder({
       id: query.trim().toUpperCase(),
@@ -32,7 +26,13 @@ function TrackOrderContent() {
       eta: '20–25 minutes',
       address: 'House 42, Civil Lines, Prayagraj',
     })
-  }
+  }, [])
+
+  useEffect(() => {
+    if (initialOrderId) {
+      handleSearch(initialOrderId)
+    }
+  }, [initialOrderId, handleSearch])
 
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
