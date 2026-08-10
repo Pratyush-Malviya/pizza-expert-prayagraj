@@ -41,15 +41,21 @@ export async function updateSession(request: NextRequest) {
 
   // Protect /admin routes
   if (isProtectedAdmin) {
-    // 1. Allow demo admin cookie bypass
+    // 0. Allow dedicated admin login page
+    if (pathname === '/admin/login') {
+      return supabaseResponse
+    }
+
+    // 1. Allow production admin session or demo admin cookie bypass
+    const adminSession = request.cookies.get('admin_session')?.value === 'true'
     const simpleAdmin = request.cookies.get('simple_admin')?.value === 'true'
-    if (simpleAdmin) {
+    if (adminSession || simpleAdmin) {
       return supabaseResponse
     }
 
     if (!user) {
       const url = request.nextUrl.clone()
-      url.pathname = '/login'
+      url.pathname = '/admin/login'
       url.searchParams.set('redirect', pathname)
       return NextResponse.redirect(url)
     }

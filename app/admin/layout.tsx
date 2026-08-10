@@ -18,6 +18,12 @@ export default function AdminLayout({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  
+  // Render login page full-bleed without sidebar or header
+  if (pathname === '/admin/login') {
+    return <>{children}</>
+  }
+
   const addNotification = useNotificationStore((state) => state.addNotification)
   
   const adminName = useSettingsStore((state) => state.adminName)

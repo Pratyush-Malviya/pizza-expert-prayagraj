@@ -314,11 +314,19 @@ function LoginForm() {
               </button>
             </form>
 
-            <div className="text-center pt-4 border-t border-white/10 text-xs text-zinc-400">
-              Don&apos;t have an account yet?{' '}
-              <Link href={`/register${redirectTarget !== '/account' ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`} className="font-bold text-[#FF6666] hover:text-white underline transition-colors">
-                Create an account
-              </Link>
+            <div className="text-center pt-4 border-t border-white/10 space-y-2 text-xs text-zinc-400">
+              <div>
+                Don&apos;t have an account yet?{' '}
+                <Link href={`/register${redirectTarget !== '/account' ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}`} className="font-bold text-[#FF6666] hover:text-white underline transition-colors">
+                  Create an account
+                </Link>
+              </div>
+              <div className="pt-1 text-[11px]">
+                Store Manager or Staff?{' '}
+                <Link href="/admin/login" className="font-bold text-amber-400 hover:underline transition-colors">
+                  Admin Login Portal →
+                </Link>
+              </div>
             </div>
           </div>
         </div>
