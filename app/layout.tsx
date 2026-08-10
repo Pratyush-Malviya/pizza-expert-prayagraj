@@ -34,8 +34,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
 }
 
-import AnnouncementBanner from '@/components/layout/AnnouncementBanner'
-
 export default function RootLayout({
   children,
 }: {
@@ -50,7 +48,6 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <AnnouncementBanner />
         {children}
         <FloatingCartButton />
         <CartDrawer />

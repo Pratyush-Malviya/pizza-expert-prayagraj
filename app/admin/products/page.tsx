@@ -75,16 +75,43 @@ const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1574071318508-1cdbab80d
 const DEFAULT_CATEGORIES: CategoryOption[] = [
   { id: 'cat-pizzas', name: 'Pizzas', slug: 'pizzas', is_active: true, sort_order: 1 },
   { id: 'cat-burgers', name: 'Burgers', slug: 'burgers', is_active: true, sort_order: 2 },
-  { id: 'cat-sides', name: 'Sides', slug: 'sides', is_active: true, sort_order: 3 },
-  { id: 'cat-beverages', name: 'Beverages', slug: 'beverages', is_active: true, sort_order: 4 },
-  { id: 'cat-desserts', name: 'Desserts', slug: 'desserts', is_active: true, sort_order: 5 },
+  { id: 'cat-pasta', name: 'Pasta', slug: 'pasta', is_active: true, sort_order: 3 },
+  { id: 'cat-sandwiches', name: 'Sandwiches', slug: 'sandwiches', is_active: true, sort_order: 4 },
+  { id: 'cat-sides', name: 'Sides', slug: 'sides', is_active: true, sort_order: 5 },
+  { id: 'cat-beverages', name: 'Beverages', slug: 'beverages', is_active: true, sort_order: 6 },
+  { id: 'cat-combos', name: 'Combos', slug: 'combos', is_active: true, sort_order: 7 },
+  { id: 'cat-desserts', name: 'Desserts', slug: 'desserts', is_active: true, sort_order: 8 },
 ]
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 'p1', slug: 'margherita-pizza', name: 'Margherita Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 249, description: 'Classic cheese pizza with fresh mozzarella and basil leaves.', image_url: DEFAULT_IMAGE, is_veg: true, is_spicy: false, is_bestseller: true, is_available: true },
-  { id: 'p2', slug: 'paneer-tikka-pizza', name: 'Paneer Tikka Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 349, description: 'Spicy marinated paneer cubes, capsicum, red onion, and paprika.', image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=600', is_veg: true, is_spicy: true, is_bestseller: true, is_available: true },
-  { id: 'p3', slug: 'chicken-supreme-pizza', name: 'Chicken Supreme Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 399, description: 'Loaded grilled chicken, mushrooms, peppers, and double cheese.', image_url: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?q=80&w=600', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
-  { id: 'p4', slug: 'veg-crispy-burger', name: 'Veg Crispy Burger', category_id: 'cat-burgers', category: 'Burgers', price: 149, description: 'Crispy veggie patty with creamy mayo, lettuce, and tomatoes.', image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  // Pizzas
+  { id: 'p1', slug: 'margherita-pizza', name: 'Margherita Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 249, description: 'Classic margherita with rich tomato sauce, fresh mozzarella, and aromatic basil leaves.', image_url: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: true, is_available: true },
+  { id: 'p2', slug: 'paneer-tikka-pizza', name: 'Paneer Tikka Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 349, description: 'Marinated paneer, capsicum, onion, and spicy tikka sauce on a cheesy base.', image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: true, is_bestseller: true, is_available: true },
+  { id: 'p3', slug: 'chicken-supreme-pizza', name: 'Chicken Supreme Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 399, description: 'Loaded with tender chicken, mushrooms, olives, capsicum, and house pizza sauce.', image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p4', slug: 'farm-house-pizza', name: 'Farm House Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 299, description: 'Fresh vegetables including capsicum, onion, tomato, and golden corn on a cheesy base.', image_url: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p5', slug: 'peri-peri-chicken-pizza', name: 'Peri Peri Chicken Pizza', category_id: 'cat-pizzas', category: 'Pizzas', price: 429, description: 'Spicy peri peri marinated chicken with signature sauce, jalapeños, and extra cheese.', image_url: 'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: true, is_bestseller: false, is_available: true },
+
+  // Burgers
+  { id: 'p6', slug: 'veg-crispy-burger', name: 'Veg Crispy Burger', category_id: 'cat-burgers', category: 'Burgers', price: 149, description: 'Crispy breaded veggie patty with lettuce, tomato, cheese, and special burger sauce.', image_url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p7', slug: 'chicken-zinger-burger', name: 'Chicken Zinger Burger', category_id: 'cat-burgers', category: 'Burgers', price: 199, description: 'Juicy fried chicken fillet with coleslaw, pickles, and spicy chipotle mayo in a toasted bun.', image_url: 'https://images.unsplash.com/photo-1625813506062-0aeb1d7a094b?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: true, is_bestseller: true, is_available: true },
+  { id: 'p8', slug: 'double-chicken-patty-burger', name: 'Double Chicken Patty Burger', category_id: 'cat-burgers', category: 'Burgers', price: 259, description: 'Two juicy chicken patties, double cheese, lettuce, and smoky BBQ sauce.', image_url: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
+
+  // Pasta
+  { id: 'p9', slug: 'penne-arrabiata', name: 'Penne Arrabiata', category_id: 'cat-pasta', category: 'Pasta', price: 199, description: 'Classic Italian-style penne in a spicy tomato sauce with garlic, chili, and fresh herbs.', image_url: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281274?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: true, is_bestseller: false, is_available: true },
+  { id: 'p10', slug: 'chicken-alfredo-pasta', name: 'Chicken Alfredo Pasta', category_id: 'cat-pasta', category: 'Pasta', price: 249, description: 'Creamy white sauce pasta with grilled chicken strips, mushrooms, and Parmesan cheese.', image_url: 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
+
+  // Sides
+  { id: 'p11', slug: 'garlic-bread', name: 'Garlic Bread', category_id: 'cat-sides', category: 'Sides', price: 99, description: 'Toasted bread with garlic butter and herbs. The perfect pizza companion.', image_url: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p12', slug: 'french-fries', name: 'French Fries', category_id: 'cat-sides', category: 'Sides', price: 99, description: 'Crispy golden fries seasoned with our signature spice blend.', image_url: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p13', slug: 'peri-peri-fries', name: 'Peri Peri Fries', category_id: 'cat-sides', category: 'Sides', price: 119, description: 'Crispy fries tossed in our spicy peri peri seasoning blend.', image_url: 'https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: true, is_bestseller: false, is_available: true },
+
+  // Beverages
+  { id: 'p14', slug: 'coca-cola-330ml', name: 'Coca-Cola (330ml)', category_id: 'cat-beverages', category: 'Beverages', price: 60, description: 'Ice-cold Coca-Cola, the perfect pairing for your pizza.', image_url: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+  { id: 'p15', slug: 'mango-lassi', name: 'Mango Lassi', category_id: 'cat-beverages', category: 'Beverages', price: 89, description: 'Creamy, chilled mango lassi made with fresh yogurt and real mangoes.', image_url: 'https://images.unsplash.com/photo-1553787499-6f9133860278?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: false, is_available: true },
+
+  // Combos
+  { id: 'p16', slug: 'family-feast-combo', name: 'Family Feast Combo', category_id: 'cat-combos', category: 'Combos', price: 899, description: '2 Large Pizzas + Garlic Bread + 4 Coca-Colas. Perfect for family gatherings!', image_url: 'https://images.unsplash.com/photo-1544982503-9f984c14501a?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: false, is_bestseller: true, is_available: true },
+  { id: 'p17', slug: 'burger-meal-combo', name: 'Burger Meal Combo', category_id: 'cat-combos', category: 'Combos', price: 329, description: '1 Chicken Zinger Burger + Peri Peri Fries + Coca-Cola. A complete meal!', image_url: 'https://images.unsplash.com/photo-1610440042657-612c34d95e9f?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: true, is_bestseller: false, is_available: true },
 ]
 
 const emptyProductForm = (category: CategoryOption): Omit<Product, 'id'> => ({
@@ -139,8 +166,19 @@ export default function AdminProductsPage() {
       const localCategories = JSON.parse(localStorage.getItem('pizza_categories') || '[]') as CategoryOption[]
       const localProducts = JSON.parse(localStorage.getItem('pizza_products') || '[]') as Product[]
 
-      if (localCategories.length > 0) setCategories(localCategories)
-      if (localProducts.length > 0) setProducts(localProducts)
+      // Merge local categories with DEFAULT_CATEGORIES to ensure no default category is lost
+      const categoryMap = new Map<string, CategoryOption>()
+      DEFAULT_CATEGORIES.forEach((cat) => categoryMap.set(cat.slug, cat))
+      localCategories.forEach((cat) => categoryMap.set(cat.slug || cat.id, cat))
+      const mergedCategories = Array.from(categoryMap.values()).sort((a, b) => a.sort_order - b.sort_order)
+      setCategories(mergedCategories)
+
+      // Merge local products with INITIAL_PRODUCTS to ensure all menu products are listed
+      const productMap = new Map<string, Product>()
+      INITIAL_PRODUCTS.forEach((prod) => productMap.set(prod.id, prod))
+      localProducts.forEach((prod) => productMap.set(prod.id, prod))
+      const mergedProducts = Array.from(productMap.values())
+      setProducts(mergedProducts)
 
       const supabase = createClient()
       const { data: remoteCategories, error: categoryError } = await supabase
