@@ -48,14 +48,19 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Role check via profiles table
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Primary admin email override + Role check via profiles table
+    let role = user.email === 'malviya.pratyush26@gmail.com' ? 'super_admin' : ''
 
-    const role = profile?.role || user.user_metadata?.role || 'customer'
+    if (!role) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      role = profile?.role || user.user_metadata?.role || 'customer'
+    }
+
     const isAdminRole = ['super_admin', 'manager', 'staff', 'viewer'].includes(role)
 
     if (!isAdminRole) {
