@@ -14,7 +14,7 @@ export async function sendEmail({
   to,
   subject,
   html,
-  from = 'Pizza Expert <orders@pizza-kappa-nine.vercel.app>',
+  from = 'Pizza Expert <onboarding@resend.dev>',
 }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
 

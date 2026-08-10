@@ -7,6 +7,7 @@ import AdminNotificationDropdown from '@/components/layout/AdminNotificationDrop
 import { Menu } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { toast } from 'sonner'
 import { playNotificationSound, triggerSystemNotification } from '@/lib/utils/notifications'
 
@@ -18,6 +19,10 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const addNotification = useNotificationStore((state) => state.addNotification)
+  
+  const adminName = useSettingsStore((state) => state.adminName)
+  const adminEmail = useSettingsStore((state) => state.adminEmail)
+  const adminAvatarUrl = useSettingsStore((state) => state.adminAvatarUrl)
 
   // Auto-close mobile sidebar when navigating
   useEffect(() => {
@@ -109,12 +114,24 @@ export default function AdminLayout({
             <AdminNotificationDropdown />
 
             <div className="flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8]">
-              <div className="w-7 h-7 rounded-md bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs font-serif">
-                AD
-              </div>
-              <div className="hidden sm:block">
-                <span className="block text-xs font-semibold text-[#1C1917]">Store Manager</span>
-                <span className="block text-[10px] text-[#A8A29E]">Allapur Branch</span>
+              {adminAvatarUrl ? (
+                <img
+                  src={adminAvatarUrl}
+                  alt={adminName || 'Admin Avatar'}
+                  className="w-8 h-8 rounded-full object-cover border border-[#E7E0D8]"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-md bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs font-serif uppercase">
+                  {(adminName || 'PM').slice(0, 2)}
+                </div>
+              )}
+              <div className="hidden sm:block text-left">
+                <span className="block text-xs font-bold text-[#1C1917] leading-tight">
+                  {adminName || 'Pratyush Malviya'}
+                </span>
+                <span className="block text-[10px] text-[#A8A29E] truncate max-w-[150px]">
+                  {adminEmail || 'malviya.pratyush26@gmail.com'}
+                </span>
               </div>
             </div>
           </div>

@@ -77,6 +77,11 @@ interface SettingsState {
   razorpayKeyId: string
   razorpayKeySecret: string
 
+  // Admin Profile Customization
+  adminName: string
+  adminEmail: string
+  adminAvatarUrl: string | null
+
   // Setter
   updateSettings: (settings: Partial<SettingsState>) => void
 }
@@ -188,6 +193,11 @@ export const useSettingsStore = create<SettingsState>()(
       enableRazorpay: false,
       razorpayKeyId: '',
       razorpayKeySecret: '',
+
+      // Admin Profile Defaults
+      adminName: 'Pratyush Malviya',
+      adminEmail: 'malviya.pratyush26@gmail.com',
+      adminAvatarUrl: null,
 
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
     }),

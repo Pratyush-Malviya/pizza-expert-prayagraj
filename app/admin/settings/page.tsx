@@ -36,6 +36,9 @@ export default function AdminSettingsPage() {
     enableRazorpay: false,
     razorpayKeyId: '',
     razorpayKeySecret: '',
+    adminName: 'Pratyush Malviya',
+    adminEmail: 'malviya.pratyush26@gmail.com',
+    adminAvatarUrl: '',
   })
 
   // Hydrate local state from global store on mount
@@ -67,6 +70,9 @@ export default function AdminSettingsPage() {
         enableRazorpay: storeSettings.enableRazorpay,
         razorpayKeyId: storeSettings.razorpayKeyId,
         razorpayKeySecret: storeSettings.razorpayKeySecret,
+        adminName: storeSettings.adminName || 'Pratyush Malviya',
+        adminEmail: storeSettings.adminEmail || 'malviya.pratyush26@gmail.com',
+        adminAvatarUrl: storeSettings.adminAvatarUrl || '',
       })
       setMounted(true)
     })
@@ -112,6 +118,23 @@ export default function AdminSettingsPage() {
     reader.readAsDataURL(file)
   }
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Avatar image must be less than 2MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFormData({ ...formData, adminAvatarUrl: reader.result as string })
+      toast.success('Admin avatar photo uploaded!')
+    }
+    reader.readAsDataURL(file)
+  }
+
   if (!mounted) return null
 
   return (
@@ -121,11 +144,75 @@ export default function AdminSettingsPage() {
           Store Settings
         </h1>
         <p className="text-[#57534E] text-xs sm:text-sm">
-          Configure business details, integrations, and payment gateways.
+          Configure business details, admin profile, integrations, and payment gateways.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+        
+        {/* Admin Profile & Account */}
+        <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
+            <Camera size={18} className="text-[#B91C1C]" /> Admin Profile & App Avatar
+          </h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#E7E0D8] bg-[#FBF9F5] flex items-center justify-center overflow-hidden relative group shrink-0">
+              {formData.adminAvatarUrl ? (
+                <img src={formData.adminAvatarUrl} alt="Admin Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-[#B91C1C] font-serif font-bold text-xl uppercase">
+                  {(formData.adminName || 'PM').slice(0, 2)}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2 flex-1 w-full">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">Admin Manager Name</label>
+                  <input
+                    type="text"
+                    value={formData.adminName}
+                    onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                    className="input-field"
+                    placeholder="Pratyush Malviya"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">Admin Email Address</label>
+                  <input
+                    type="email"
+                    value={formData.adminEmail}
+                    onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                    className="input-field"
+                    placeholder="malviya.pratyush26@gmail.com"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="pt-2 flex items-center gap-4">
+                <label className="btn btn-outline btn-xs inline-flex items-center gap-2 cursor-pointer relative overflow-hidden">
+                  <Upload size={13} /> Upload Avatar Image
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={handleAvatarUpload}
+                  />
+                </label>
+                {formData.adminAvatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { setFormData({ ...formData, adminAvatarUrl: '' }); toast.success('Avatar removed') }}
+                    className="text-[#B91C1C] text-xs font-semibold hover:underline"
+                  >
+                    Remove avatar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
         
         {/* Brand Logo */}
         <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
