@@ -137,6 +137,19 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-[#260212] flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-[#ffc7c6]/70">
           <p>© {new Date().getFullYear()} {mounted ? storeSettings.businessName : 'Pizza Expert Prayagraj'}. All rights reserved.</p>
+
+          <p className="text-xs text-[#ffc7c6]/80 flex items-center gap-1.5 font-medium">
+            <span>Designed & Developed with ❤️ by</span>
+            <a
+              href="https://www.linkedin.com/in/pratyushmalviy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white hover:text-[#e10600] font-semibold underline underline-offset-4 decoration-[#e10600] transition-colors inline-flex items-center gap-1"
+            >
+              Pratyush Malviya
+            </a>
+          </p>
+
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
