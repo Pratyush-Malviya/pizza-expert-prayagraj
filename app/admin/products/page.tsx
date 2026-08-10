@@ -648,19 +648,19 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold">
+                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold text-[#1C1917]">
                     Vegetarian
                     <input type="checkbox" checked={formData.is_veg} onChange={(event) => setFormData({ ...formData, is_veg: event.target.checked })} />
                   </label>
-                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold">
+                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold text-[#1C1917]">
                     Spicy
                     <input type="checkbox" checked={formData.is_spicy} onChange={(event) => setFormData({ ...formData, is_spicy: event.target.checked })} />
                   </label>
-                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold">
+                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold text-[#1C1917]">
                     Bestseller
                     <input type="checkbox" checked={formData.is_bestseller} onChange={(event) => setFormData({ ...formData, is_bestseller: event.target.checked })} />
                   </label>
-                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold">
+                  <label className="flex items-center justify-between p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg text-xs font-semibold text-[#1C1917]">
                     Available
                     <input type="checkbox" checked={formData.is_available} onChange={(event) => setFormData({ ...formData, is_available: event.target.checked })} />
                   </label>

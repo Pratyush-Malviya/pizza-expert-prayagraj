@@ -19,7 +19,7 @@ export default function AdminLayout({
   }, [pathname])
 
   return (
-    <div className="flex min-h-screen bg-[#FBF9F5] relative overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#FBF9F5] text-[#1C1917] relative overflow-x-hidden">
       {/* Admin Sidebar (handles both desktop & mobile drawer) */}
       <AdminSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
