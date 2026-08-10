@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="crust" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#92400E" />
+    </linearGradient>
+    <linearGradient id="cheese" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <radialGradient id="pepperoni" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#EF4444" />
+      <stop offset="100%" stop-color="#B91C1C" />
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Circle for Tab Visibility -->
+  <circle cx="256" cy="256" r="240" fill="#140109" />
+
+  <!-- Pizza Crust -->
+  <path d="M 120 120 C 220 70, 292 70, 392 120 C 400 128, 404 140, 396 150 L 268 420 C 262 432, 250 432, 244 420 L 116 150 C 108 140, 112 128, 120 120 Z" fill="url(#crust)" filter="url(#shadow)" />
+
+  <!-- Pizza Base & Cheese -->
+  <path d="M 132 138 C 220 95, 292 95, 380 138 L 256 400 Z" fill="url(#cheese)" />
+
+  <!-- Sauce Rim -->
+  <path d="M 124 130 C 220 82, 292 82, 388 130 C 392 134, 388 140, 382 143 C 292 105, 220 105, 130 143 C 124 140, 120 134, 124 130 Z" fill="#DC2626" />
+
+  <!-- Pepperonis -->
+  <circle cx="256" cy="200" r="34" fill="url(#pepperoni)" stroke="#991B1B" stroke-width="3" />
+  <circle cx="205" cy="275" r="28" fill="url(#pepperoni)" stroke="#991B1B" stroke-width="3" />
+  <circle cx="305" cy="285" r="26" fill="url(#pepperoni)" stroke="#991B1B" stroke-width="3" />
+  <circle cx="256" cy="335" r="22" fill="url(#pepperoni)" stroke="#991B1B" stroke-width="3" />
+
+  <!-- Basil Leaves -->
+  <path d="M 220 160 C 200 150, 195 170, 215 175 C 235 180, 240 160, 220 160 Z" fill="#16A34A" />
+  <path d="M 290 220 C 310 210, 315 230, 295 235 C 275 240, 270 220, 290 220 Z" fill="#16A34A" />
+  <path d="M 235 240 C 220 230, 215 250, 230 255 C 245 260, 250 240, 235 240 Z" fill="#22C55E" />
+</svg>
