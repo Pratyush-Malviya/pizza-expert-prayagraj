@@ -15,16 +15,10 @@ export interface PaymentTransaction {
   customer: string
 }
 
-const INITIAL_FALLBACK_PAYMENTS: PaymentTransaction[] = [
-  { id: 'pay_NmKq9r5Z3V6wX1', orderId: 'ORD-982143', amount: 558, status: 'captured', method: 'Razorpay UPI', date: new Date().toISOString(), customer: 'Rahul Sharma' },
-  { id: 'pay_NmKq9r5Z3V6wX2', orderId: 'ORD-982142', amount: 349, status: 'captured', method: 'Razorpay Card', date: new Date(Date.now() - 18 * 60 * 1000).toISOString(), customer: 'Priya Singh' },
-  { id: 'pay_NmKq9r5Z3V6wX3', orderId: 'ORD-982141', amount: 899, status: 'captured', method: 'Cash on Delivery', date: new Date(Date.now() - 42 * 60 * 1000).toISOString(), customer: 'Amit Verma' },
-  { id: 'pay_NmKq9r5Z3V6wX4', orderId: 'ORD-982140', amount: 298, status: 'captured', method: 'Razorpay UPI', date: new Date(Date.now() - 60 * 60 * 1000).toISOString(), customer: 'Sneha Gupta' },
-  { id: 'pay_NmKq9r5Z3V6wX5', orderId: 'ORD-982139', amount: 599, status: 'refunded', method: 'Razorpay Card', date: new Date(Date.now() - 120 * 60 * 1000).toISOString(), customer: 'Vikas Kumar' },
-]
+const INITIAL_FALLBACK_PAYMENTS: PaymentTransaction[] = []
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<PaymentTransaction[]>(INITIAL_FALLBACK_PAYMENTS)
+  const [payments, setPayments] = useState<PaymentTransaction[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')

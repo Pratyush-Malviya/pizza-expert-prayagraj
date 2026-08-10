@@ -16,18 +16,13 @@ interface DashboardOrder {
   time: string
 }
 
-const FALLBACK_RECENT_ORDERS: DashboardOrder[] = [
-  { id: 'ORD-982143', customer: 'Rahul Sharma', items: '2x Margherita, 1x Coke', total: 558, status: 'preparing', statusLabel: 'Preparing', time: '5 mins ago' },
-  { id: 'ORD-982142', customer: 'Priya Singh', items: '1x Paneer Tikka Pizza', total: 349, status: 'out_for_delivery', statusLabel: 'Out for Delivery', time: '18 mins ago' },
-  { id: 'ORD-982141', customer: 'Amit Verma', items: '1x Family Feast Combo', total: 899, status: 'delivered', statusLabel: 'Delivered', time: '42 mins ago' },
-  { id: 'ORD-982140', customer: 'Sneha Gupta', items: '1x Zinger Burger, Fries', total: 298, status: 'delivered', statusLabel: 'Delivered', time: '1 hour ago' },
-]
+const FALLBACK_RECENT_ORDERS: DashboardOrder[] = []
 
 export default function AdminDashboardPage() {
-  const [todayRevenue, setTodayRevenue] = useState<number>(14250)
-  const [totalOrdersCount, setTotalOrdersCount] = useState<number>(48)
-  const [activeProductsCount, setActiveProductsCount] = useState<number>(24)
-  const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>(FALLBACK_RECENT_ORDERS)
+  const [todayRevenue, setTodayRevenue] = useState<number>(0)
+  const [totalOrdersCount, setTotalOrdersCount] = useState<number>(0)
+  const [activeProductsCount, setActiveProductsCount] = useState<number>(17)
+  const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([])
   const [loading, setLoading] = useState<boolean>(true)
 
   const fetchDashboardStats = async () => {

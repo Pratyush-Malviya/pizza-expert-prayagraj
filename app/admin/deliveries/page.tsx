@@ -42,22 +42,7 @@ export default function DeliveriesAdminPage() {
     }
 
     if (!deliveryData || deliveryData.length === 0) {
-      setDeliveries([
-        {
-          id: 'del-101',
-          order_id: 'ord-101',
-          driver_id: 'drv-1',
-          status: 'picked_up',
-          pickup_time: new Date(Date.now() - 10 * 60000).toISOString(),
-          delivered_time: null,
-          otp_code: '4829',
-          proof_photo: null,
-          notes: 'Customer requested call upon arrival',
-          created_at: new Date().toISOString(),
-          driver: { name: 'Raj Kumar', phone: '+91 98765 43210', vehicle_type: 'Bike' } as any,
-          order: { total: 500, address_json: { line1: 'Flat 402, Civil Lines' } } as any,
-        },
-      ])
+      setDeliveries([])
     }
 
     setLoading(false)

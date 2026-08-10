@@ -50,47 +50,9 @@ export default function KitchenDisplayPage() {
         }
       } catch {}
 
-      if (combinedOrders.length === 0) {
-        // Mock fallback if empty
-        combinedOrders = [
-          {
-            id: 'ord-101',
-            user_id: 'usr-1',
-            status: 'confirmed',
-            subtotal: 448,
-            tax: 22,
-            delivery_fee: 30,
-            discount: 0,
-            total: 500,
-            coupon_id: null,
-            address_json: { name: 'Rahul Sharma', phone: '9876543210', line1: 'Flat 402, Civil Lines', city: 'Prayagraj' } as any,
-            notes: 'Extra crispy crust please',
-            created_at: new Date(Date.now() - 5 * 60000).toISOString(),
-            items: [
-              { id: 'i1', order_id: 'ord-101', product_id: 'p1', quantity: 1, unit_price: 249, selected_options: { Size: 'Large', Crust: 'Cheese Burst' }, product: { name: 'Margherita Pizza' } as any },
-              { id: 'i2', order_id: 'ord-101', product_id: 'p2', quantity: 2, unit_price: 99, selected_options: null, product: { name: 'Garlic Bread' } as any },
-            ],
-          },
-          {
-            id: 'ord-102',
-            user_id: 'usr-2',
-            status: 'preparing',
-            subtotal: 349,
-            tax: 17,
-            delivery_fee: 30,
-            discount: 0,
-            total: 396,
-            coupon_id: null,
-            address_json: { name: 'Priya Singh', phone: '9812345678', line1: 'House 12, Katra', city: 'Prayagraj' } as any,
-            notes: 'No onions in toppings',
-            created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-            items: [
-              { id: 'i3', order_id: 'ord-102', product_id: 'p3', quantity: 1, unit_price: 349, selected_options: { Size: 'Medium' }, product: { name: 'Paneer Tikka Pizza' } as any },
-            ],
-          },
-        ]
-      }
-
+      // If empty, keep empty array
+      setOrders(combinedOrders)
+      
       // Check if new incoming orders arrived
       const newConfirmedCount = combinedOrders.filter((o) => o.status === 'confirmed' || o.status === 'pending').length
       if (previousOrderCountRef.current > 0 && newConfirmedCount > previousOrderCountRef.current) {

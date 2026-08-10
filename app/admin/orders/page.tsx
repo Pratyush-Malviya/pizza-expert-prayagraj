@@ -37,77 +37,10 @@ export interface AdminOrder {
   created_at: string
 }
 
-const MOCK_INITIAL_ORDERS: AdminOrder[] = [
-  {
-    id: 'ORD-982143',
-    customer: 'Rahul Sharma',
-    phone: '+91 98765 43210',
-    email: 'rahul.sharma@example.com',
-    address: 'Flat 302, Green Valley Apartments, Allapur, Prayagraj',
-    pincode: '211006',
-    notes: 'Please ring bell twice and call on arrival',
-    items_summary: '2x Margherita Pizza, 1x Coke',
-    items_detail: [
-      { id: '1', product_name: 'Margherita Pizza', quantity: 2, unit_price: 249, selected_options: [{ optionName: 'Size', choice: 'Medium' }] },
-      { id: '2', product_name: 'Coke 500ml', quantity: 1, unit_price: 60, selected_options: [] },
-    ],
-    subtotal: 558,
-    tax: 28,
-    delivery_fee: 0,
-    discount: 0,
-    total: 586,
-    status: 'preparing',
-    payment_method: 'razorpay',
-    time: '10 mins ago',
-    created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'ORD-982142',
-    customer: 'Priya Singh',
-    phone: '+91 98765 43211',
-    email: 'priya.s@example.com',
-    address: '14/B Civil Lines, Near Subhash Chouraha, Prayagraj',
-    pincode: '211001',
-    notes: 'Leave at security gate',
-    items_summary: '1x Paneer Tikka Pizza',
-    items_detail: [
-      { id: '3', product_name: 'Paneer Tikka Pizza', quantity: 1, unit_price: 349, selected_options: [{ optionName: 'Size', choice: 'Large' }] },
-    ],
-    subtotal: 349,
-    tax: 17,
-    delivery_fee: 30,
-    discount: 0,
-    total: 396,
-    status: 'out_for_delivery',
-    payment_method: 'cashfree',
-    time: '22 mins ago',
-    created_at: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'ORD-982141',
-    customer: 'Amit Verma',
-    phone: '+91 98765 43212',
-    email: 'amit.verma@example.com',
-    address: '45 Katra Main Market, Opposite University Gate, Prayagraj',
-    pincode: '211002',
-    items_summary: '1x Family Feast Combo',
-    items_detail: [
-      { id: '4', product_name: 'Family Feast Combo', quantity: 1, unit_price: 899, selected_options: [] },
-    ],
-    subtotal: 899,
-    tax: 45,
-    delivery_fee: 0,
-    discount: 100,
-    total: 844,
-    status: 'delivered',
-    payment_method: 'cod',
-    time: '45 mins ago',
-    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-  },
-]
+const MOCK_INITIAL_ORDERS: AdminOrder[] = []
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<AdminOrder[]>(MOCK_INITIAL_ORDERS)
+  const [orders, setOrders] = useState<AdminOrder[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)

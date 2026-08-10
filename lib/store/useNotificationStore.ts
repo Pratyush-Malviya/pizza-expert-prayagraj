@@ -29,38 +29,7 @@ interface NotificationState {
   requestBrowserPermission: () => Promise<boolean>
 }
 
-const INITIAL_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: 'notif-1',
-    title: '🍕 New Order #ORD-982143',
-    message: 'Rahul Sharma placed an order for 2x Margherita, 1x Coke (₹558).',
-    type: 'order',
-    orderId: 'ORD-982143',
-    time: '5 mins ago',
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    read: false,
-  },
-  {
-    id: 'notif-2',
-    title: '🛵 Order Out For Delivery',
-    message: 'Order #ORD-982142 is out for delivery with Priya Singh.',
-    type: 'kitchen',
-    orderId: 'ORD-982142',
-    time: '18 mins ago',
-    createdAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-    read: false,
-  },
-  {
-    id: 'notif-3',
-    title: '💳 Payment Received (Razorpay)',
-    message: 'Payment of ₹899 captured successfully for Order #ORD-982141.',
-    type: 'payment',
-    orderId: 'ORD-982141',
-    time: '42 mins ago',
-    createdAt: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
-    read: true,
-  },
-]
+const INITIAL_NOTIFICATIONS: AdminNotification[] = []
 
 export const useNotificationStore = create<NotificationState>()(
   persist(
