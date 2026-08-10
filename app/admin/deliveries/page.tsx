@@ -78,91 +78,99 @@ export default function DeliveriesAdminPage() {
   }
 
   return (
-    <div className="p-6 bg-[#09090B] min-h-screen text-white space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pb-6 border-b border-[#27272A]">
+      <div className="flex items-center justify-between pb-4 border-b border-[#E7E0D8]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#B91C1C] rounded-lg flex items-center justify-center text-white">
+          <div className="w-10 h-10 bg-[#B91C1C] rounded-xl flex items-center justify-center text-white shadow-xs">
             <Truck size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-serif">Delivery Dispatch & Driver Management</h1>
-            <p className="text-xs text-[#A8A29E]">Track active delivery partners and assign orders</p>
+            <h1 className="text-xl sm:text-2xl font-bold font-serif text-[#1C1917]">Delivery Dispatch & Driver Management</h1>
+            <p className="text-xs text-[#57534E]">Track active delivery partners and assign orders</p>
           </div>
         </div>
       </div>
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white border border-[#E7E0D8] shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-[#A8A29E] font-medium block">Active Drivers Online</span>
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+            <span className="text-xs text-[#57534E] font-medium block">Active Drivers Online</span>
+            <span className="text-2xl font-bold font-mono text-[#15803D]">
               {drivers.filter((d) => d.is_online).length} / {drivers.length}
             </span>
           </div>
-          <UserCheck size={24} className="text-emerald-400" />
+          <div className="w-10 h-10 rounded-xl bg-[#F0FDF4] text-[#15803D] flex items-center justify-center">
+            <UserCheck size={20} />
+          </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white border border-[#E7E0D8] shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-[#A8A29E] font-medium block">Deliveries In Progress</span>
-            <span className="text-2xl font-bold font-mono text-blue-400">
+            <span className="text-xs text-[#57534E] font-medium block">Deliveries In Progress</span>
+            <span className="text-2xl font-bold font-mono text-[#2563EB]">
               {deliveries.filter((d) => d.status !== 'delivered').length}
             </span>
           </div>
-          <Navigation size={24} className="text-blue-400" />
-        </div>
-
-        <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#A8A29E] font-medium block">Unassigned Orders</span>
-            <span className="text-2xl font-bold font-mono text-amber-400">{unassignedOrders.length}</span>
+          <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
+            <Navigation size={20} />
           </div>
-          <AlertTriangle size={24} className="text-amber-400" />
         </div>
 
-        <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white border border-[#E7E0D8] shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-[#A8A29E] font-medium block">Completed Today</span>
-            <span className="text-2xl font-bold font-mono text-purple-400">
+            <span className="text-xs text-[#57534E] font-medium block">Unassigned Orders</span>
+            <span className="text-2xl font-bold font-mono text-[#D97706]">{unassignedOrders.length}</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center">
+            <AlertTriangle size={20} />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-white border border-[#E7E0D8] shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs text-[#57534E] font-medium block">Completed Today</span>
+            <span className="text-2xl font-bold font-mono text-[#9333EA]">
               {deliveries.filter((d) => d.status === 'delivered').length}
             </span>
           </div>
-          <CheckCircle2 size={24} className="text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-[#FAF5FF] text-[#9333EA] flex items-center justify-center">
+            <CheckCircle2 size={20} />
+          </div>
         </div>
       </div>
 
       {/* Main Grid: Drivers & Active Deliveries */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Drivers List */}
-        <div className="p-5 rounded-xl bg-[#18181B] border border-[#27272A] space-y-4">
-          <h2 className="font-bold text-base font-serif flex items-center gap-2">
+        <div className="p-5 rounded-xl bg-white border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-bold text-base font-serif text-[#1C1917] flex items-center gap-2">
             <UserCheck size={18} className="text-[#B91C1C]" /> Delivery Partners
           </h2>
 
           <div className="space-y-3">
             {drivers.map((drv) => (
-              <div key={drv.id} className="p-3.5 rounded-lg bg-[#27272A]/50 border border-[#3F3F46] flex items-center justify-between">
+              <div key={drv.id} className="p-3.5 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2 font-bold text-sm">
+                  <div className="flex items-center gap-2 font-bold text-sm text-[#1C1917]">
                     <span>{drv.name}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${drv.is_online ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${drv.is_online ? 'bg-[#F0FDF4] text-[#15803D] border border-[#15803D]/20' : 'bg-[#F4EFEA] text-[#A8A29E] border border-[#E7E0D8]'}`}>
                       {drv.is_online ? (drv.is_busy ? 'ON DELIVERY' : 'ONLINE') : 'OFFLINE'}
                     </span>
                   </div>
-                  <div className="text-xs text-[#A8A29E] mt-1">
+                  <div className="text-xs text-[#57534E] mt-1">
                     {drv.phone} • {drv.vehicle_type} ({drv.vehicle_number || 'N/A'})
                   </div>
                 </div>
 
                 <div className="text-right">
                   {drv.current_lat ? (
-                    <span className="text-[11px] text-blue-400 font-mono flex items-center gap-1">
+                    <span className="text-[11px] text-[#2563EB] font-mono flex items-center gap-1">
                       <MapPin size={12} /> GPS Active
                     </span>
                   ) : (
-                    <span className="text-[11px] text-zinc-500">No Location</span>
+                    <span className="text-[11px] text-[#A8A29E]">No Location</span>
                   )}
                 </div>
               </div>
@@ -171,14 +179,14 @@ export default function DeliveriesAdminPage() {
         </div>
 
         {/* Deliveries & Dispatch */}
-        <div className="lg:col-span-2 p-5 rounded-xl bg-[#18181B] border border-[#27272A] space-y-4">
-          <h2 className="font-bold text-base font-serif flex items-center gap-2">
-            <Navigation size={18} className="text-blue-400" /> Active Deliveries Ledger
+        <div className="lg:col-span-2 p-5 rounded-xl bg-white border border-[#E7E0D8] shadow-xs space-y-4">
+          <h2 className="font-bold text-base font-serif text-[#1C1917] flex items-center gap-2">
+            <Navigation size={18} className="text-[#2563EB]" /> Active Deliveries Ledger
           </h2>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-[#A8A29E]">
-              <thead className="bg-[#27272A] text-white font-semibold uppercase text-[10px] tracking-wider">
+            <table className="w-full text-left text-xs text-[#57534E]">
+              <thead className="bg-[#FBF9F5] text-[#1C1917] font-bold uppercase text-[10px] tracking-wider border-b border-[#E7E0D8]">
                 <tr>
                   <th className="p-3 rounded-l-md">Order ID</th>
                   <th className="p-3">Assigned Driver</th>
@@ -187,22 +195,30 @@ export default function DeliveriesAdminPage() {
                   <th className="p-3 rounded-r-md">Destination</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#27272A]">
-                {deliveries.map((del) => (
-                  <tr key={del.id} className="hover:bg-[#27272A]/30 transition-all text-white">
-                    <td className="p-3 font-mono font-bold text-[#F43F5E]">#{del.order_id.slice(-6).toUpperCase()}</td>
-                    <td className="p-3 font-semibold">{del.driver?.name || 'Unassigned'}</td>
-                    <td className="p-3">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        {del.status}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-emerald-400 font-bold">{del.otp_code || 'N/A'}</td>
-                    <td className="p-3 text-xs text-[#A8A29E] truncate max-w-[200px]">
-                      {del.order?.address_json?.line1 || 'Prayagraj'}
+              <tbody className="divide-y divide-[#E7E0D8]">
+                {deliveries.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-[#A8A29E] text-xs font-medium">
+                      No active deliveries in transit
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  deliveries.map((del) => (
+                    <tr key={del.id} className="hover:bg-[#FBF9F5] transition-all text-[#1C1917]">
+                      <td className="p-3 font-mono font-bold text-[#B91C1C]">#{del.order_id.slice(-6).toUpperCase()}</td>
+                      <td className="p-3 font-semibold text-[#1C1917]">{del.driver?.name || 'Unassigned'}</td>
+                      <td className="p-3">
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
+                          {del.status}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono text-[#15803D] font-bold">{del.otp_code || 'N/A'}</td>
+                      <td className="p-3 text-xs text-[#57534E] truncate max-w-[200px]">
+                        {del.order?.address_json?.line1 || 'Prayagraj'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
