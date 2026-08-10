@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { CartItem } from '@/types'
+import { sendOrderConfirmationEmail } from '@/lib/utils/resend'
 
 export interface PricingCalculationResult {
   subtotal: number
@@ -195,6 +196,16 @@ export async function createOrder(payload: {
       status: 'pending',
       notes: 'Order placed by customer',
     })
+
+    // 6. Trigger Resend Transactional Email
+    if (payload.address?.email) {
+      sendOrderConfirmationEmail(payload.address.email, {
+        orderId: order.id,
+        customerName: payload.address.name || 'Customer',
+        items: payload.cartItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.price })),
+        total: order.total,
+      }).catch(err => console.warn('Order confirmation email note:', err))
+    }
 
     return {
       success: true,

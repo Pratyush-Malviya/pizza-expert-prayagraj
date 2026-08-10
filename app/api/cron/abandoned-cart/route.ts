@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendAbandonedCartRecoveryEmail } from '@/lib/utils/resend'
 
 export async function GET() {
   try {
@@ -11,7 +12,7 @@ export async function GET() {
     // Query unrecovered carts older than 30 mins
     const { data: idleCarts, error } = await supabase
       .from('cart_sessions')
-      .select('*')
+      .select('*, profile:profiles(email)')
       .eq('recovered', false)
       .lt('last_updated', thirtyMinsAgo)
       .limit(20)
@@ -23,6 +24,14 @@ export async function GET() {
     const processed = []
 
     for (const cart of idleCarts || []) {
+      const itemsCount = Array.isArray(cart.items) ? cart.items.length : 1
+      const userEmail = cart.profile?.email
+
+      if (userEmail) {
+        await sendAbandonedCartRecoveryEmail(userEmail, itemsCount)
+          .catch(err => console.warn('Abandoned cart email note:', err))
+      }
+
       // Log notification entry
       await supabase.from('notification_logs').insert({
         user_id: cart.user_id,
