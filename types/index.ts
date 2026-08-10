@@ -47,6 +47,7 @@ export interface Product {
   slug: string
   description: string
   price: number
+  cost_price?: number
   is_veg: boolean
   is_spicy: boolean
   is_available: boolean
@@ -261,3 +262,51 @@ export interface PaginatedResponse<T> {
   pageSize: number
   totalPages: number
 }
+
+// ─── Inventory & Recipe Engine Types ──────────────────────────────────────────
+
+export interface Ingredient {
+  id: string
+  name: string
+  unit: string // 'kg' | 'g' | 'l' | 'ml' | 'pcs' | 'slices'
+  current_stock: number
+  reorder_threshold: number
+  cost_per_unit: number
+  expiry_date: string | null
+  supplier_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RecipeItem {
+  id: string
+  product_id: string
+  ingredient_id: string
+  quantity_required: number
+  created_at: string
+  ingredient?: Ingredient
+  product?: Product
+}
+
+// ─── Financial Analytics Types ────────────────────────────────────────────────
+
+export interface DailyRevenueSummary {
+  date: string
+  total_orders: number
+  gross_revenue: number
+  net_subtotal: number
+  total_discounts: number
+  total_tax: number
+  average_order_value: number
+}
+
+export interface ProductPerformanceSummary {
+  product_id: string
+  product_name: string
+  selling_price: number
+  cost_price: number
+  total_units_sold: number
+  total_revenue: number
+  total_estimated_profit: number
+}
+

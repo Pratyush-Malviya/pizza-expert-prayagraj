@@ -5,12 +5,15 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
   Settings, LogOut, ExternalLink,
-  ChevronRight, CreditCard, UtensilsCrossed, Truck, X, Palette
+  ChevronRight, CreditCard, UtensilsCrossed, Truck, X, Palette,
+  TrendingUp, Boxes
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ADMIN_LINKS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { label: 'Analytics & BI', href: '/admin/analytics', icon: TrendingUp },
+  { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
   { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
   { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed },
