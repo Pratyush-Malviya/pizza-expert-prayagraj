@@ -7,6 +7,8 @@ import AdminNotificationDropdown from '@/components/layout/AdminNotificationDrop
 import { Menu } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
+import { toast } from 'sonner'
+import { playNotificationSound, triggerSystemNotification } from '@/lib/utils/notifications'
 
 export default function AdminLayout({
   children,
@@ -22,7 +24,7 @@ export default function AdminLayout({
     setMobileOpen(false)
   }, [pathname])
 
-  // Real-time Supabase & local event order listener
+  // Real-time Supabase & local event order listener for Admin
   useEffect(() => {
     try {
       const supabase = createClient()
@@ -34,10 +36,34 @@ export default function AdminLayout({
           (payload: any) => {
             const newOrder = payload.new
             const addr = newOrder.address_json || {}
-            const idShort = String(newOrder.id).slice(0, 8)
+            const idShort = String(newOrder.id).slice(0, 8).toUpperCase()
+            const customerName = addr.name || 'Guest Customer'
+            const orderTotal = Number(newOrder.total || newOrder.subtotal || 0)
+
+            // 1. Play audio chime alert for staff/admin
+            playNotificationSound('success')
+
+            // 2. High-visibility Toast Notification Pop-up
+            toast.success(`🍕 New Order Received! #${idShort}`, {
+              description: `${customerName} placed an order for ₹${orderTotal}.`,
+              duration: 10000,
+              action: {
+                label: 'View Orders',
+                onClick: () => {
+                  window.location.href = '/admin/orders'
+                },
+              },
+            })
+
+            // 3. Native Browser Notification
+            triggerSystemNotification(`🍕 New Order Received #${idShort}`, {
+              body: `${customerName} placed an order for ₹${orderTotal}.`,
+            })
+
+            // 4. Store in admin notification dropdown state
             addNotification({
               title: `🍕 New Order #${idShort}`,
-              message: `${addr.name || 'Customer'} placed a new order for ₹${newOrder.total || newOrder.subtotal || 0}.`,
+              message: `${customerName} placed a new order for ₹${orderTotal}.`,
               type: 'order',
               orderId: newOrder.id,
               time: 'Just now',

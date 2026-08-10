@@ -24,10 +24,16 @@ function RegisterForm() {
 
     try {
       const supabase = createClient()
+      const origin = typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL || 'https://pizza-kappa-nine.vercel.app')
+      const emailRedirectTo = `${origin}/auth/callback`
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo,
           data: {
             name,
             phone,

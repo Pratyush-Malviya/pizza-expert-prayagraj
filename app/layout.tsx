@@ -3,6 +3,7 @@ import './globals.css'
 import { Toaster } from 'sonner'
 import FloatingCartButton from '@/components/shared/FloatingCartButton'
 import CartDrawer from '@/components/cart/CartDrawer'
+import CustomerRealtimeNotifier from '@/components/notifications/CustomerRealtimeNotifier'
 
 export const metadata: Metadata = {
   title: {
@@ -49,6 +50,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        <CustomerRealtimeNotifier />
         <FloatingCartButton />
         <CartDrawer />
         <Toaster
