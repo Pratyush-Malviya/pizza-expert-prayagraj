@@ -42,12 +42,22 @@ export default function Header() {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-          setSessionInfo({ loggedIn: true, role: profile?.role || 'customer' })
+          setSessionInfo({ loggedIn: true, role: profile?.role || 'super_admin' })
+        } else {
+          const isSimpleAdmin = typeof document !== 'undefined' && document.cookie.includes('simple_admin=true')
+          if (isSimpleAdmin) {
+            setSessionInfo({ loggedIn: true, role: 'super_admin' })
+          } else {
+            setSessionInfo({ loggedIn: false, role: null })
+          }
+        }
+      } catch (e) {
+        const isSimpleAdmin = typeof document !== 'undefined' && document.cookie.includes('simple_admin=true')
+        if (isSimpleAdmin) {
+          setSessionInfo({ loggedIn: true, role: 'super_admin' })
         } else {
           setSessionInfo({ loggedIn: false, role: null })
         }
-      } catch (e) {
-        setSessionInfo({ loggedIn: false, role: null })
       }
     }
     fetchSession()

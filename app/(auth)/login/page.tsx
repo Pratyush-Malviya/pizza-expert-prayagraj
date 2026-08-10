@@ -28,6 +28,12 @@ function LoginForm() {
     setMounted(true)
   }, [])
 
+  const handleDemoAdminLogin = () => {
+    document.cookie = "simple_admin=true; path=/; max-age=86400"
+    toast.success('Welcome back, Admin!')
+    window.location.href = redirectTarget === '/account' ? '/admin' : redirectTarget
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -35,9 +41,7 @@ function LoginForm() {
     try {
       const supabase = createClient()
       if (email === 'admin@demo.com' && password === 'admin') {
-        document.cookie = "simple_admin=true; path=/; max-age=86400"
-        toast.success('Welcome back, Admin!')
-        router.push(redirectTarget)
+        handleDemoAdminLogin()
         return
       }
 
@@ -200,8 +204,17 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Google OAuth Button for Customers */}
-            <div>
+            {/* Quick Demo Admin & OAuth */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleDemoAdminLogin}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 border border-amber-500/40 rounded-2xl text-xs font-black text-amber-300 uppercase tracking-wider transition-all duration-200 shadow-lg group"
+              >
+                <Sparkles size={16} className="text-amber-400 animate-pulse" />
+                <span>⚡ 1-Click Demo Admin Panel Access</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleGoogleLogin}
@@ -229,7 +242,7 @@ function LoginForm() {
                 <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
               </button>
 
-              <div className="relative flex py-4 items-center">
+              <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-white/10"></div>
                 <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-zinc-500 tracking-widest">
                   Or with email
