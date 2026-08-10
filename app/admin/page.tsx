@@ -266,7 +266,7 @@ export default function AdminDashboardPage() {
 
         {/* Desktop Table View (sm:block) */}
         <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
+          <table className="w-full text-left text-xs sm:text-sm min-w-[600px]">
             <thead>
               <tr className="text-[10px] text-[#A8A29E] font-bold uppercase border-b border-[#E7E0D8]">
                 <th className="pb-3 pl-2">Order ID</th>
@@ -280,38 +280,47 @@ export default function AdminDashboardPage() {
             <tbody className="divide-y divide-[#E7E0D8]/60">
               {recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-[#FBF9F5] transition-colors">
-                  <td className="py-3 pl-2 font-mono font-bold text-[#1C1917]">{order.id}</td>
+                  <td className="py-3 pl-2 font-mono font-bold text-[#1C1917] max-w-[130px] truncate" title={order.id}>
+                    {order.id.length > 12 ? `#${order.id.slice(0, 8)}...` : order.id}
+                  </td>
                   <td className="py-3 text-[#1C1917] font-semibold">{order.customer}</td>
-                  <td className="py-3 text-[#57534E] text-xs">{order.items}</td>
+                  <td className="py-3 text-[#57534E] text-xs max-w-[200px] truncate" title={order.items}>{order.items}</td>
                   <td className="py-3 font-mono font-bold text-[#B91C1C]">{formatPrice(order.total)}</td>
                   <td className="py-3">
                     <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#FBF9F5] text-[#1C1917] border border-[#E7E0D8]">
                       {order.statusLabel}
                     </span>
                   </td>
-                  <td className="py-3 text-right pr-2 text-xs text-[#A8A29E]">{order.time}</td>
+                  <td className="py-3 text-right pr-2 text-xs text-[#A8A29E] whitespace-nowrap">{order.time}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile Touch Cards View (sm:hidden) */}
-        <div className="sm:hidden divide-y divide-[#E7E0D8]">
+        {/* Mobile Cards View (sm:hidden) */}
+        <div className="sm:hidden space-y-3">
           {recentOrders.map((order) => (
-            <div key={order.id} className="py-3.5 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-xs text-[#1C1917]">{order.id}</span>
-                <span className="font-mono font-bold text-sm text-[#B91C1C]">{formatPrice(order.total)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-[#1C1917]">{order.customer}</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FBF9F5] text-[#1C1917] border border-[#E7E0D8]">
+            <div key={order.id} className="p-3.5 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8] space-y-2 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-xs text-[#1C1917] truncate max-w-[180px]" title={order.id}>
+                  #{order.id.length > 12 ? `${order.id.slice(0, 8)}...${order.id.slice(-4)}` : order.id}
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-[#1C1917] border border-[#E7E0D8] shrink-0">
                   {order.statusLabel}
                 </span>
               </div>
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <span className="font-semibold text-[#1C1917]">{order.customer}</span>
+                <span className="font-mono font-bold text-sm text-[#B91C1C]">{formatPrice(order.total)}</span>
+              </div>
               <p className="text-[11px] text-[#57534E] line-clamp-1">{order.items}</p>
-              <div className="text-[10px] text-[#A8A29E] text-right pt-0.5">{order.time}</div>
+              <div className="flex items-center justify-between pt-2 border-t border-[#E7E0D8]/60 text-[10px] text-[#A8A29E]">
+                <span>{order.time}</span>
+                <Link href="/admin/orders" className="text-[#B91C1C] font-semibold hover:underline">
+                  Manage Order →
+                </Link>
+              </div>
             </div>
           ))}
         </div>
