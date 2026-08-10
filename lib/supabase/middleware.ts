@@ -4,26 +4,17 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Fast-path: Only execute auth checks for protected route prefixes
   const isProtectedAdmin = pathname.startsWith('/admin')
   const isProtectedAccount = pathname.startsWith('/account')
 
   let supabaseResponse = NextResponse.next({ request })
-
-  // 1. Fast Admin Bypass: If admin cookie exists, return immediately without network latency
-  const hasSimpleAdmin = request.cookies.get('simple_admin')?.value === 'true'
-  const hasAdminAuth = request.cookies.get('admin_auth')?.value === 'true'
-
-  if (isProtectedAdmin && (hasSimpleAdmin || hasAdminAuth)) {
-    return supabaseResponse
-  }
 
   // If not accessing a protected route, skip blocking Supabase network requests completely
   if (!isProtectedAdmin && !isProtectedAccount) {
     return supabaseResponse
   }
 
-  // 2. Initialize Supabase SSR client for protected routes
+  // Initialize Supabase SSR client for protected routes
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,7 +36,7 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // 3. Retrieve user session from Supabase
+  // Retrieve user session from Supabase
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protect /admin routes
@@ -73,12 +64,27 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Cache admin authorization cookie to make future page clicks instant
-    supabaseResponse.cookies.set('admin_auth', 'true', {
-      path: '/',
-      maxAge: 86400,
-      sameSite: 'lax',
-    })
+    // Route-level RBAC Enforcement
+    if (role === 'staff' && !pathname.startsWith('/admin/kitchen') && !pathname.startsWith('/admin/inventory')) {
+      // Staff (like chefs) can only access kitchen and inventory
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/kitchen'
+      return NextResponse.redirect(url)
+    }
+
+    if (role === 'manager' && (pathname.startsWith('/admin/staff') || pathname.startsWith('/admin/settings'))) {
+      // Managers cannot access staff management or critical settings
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+    
+    if (role === 'viewer' && !(pathname === '/admin' || pathname.startsWith('/admin/orders') || pathname.startsWith('/admin/analytics'))) {
+      // Viewers can only view dashboard, orders, analytics
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
   }
 
   // Protect /account routes

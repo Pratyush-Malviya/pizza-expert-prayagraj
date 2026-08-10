@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingCart, User, Menu, X } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [sessionInfo, setSessionInfo] = useState<{ loggedIn: boolean, role: string | null } | null>(null)
 
   const itemCount = useCartStore((s) => s.getItemCount())
   const toggleCart = useCartStore((s) => s.toggleCart)
@@ -32,8 +34,28 @@ export default function Header() {
     setMounted(true)
     const handler = () => setIsScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler, { passive: true })
+    
+    // Fetch session
+    const fetchSession = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+          setSessionInfo({ loggedIn: true, role: profile?.role || 'customer' })
+        } else {
+          setSessionInfo({ loggedIn: false, role: null })
+        }
+      } catch (e) {
+        setSessionInfo({ loggedIn: false, role: null })
+      }
+    }
+    fetchSession()
+    
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  const isAdminRole = ['super_admin', 'manager', 'staff', 'viewer'].includes(sessionInfo?.role || '')
 
   return (
     <>
@@ -90,14 +112,25 @@ export default function Header() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="p-2.5 text-[#ffffff] hover:text-[#ffc7c6] hover:bg-[#260212] rounded-[15px] transition-colors hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
-              aria-label="Account"
-            >
-              <User size={18} />
-              <span>SIGN IN</span>
-            </Link>
+            {sessionInfo?.loggedIn ? (
+              <Link
+                href={isAdminRole ? '/admin' : '/account'}
+                className="p-2.5 text-[#ffffff] hover:text-[#ffc7c6] hover:bg-[#260212] rounded-[15px] transition-colors hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                aria-label="Account"
+              >
+                <User size={18} />
+                <span>{isAdminRole ? 'ADMIN' : 'MY ACCOUNT'}</span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="p-2.5 text-[#ffffff] hover:text-[#ffc7c6] hover:bg-[#260212] rounded-[15px] transition-colors hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                aria-label="Account"
+              >
+                <User size={18} />
+                <span>SIGN IN</span>
+              </Link>
+            )}
 
             {/* Cart Button - Impossible Red Fill, 15px Radius */}
             <button
@@ -151,13 +184,23 @@ export default function Header() {
               ))}
 
               <div className="pt-2">
-                <Link
-                  href="/login"
-                  onClick={() => setIsMobileOpen(false)}
-                  className="btn btn-secondary w-full rounded-[15px] justify-center text-xs font-bold uppercase tracking-wider"
-                >
-                  <User size={16} /> Sign In to Your Account
-                </Link>
+                {sessionInfo?.loggedIn ? (
+                  <Link
+                    href={isAdminRole ? '/admin' : '/account'}
+                    onClick={() => setIsMobileOpen(false)}
+                    className="btn btn-secondary w-full rounded-[15px] justify-center text-xs font-bold uppercase tracking-wider"
+                  >
+                    <User size={16} /> {isAdminRole ? 'Admin Portal' : 'My Account'}
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMobileOpen(false)}
+                    className="btn btn-secondary w-full rounded-[15px] justify-center text-xs font-bold uppercase tracking-wider"
+                  >
+                    <User size={16} /> Sign In to Your Account
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>
