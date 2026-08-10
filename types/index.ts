@@ -348,4 +348,85 @@ export interface NotificationLog {
   sent_at: string
 }
 
+// ─── Phases 3, 4, 5 Types ─────────────────────────────────────────────────────
+
+export interface TaxInvoice {
+  id: string
+  order_id: string
+  invoice_number: string
+  gstin: string
+  cgst: number
+  sgst: number
+  igst: number
+  total_tax: number
+  generated_at: string
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  contact_person: string | null
+  phone: string | null
+  email: string | null
+  payment_terms: string
+  created_at: string
+}
+
+export interface PurchaseOrder {
+  id: string
+  supplier_id: string
+  status: 'draft' | 'ordered' | 'received' | 'paid'
+  total_amount: number
+  ordered_at: string | null
+  received_at: string | null
+  created_at: string
+  supplier?: Supplier
+}
+
+export interface StaffShift {
+  id: string
+  profile_id: string
+  role: string
+  shift_start: string
+  shift_end: string
+  checked_in_at: string | null
+  checked_out_at: string | null
+  notes: string | null
+  created_at: string
+  profile?: Profile
+}
+
+export interface RestaurantTable {
+  id: string
+  table_number: string
+  qr_code_url: string | null
+  capacity: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface Subscription {
+  id: string
+  user_id: string
+  product_id: string
+  frequency: 'weekly' | 'biweekly' | 'monthly'
+  next_delivery: string
+  status: 'active' | 'paused' | 'cancelled'
+  created_at: string
+  product?: Product
+}
+
+export interface RefundRequest {
+  id: string
+  order_id: string
+  payment_gateway: string
+  gateway_refund_id: string | null
+  amount: number
+  status: 'pending' | 'processed' | 'failed'
+  reason: string | null
+  processed_at: string | null
+  created_at: string
+}
+
+
 
