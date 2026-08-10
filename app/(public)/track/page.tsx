@@ -9,6 +9,8 @@ import {
   CreditCard, MessageCircle, RefreshCw
 } from 'lucide-react'
 import { requestNotificationPermission, notifyOrderStatusChange, playNotificationSound } from '@/lib/utils/notifications'
+import LoyaltyBadge from '@/components/profile/LoyaltyBadge'
+import QuickReorderButton from '@/components/orders/QuickReorderButton'
 
 function TrackOrderContent() {
   const searchParams = useSearchParams()
@@ -334,6 +336,15 @@ function TrackOrderContent() {
                 </div>
               </>
             )}
+
+            {/* Quick Re-order & Loyalty Membership Badges */}
+            <div className="pt-4 border-t border-[#E7E0D8] space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-semibold text-[#57534E]">Love your order? Reorder in 1-Click:</span>
+                <QuickReorderButton orderId={orderId} />
+              </div>
+              <LoyaltyBadge points={240} userTierName="Silver" />
+            </div>
 
             {/* Address Footer */}
             <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between text-xs text-[#57534E]">

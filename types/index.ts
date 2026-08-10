@@ -9,7 +9,10 @@ export interface Profile {
   phone: string | null
   role: UserRole
   loyalty_points: number
+  tier_id?: string | null
+  date_of_birth?: string | null
   created_at: string
+  tier?: LoyaltyTier
 }
 
 export interface Category {
@@ -309,4 +312,40 @@ export interface ProductPerformanceSummary {
   total_revenue: number
   total_estimated_profit: number
 }
+
+// ─── Phase 2 Retention & Loyalty Types ────────────────────────────────────────
+
+export interface LoyaltyTierPerks {
+  discount_percent: number
+  free_delivery: boolean
+  priority_support?: boolean
+  badge: string
+}
+
+export interface LoyaltyTier {
+  id: string
+  name: string // 'Silver' | 'Gold' | 'VIP'
+  min_points: number
+  perks: LoyaltyTierPerks
+  created_at: string
+}
+
+export interface CartSession {
+  id: string
+  user_id: string | null
+  items: CartItem[]
+  last_updated: string
+  recovered: boolean
+  created_at: string
+}
+
+export interface NotificationLog {
+  id: string
+  user_id: string | null
+  channel: 'email' | 'sms' | 'push'
+  template: 'abandoned_cart' | 'winback' | 'birthday'
+  status: 'sent' | 'failed'
+  sent_at: string
+}
+
 
