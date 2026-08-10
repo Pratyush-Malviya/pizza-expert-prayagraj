@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import AdminSidebar from '@/components/layout/AdminSidebar'
-import { Bell, Menu } from 'lucide-react'
+import AdminNotificationDropdown from '@/components/layout/AdminNotificationDropdown'
+import { Menu } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useNotificationStore } from '@/lib/store/useNotificationStore'
 
 export default function AdminLayout({
   children,
@@ -12,11 +15,44 @@ export default function AdminLayout({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  const addNotification = useNotificationStore((state) => state.addNotification)
 
   // Auto-close mobile sidebar when navigating
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
+
+  // Real-time Supabase & local event order listener
+  useEffect(() => {
+    try {
+      const supabase = createClient()
+      const channel = supabase
+        .channel('admin-order-events')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'orders' },
+          (payload: any) => {
+            const newOrder = payload.new
+            const addr = newOrder.address_json || {}
+            const idShort = String(newOrder.id).slice(0, 8)
+            addNotification({
+              title: `🍕 New Order #${idShort}`,
+              message: `${addr.name || 'Customer'} placed a new order for ₹${newOrder.total || newOrder.subtotal || 0}.`,
+              type: 'order',
+              orderId: newOrder.id,
+              time: 'Just now',
+            })
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    } catch (err) {
+      console.warn('Realtime subscription note:', err)
+    }
+  }, [addNotification])
 
   return (
     <div className="flex min-h-screen bg-[#FBF9F5] text-[#1C1917] relative overflow-x-hidden">
@@ -44,10 +80,7 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            <button className="p-2 rounded-md text-[#57534E] hover:text-[#1C1917] hover:bg-[#F4EFEA] relative">
-              <Bell size={17} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B91C1C] rounded-full" />
-            </button>
+            <AdminNotificationDropdown />
 
             <div className="flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8]">
               <div className="w-7 h-7 rounded-md bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs font-serif">
