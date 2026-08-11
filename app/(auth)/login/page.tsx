@@ -28,11 +28,6 @@ function LoginForm() {
     setMounted(true)
   }, [])
 
-  const handleDemoAdminLogin = () => {
-    document.cookie = "simple_admin=true; path=/; max-age=86400"
-    toast.success('Welcome back, Admin!')
-    window.location.href = redirectTarget === '/account' ? '/admin' : redirectTarget
-  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,11 +35,6 @@ function LoginForm() {
 
     try {
       const supabase = createClient()
-      if (email === 'admin@demo.com' && password === 'admin') {
-        handleDemoAdminLogin()
-        return
-      }
-
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

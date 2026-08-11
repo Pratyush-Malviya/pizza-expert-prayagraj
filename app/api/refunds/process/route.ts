@@ -1,26 +1,27 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * POST /api/refunds/process
  *
  * Initiates a refund via Razorpay API.
  * Requires: super_admin role (enforced via Supabase admin client + RLS check)
- * Body: { orderId: string, amount: number, reason?: string }
+ * Body: { orderId: string, reason?: string }
  */
 export async function POST(request: Request) {
   try {
-    const { orderId, amount, reason } = await request.json()
+    const { orderId, reason } = await request.json()
 
-    if (!orderId || !amount) {
+    if (!orderId) {
       return NextResponse.json(
-        { success: false, error: 'Missing orderId or amount' },
+        { success: false, error: 'Missing orderId' },
         { status: 400 }
       )
     }
 
     const supabase = await createClient()
+    const adminClient = createAdminClient()
 
     // ─── 1. Auth guard: only super_admin can initiate refunds ──────────
     const { data: { user } } = await supabase.auth.getUser()
@@ -72,13 +73,13 @@ export async function POST(request: Request) {
     }
 
     // ─── 4. Create refund_request record as 'processing' ───────────────
-    const { data: refundRecord, error: refundErr } = await supabase
+    const { data: refundRecord, error: refundErr } = await adminClient
       .from('refund_requests')
       .insert({
         order_id: orderId,
         payment_gateway: 'razorpay',
         gateway_payment_id: payment.gateway_payment_id,
-        amount: Number(amount),
+        amount: Number(payment.amount),
         status: 'processing',
         reason: reason || 'Order cancelled by store',
         initiated_by: user.id,
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              amount: Math.round(Number(amount) * 100), // Razorpay uses paise
+              amount: Math.round(Number(payment.amount) * 100), // Razorpay uses paise
               notes: { reason: reason || 'Order cancelled', orderId },
             }),
           }
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
         action: 'REFUND_INITIATED',
         target_table: 'orders',
         target_id: orderId,
-        after: { refund_id: refundRecord.id, amount, gateway_refund_id: gatewayRefundId, reason },
+        after: { refund_id: refundRecord.id, amount: payment.amount, gateway_refund_id: gatewayRefundId, reason },
       })
     } catch {} // audit log failure should not block refund
 
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
       refundId: refundRecord.id,
       gatewayRefundId,
       status: 'processed',
-      message: `Refund of ₹${amount} initiated successfully.`,
+      message: `Refund of ₹${payment.amount} initiated successfully.`,
     })
   } catch (err: any) {
     return NextResponse.json(

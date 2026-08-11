@@ -43,16 +43,6 @@ function AdminLoginForm() {
         return
       }
 
-      // 2. Production Primary Admin / Staff Bypass Handling
-      if (
-        (email === 'malviya.pratyush26@gmail.com' || email === 'admin@pizzaexpert.com' || email === 'admin@demo.com') &&
-        (password === 'admin' || password === 'admin123' || password.length >= 4)
-      ) {
-        setAdminSessionCookie()
-        toast.success('Welcome back, Admin Master!')
-        window.location.href = redirectTarget
-        return
-      }
 
       // 3. Fallback: If user tried to sign up as admin or entered valid credentials
       if (authError) {
@@ -81,11 +71,6 @@ function AdminLoginForm() {
     }
   }
 
-  const handleFastAdminAuth = () => {
-    setAdminSessionCookie()
-    toast.success('Production Admin Session Authenticated!')
-    window.location.href = redirectTarget
-  }
 
   return (
     <div className="min-h-screen bg-[#070709] text-white flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans">
@@ -187,21 +172,7 @@ function AdminLoginForm() {
           </button>
         </form>
 
-        {/* Quick Fast-Auth Button for Production Managers */}
-        <div className="pt-2 border-t border-white/10 space-y-3">
-          <button
-            type="button"
-            onClick={handleFastAdminAuth}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/15 rounded-2xl text-xs font-bold text-amber-300 uppercase tracking-wider transition-all duration-200 shadow-md group"
-          >
-            <Sparkles size={15} className="text-amber-400 animate-pulse" />
-            <span>⚡ Production Manager 1-Click Authenticate</span>
-          </button>
 
-          <div className="text-center text-[11px] text-zinc-500">
-            Authorized store staff & management access only.
-          </div>
-        </div>
 
       </div>
     </div>

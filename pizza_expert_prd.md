@@ -801,11 +801,14 @@ graph TB
 
 | Table | Customer Policy | Staff Policy | Admin Policy |
 |---|---|---|---|
-| `orders` | Own rows only | All rows (read) | Full access |
+| `orders` | Own rows only (read) | All rows (read/update) | Full access |
+| `order_items` | Own rows only (read) | All rows (read/update) | Full access |
 | `profiles` | Own row only | Own + assigned | All rows |
 | `products` | Read only | Read only | Full CRUD |
 | `reviews` | Own + approved | Read all | Full CRUD |
-| `payments` | Own only | Read all | Full access |
+| `payments` | Read own only | Read all | Full access |
+| `deliveries` | Driver: Own assigned | All rows | Full access |
+| `driver_locations`| Driver: Own row (upsert) | All rows | Full access |
 
 ### 10.2 API Key Security
 
@@ -837,6 +840,14 @@ sequenceDiagram
 **Strict Authentication Enforcement:** 
 - All legacy "one-click" admin bypasses and hardcoded demo credentials have been fully removed. Authentication strictly requires valid Supabase email/password verification or Google OAuth. 
 - Active sessions are securely terminated on logout across both customer and admin portals by destroying the Supabase auth session and clearing any legacy admin cookies.
+
+### 10.4 Security Hardening (OWASP ASVS 5.0.0)
+
+The application adheres to OWASP ASVS 5.0.0 standards across all layers:
+- **Server-Authoritative Pricing:** All coupon validations, order totals, and refund amounts are computed server-side using secure Service Role clients. The UI cart is strictly a visual representation.
+- **Strict RLS Scope:** Tables previously utilizing dangerous `USING (TRUE)` or `WITH CHECK (TRUE)` bypasses have been restricted. All helper functions (`is_admin`, `is_super_admin`) run with `search_path = ''` to prevent function hijacking.
+- **Driver Data Isolation:** Drivers can only write their own geolocation updates and view their assigned deliveries.
+- **Browser Boundary & Supply Chain:** `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, and `Permissions-Policy` headers are strictly enforced via `next.config.ts`. API routes implement memory rate-limiting and catch block masking to prevent stack trace leakage. Automated `npm audit` CI is enabled.
 
 ---
 

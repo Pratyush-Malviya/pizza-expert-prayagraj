@@ -46,13 +46,6 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse
     }
 
-    // 1. Allow production admin session or demo admin cookie bypass
-    const adminSession = request.cookies.get('admin_session')?.value === 'true'
-    const simpleAdmin = request.cookies.get('simple_admin')?.value === 'true'
-    if (adminSession || simpleAdmin) {
-      return supabaseResponse
-    }
-
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
@@ -60,18 +53,21 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Primary admin email override + Role check via profiles table
-    let role = (user.email === 'malviya.pratyush26@gmail.com' || user.email === 'admin@demo.com') ? 'super_admin' : ''
+    // 1. Strictly enforce role resolution from active profiles table
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, is_active')
+      .eq('id', user.id)
+      .single()
 
-    if (!role) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      role = profile?.role || user.user_metadata?.role || 'super_admin'
+    if (error || !profile || !profile.is_active) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/login'
+      url.searchParams.set('error', 'unauthorized')
+      return NextResponse.redirect(url)
     }
+
+    const role = profile.role
 
     const isAdminRole = ['super_admin', 'manager', 'staff', 'viewer'].includes(role)
 

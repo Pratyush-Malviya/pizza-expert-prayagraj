@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { CartItem } from '@/types'
 import { sendOrderConfirmationEmail } from '@/lib/utils/resend'
 
@@ -136,6 +137,7 @@ export async function createOrder(payload: {
 }) {
   try {
     const supabase = await createClient()
+    const adminClient = createAdminClient()
 
     // 1. Calculate authoritative total
     const calculation = await calculateOrderTotal(payload.cartItems, payload.couponCode)
@@ -156,8 +158,8 @@ export async function createOrder(payload: {
       ? 'cod_pending'
       : 'pending'
 
-    // 4. Insert order
-    const { data: order, error: orderErr } = await supabase
+    // 4. Insert order using adminClient
+    const { data: order, error: orderErr } = await adminClient
       .from('orders')
       .insert({
         user_id: user?.id || null,
@@ -183,7 +185,7 @@ export async function createOrder(payload: {
       .select('id, slug')
       .in('slug', payload.cartItems.map((i) => i.slug))
 
-    // 5. Insert order items with UUID validation
+    // 5. Insert order items with UUID validation using adminClient
     const orderItems = payload.cartItems.map((item) => {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
       const matchedDbProd = dbProducts?.find((p: { id: string; slug: string }) => p.slug === item.slug || p.id === item.id)
@@ -197,14 +199,14 @@ export async function createOrder(payload: {
       }
     })
 
-    const { error: itemsErr } = await supabase.from('order_items').insert(orderItems)
+    const { error: itemsErr } = await adminClient.from('order_items').insert(orderItems)
 
     if (itemsErr) {
       console.error('Error inserting order items:', itemsErr.message)
     }
 
-    // 6. Add initial status history entry
-    await supabase.from('order_status_history').insert({
+    // 6. Add initial status history entry using adminClient
+    await adminClient.from('order_status_history').insert({
       order_id: order.id,
       status: initialStatus,
       notes: initialStatus === 'cod_pending'
@@ -215,7 +217,7 @@ export async function createOrder(payload: {
     // 7. For COD orders below threshold, also insert confirmed payment record
     if (isCod && total <= COD_VERIFICATION_THRESHOLD) {
       try {
-        await supabase.from('payments').insert({
+        await adminClient.from('payments').insert({
           order_id: order.id,
           gateway: 'cod',
           amount: total,
