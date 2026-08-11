@@ -409,6 +409,80 @@ export default function AdminAnalyticsPage() {
           </table>
         </div>
       </div>
+
+      {/* Dead-Hours Revenue Heatmap */}
+      <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+        <div>
+          <h3 className="font-serif font-bold text-[#1C1917] text-lg">Dead-Hours Revenue Opportunity Heatmap</h3>
+          <p className="text-xs text-[#A8A29E]">Order volume density across days & hours (identifies quiet periods for happy-hour discounts)</p>
+        </div>
+
+        <div className="grid grid-cols-8 gap-1.5 text-center text-[10px] font-mono">
+          <div className="font-bold text-[#57534E] py-2">Hour</div>
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+            <div key={d} className="font-bold text-[#57534E] py-2">{d}</div>
+          ))}
+
+          {[
+            { hour: '12-3 PM (Lunch)', vals: [65, 70, 68, 85, 95, 100, 90] },
+            { hour: '3-6 PM (Dead)', vals: [15, 20, 18, 25, 30, 45, 40] },
+            { hour: '6-9 PM (Peak)', vals: [90, 95, 92, 100, 100, 100, 100] },
+            { hour: '9-12 AM (Late)', vals: [40, 45, 50, 60, 85, 95, 80] },
+          ].map((row) => (
+            <>
+              <div key={row.hour} className="font-bold text-[#57534E] py-3 text-left flex items-center">{row.hour}</div>
+              {row.vals.map((v, i) => {
+                const bg = v > 80 ? 'bg-emerald-500 text-white' : v > 40 ? 'bg-amber-400 text-white' : 'bg-red-100 text-red-700 font-bold'
+                return (
+                  <div key={i} className={`rounded-md py-3 flex items-center justify-center font-bold ${bg}`}>
+                    {v}%
+                  </div>
+                )
+              })}
+            </>
+          ))}
+        </div>
+      </div>
+
+      {/* Cohort Retention Table */}
+      <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+        <div>
+          <h3 className="font-serif font-bold text-[#1C1917] text-lg">Customer Cohort Retention Matrix</h3>
+          <p className="text-xs text-[#A8A29E]">Percentage of customer cohorts making repeat orders over 4 consecutive months</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#F5F2EC] text-[#78716C] uppercase text-[10px] font-bold">
+              <tr>
+                <th className="py-2.5 px-4">Cohort Month</th>
+                <th className="py-2.5 px-4 text-right">New Customers</th>
+                <th className="py-2.5 px-4 text-center">Month 1</th>
+                <th className="py-2.5 px-4 text-center">Month 2</th>
+                <th className="py-2.5 px-4 text-center">Month 3</th>
+                <th className="py-2.5 px-4 text-center">Month 4</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E7E0D8]">
+              {[
+                { month: 'May 2026', count: 184, m1: '100%', m2: '42%', m3: '38%', m4: '35%' },
+                { month: 'Jun 2026', count: 215, m1: '100%', m2: '45%', m3: '41%', m4: '39%' },
+                { month: 'Jul 2026', count: 260, m1: '100%', m2: '48%', m3: '44%', m4: '-' },
+                { month: 'Aug 2026', count: 310, m1: '100%', m2: '52%', m3: '-', m4: '-' },
+              ].map((row) => (
+                <tr key={row.month} className="hover:bg-[#FDFBF7]">
+                  <td className="py-3 px-4 font-bold text-[#1C1917]">{row.month}</td>
+                  <td className="py-3 px-4 text-right font-mono font-semibold">{row.count}</td>
+                  <td className="py-3 px-4 text-center bg-emerald-50 text-emerald-800 font-bold">{row.m1}</td>
+                  <td className="py-3 px-4 text-center bg-emerald-50/70 text-emerald-700 font-semibold">{row.m2}</td>
+                  <td className="py-3 px-4 text-center bg-emerald-50/40 text-emerald-700">{row.m3}</td>
+                  <td className="py-3 px-4 text-center text-[#A8A29E]">{row.m4}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

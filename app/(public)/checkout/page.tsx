@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ShieldCheck, CreditCard, Banknote, Lock, LogIn, UserPlus, Loader2 } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { createOrder } from '@/app/actions/orders'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { isPincodeInPrayagraj } from '@/lib/delivery-zone'
+import { fetchEta } from '@/app/actions/eta'
+import { EtaEstimate } from '@/lib/eta'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -34,6 +37,14 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cashfree' | 'cod'>('razorpay')
   const [loading, setLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [codPendingOrderId, setCodPendingOrderId] = useState<string | null>(null)
+  const [eta, setEta] = useState<EtaEstimate | null>(null)
+
+  // Fetch ETA on mount
+  useEffect(() => {
+    fetchEta().then(setEta).catch(console.error)
+  }, [])
 
   // Check authentication on mount
   useEffect(() => {
@@ -63,6 +74,19 @@ export default function CheckoutPage() {
   const deliveryFee = subtotal >= 499 || subtotal === 0 ? 0 : 30
   const tax = Math.round(subtotal * 0.05)
   const grandTotal = Math.max(0, subtotal + tax + deliveryFee)
+
+  // ─── Delivery Zone & Min Order Validation ───────────────────────────
+  const MIN_DELIVERY_ORDER = 149
+  const zoneCheck = addressInfo.pincode.length >= 6
+    ? isPincodeInPrayagraj(addressInfo.pincode)
+    : null // null = unknown (no pincode entered yet)
+  const zoneError = zoneCheck === false
+    ? `We currently only deliver within Prayagraj. Pin ${addressInfo.pincode} appears to be outside our delivery area.`
+    : null
+  const minOrderError = subtotal > 0 && subtotal < MIN_DELIVERY_ORDER
+    ? `Minimum order for delivery is ₹${MIN_DELIVERY_ORDER}. Add ₹${MIN_DELIVERY_ORDER - subtotal} more to proceed.`
+    : null
+  const hasZoneOrOrderError = !!(zoneError || minOrderError)
 
   if (items.length === 0) {
     return (
@@ -137,6 +161,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault()
+    setPaymentError(null)
 
     if (!contactInfo.name || !contactInfo.phone || !addressInfo.line1) {
       toast.error('Please fill in all required fields (Name, Phone, Address)')
@@ -148,6 +173,7 @@ export default function CheckoutPage() {
     try {
       const res = await createOrder({
         cartItems: items,
+        paymentMethod,
         address: {
           name: contactInfo.name,
           phone: contactInfo.phone,
@@ -157,23 +183,65 @@ export default function CheckoutPage() {
           city: addressInfo.city,
           state: addressInfo.state,
           pincode: addressInfo.pincode,
-          paymentMethod,
         },
         notes: addressInfo.notes,
       })
 
       if (res.success && res.orderId) {
+        // COD orders above ₹1,000 need admin phone verification — show holding screen
+        if (res.requiresVerification) {
+          setCodPendingOrderId(res.orderId)
+          clearCart()
+          return
+        }
         toast.success('Order placed successfully!')
         clearCart()
         router.push(`/order/${res.orderId}`)
       } else {
-        toast.error(res.error || 'Failed to place order on backend.')
+        // Payment / order creation failure — keep cart intact, show retry UI
+        const errMsg = res.error || 'Payment could not be completed. Please try again.'
+        setPaymentError(errMsg)
+        toast.error(errMsg)
       }
     } catch {
-      toast.error('Failed to place order. Please try again.')
+      const errMsg = 'Connection error. Please check your internet and try again.'
+      setPaymentError(errMsg)
+      toast.error(errMsg)
     } finally {
       setLoading(false)
     }
+  }
+
+  // ─── COD Pending Verification Screen ───────────────────────────────
+  if (codPendingOrderId) {
+    return (
+      <div className="bg-[#FBF9F5] min-h-[80vh] flex items-center justify-center py-16 px-4">
+        <div className="bg-white rounded-2xl p-8 sm:p-10 max-w-md w-full border border-[#E7E0D8] shadow-xl text-center space-y-5">
+          <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center mx-auto">
+            <Clock size={32} className="text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-serif font-bold text-2xl text-[#1C1917] mb-2">Order Received — Verification Needed</h2>
+            <p className="text-[#57534E] text-sm leading-relaxed">
+              Your Cash on Delivery order of <strong>{formatPrice(grandTotal)}</strong> has been placed.
+              Our team will call you at <strong>{contactInfo.phone}</strong> within 5 minutes to confirm before we start preparing.
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-left space-y-1">
+            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">Order Reference</p>
+            <p className="font-mono text-sm font-bold text-amber-900">{codPendingOrderId.slice(0, 8).toUpperCase()}</p>
+          </div>
+          <div className="pt-2 space-y-3">
+            <Link href={`/order/${codPendingOrderId}`} className="btn btn-primary btn-lg w-full">
+              Track My Order
+            </Link>
+            <Link href="/menu" className="block text-xs text-center text-[#57534E] hover:text-[#B91C1C] transition-colors">
+              Continue Browsing Menu
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -435,10 +503,63 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
+              {eta && paymentMethod !== 'cod' && (
+                <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-lg p-3 mt-2 flex items-center gap-2 text-xs">
+                  <Clock size={16} className="text-[#B91C1C]" />
+                  <span className="text-[#991B1B] font-medium">Estimated Delivery: <strong>~{eta.totalLabel}</strong></span>
+                </div>
+              )}
+
+              {/* Payment Failure Error Banner */}
+              {paymentError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-red-800">Payment Not Completed</p>
+                      <p className="text-[11px] text-red-700 mt-0.5 leading-relaxed">{paymentError}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors"
+                    >
+                      <RefreshCw size={13} />
+                      Try Again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPaymentMethod('cod'); setPaymentError(null) }}
+                      className="py-2 px-3 bg-white border border-[#E7E0D8] hover:border-[#B91C1C] text-[#1C1917] text-xs font-bold rounded-lg transition-colors"
+                    >
+                      Switch to COD
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery Zone Warning */}
+              {zoneError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                  <MapPin size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-800 leading-relaxed">{zoneError}</p>
+                </div>
+              )}
+
+              {/* Minimum Order Warning */}
+              {minOrderError && !zoneError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                  <AlertCircle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-800 leading-relaxed">{minOrderError}</p>
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading}
-                className="btn btn-primary btn-lg w-full mt-2 font-bold"
+                disabled={loading || hasZoneOrOrderError}
+                className="btn btn-primary btn-lg w-full mt-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processing Order...' : `Place Order (${paymentMethod.toUpperCase()})`}
               </button>

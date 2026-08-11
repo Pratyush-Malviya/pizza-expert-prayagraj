@@ -6,6 +6,7 @@ import FeatureIcons from '@/components/home/FeatureIcons'
 import GoogleReviews from '@/components/home/GoogleReviews'
 import InstagramCarousel from '@/components/home/InstagramCarousel'
 import FaqSnippet from '@/components/home/FaqSnippet'
+import ReorderCTA from '@/components/home/ReorderCTA'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import type { Category, Product } from '@/types'
 
@@ -291,6 +292,8 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(restaurantSchema) }}
       />
+
+      <ReorderCTA />
 
       {/* 1. Dark Hero Section */}
       <HeroBanner />

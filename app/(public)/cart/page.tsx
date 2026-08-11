@@ -1,17 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, ArrowLeft } from 'lucide-react'
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, ArrowLeft, Clock } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { toast } from 'sonner'
+import { fetchEta } from '@/app/actions/eta'
+import { EtaEstimate } from '@/lib/eta'
+import CartUpsell from '@/components/cart/CartUpsell'
 
-export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, getSubtotal, getItemKey } = useCartStore()
   const [couponCode, setCouponCode] = useState('')
   const [discount, setDiscount] = useState(0)
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null)
+  const [eta, setEta] = useState<EtaEstimate | null>(null)
+
+  useEffect(() => {
+    fetchEta().then(setEta).catch(console.error)
+  }, [])
 
   const subtotal = getSubtotal()
   const deliveryFee = subtotal >= 499 || subtotal === 0 ? 0 : 30
@@ -168,6 +175,9 @@ export default function CartPage() {
                 </span>
               </div>
             </div>
+
+            {/* Frequently Bought Together Upsell */}
+            <CartUpsell />
           </div>
 
           {/* Sidebar Summary */}
@@ -244,6 +254,13 @@ export default function CartPage() {
                   {formatPrice(grandTotal)}
                 </span>
               </div>
+
+              {eta && (
+                <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-lg p-3 mt-2 flex items-center gap-2 text-xs">
+                  <Clock size={16} className="text-[#B91C1C]" />
+                  <span className="text-[#991B1B] font-medium">Estimated Delivery: <strong>~{eta.totalLabel}</strong></span>
+                </div>
+              )}
 
               <Link href="/checkout" className="btn btn-primary btn-lg w-full mt-2 flex items-center justify-center gap-2">
                 Proceed to Checkout <ArrowRight size={17} />

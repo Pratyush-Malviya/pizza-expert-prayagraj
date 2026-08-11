@@ -45,6 +45,7 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refunding, setRefunding] = useState(false)
 
   // Fetch real orders from Supabase on mount
   useEffect(() => {
@@ -141,6 +142,29 @@ export default function AdminOrdersPage() {
     }
   }
 
+  const handleRefund = async (orderId: string) => {
+    if (!confirm(`Are you sure you want to refund order ${orderId}? This cannot be undone.`)) return
+    
+    setRefunding(true)
+    try {
+      const res = await fetch('/api/refunds/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, reason: 'Admin requested refund' })
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Refund failed')
+
+      toast.success('Refund processed successfully!')
+      handleStatusChange(orderId, 'refunded')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setRefunding(false)
+    }
+  }
+
   const filteredOrders = orders.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false
     if (searchQuery.trim() !== '') {
@@ -186,11 +210,15 @@ export default function AdminOrdersPage() {
           className="input-field py-2 px-3 text-xs sm:text-sm bg-[#FBF9F5] w-auto font-semibold"
         >
           <option value="all">All Statuses ({orders.length})</option>
+          <option value="cod_pending">⚠️ COD Pending ({orders.filter(o => o.status === 'cod_pending').length})</option>
           <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
           <option value="preparing">Preparing</option>
+          <option value="ready">Ready</option>
           <option value="out_for_delivery">Out for Delivery</option>
           <option value="delivered">Delivered</option>
           <option value="cancelled">Cancelled</option>
+          <option value="refunded">Refunded</option>
         </select>
       </div>
 
@@ -238,13 +266,21 @@ export default function AdminOrdersPage() {
                       <select
                         value={order.status}
                         onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                        className="text-xs font-semibold rounded-md px-2.5 py-1 bg-[#F4EFEA] border border-[#E7E0D8] text-[#1C1917]"
+                        className={`text-xs font-semibold rounded-md px-2.5 py-1 border text-[#1C1917] ${
+                          order.status === 'cod_pending'
+                            ? 'bg-amber-50 border-amber-300 text-amber-800'
+                            : 'bg-[#F4EFEA] border-[#E7E0D8]'
+                        }`}
                       >
+                        <option value="cod_pending">⚠️ COD Pending</option>
                         <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
                         <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
                         <option value="out_for_delivery">Out for Delivery</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="refunded">Refunded</option>
                       </select>
                     </td>
                     <td className="py-3.5 pr-5 text-right">
@@ -428,12 +464,23 @@ export default function AdminOrdersPage() {
 
             {/* Footer Modal Actions */}
             <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between">
-              <button
-                onClick={() => handleDeleteOrder(selectedOrder.id)}
-                className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 text-xs flex items-center gap-1.5"
-              >
-                <Trash2 size={14} /> Delete Order
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDeleteOrder(selectedOrder.id)}
+                  className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 text-xs flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
+                {selectedOrder.status === 'cancelled' && selectedOrder.payment_method !== 'cod' && (
+                  <button
+                    onClick={() => handleRefund(selectedOrder.id)}
+                    disabled={refunding}
+                    className="btn btn-secondary text-amber-700 border-amber-200 hover:bg-amber-50 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {refunding ? 'Refunding...' : 'Initiate Refund'}
+                  </button>
+                )}
+              </div>
 
               <div className="flex items-center gap-3">
                 <button

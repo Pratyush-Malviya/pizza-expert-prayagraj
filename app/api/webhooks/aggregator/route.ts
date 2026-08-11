@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+/**
+ * POST /api/webhooks/aggregator
+ * Ingests orders from Zomato/Swiggy partner webhook.
+ * Uses external_order_id as idempotency key to prevent duplicate ingestion.
+ */
 export async function POST(request: Request) {
   try {
     const payload = await request.json()
@@ -10,21 +15,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Invalid aggregator source' }, { status: 400 })
     }
 
+    if (!externalOrderId) {
+      return NextResponse.json({ success: false, error: 'externalOrderId is required for idempotency' }, { status: 400 })
+    }
+
     const supabase = await createClient()
+
+    // ─── Idempotency check: reject duplicate external order IDs ──────────
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('id, status')
+      .eq('external_order_id', externalOrderId)
+      .maybeSingle()
+
+    if (existingOrder) {
+      // Already processed — return success silently (idempotent)
+      return NextResponse.json({
+        success: true,
+        message: `Order ${externalOrderId} already ingested (idempotent)`,
+        orderId: existingOrder.id,
+        duplicate: true,
+      })
+    }
 
     // Normalize and insert order into Supabase
     const { data: order, error: orderErr } = await supabase
       .from('orders')
       .insert({
         source: source.toLowerCase(),
-        external_order_id: externalOrderId || `EXT-${Date.now()}`,
+        external_order_id: externalOrderId,
         status: 'confirmed',
         subtotal: subtotal || total,
         tax: tax || 0,
         delivery_fee: 0,
         discount: 0,
         total: total || 499,
-        address_json: { name: customerName || `${source.toUpperCase()} Order`, phone: customerPhone || 'N/A', line1: `${source.toUpperCase()} Delivery` },
+        address_json: {
+          name: customerName || `${source.toUpperCase()} Order`,
+          phone: customerPhone || 'N/A',
+          line1: `${source.toUpperCase()} Delivery`,
+        },
         notes: `Aggregator Order Ingested from ${source.toUpperCase()}`,
       })
       .select()

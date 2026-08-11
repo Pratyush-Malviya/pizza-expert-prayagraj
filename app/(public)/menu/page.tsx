@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ProductCard from '@/components/menu/ProductCard'
 import ProductFilters from '@/components/menu/ProductFilters'
 import ProductQuickView from '@/components/menu/ProductQuickView'
@@ -168,18 +169,34 @@ const SEED_PRODUCTS: Product[] = [
   },
 ]
 
-export default function MenuPage() {
+function MenuContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
 
   const [filters, setFilters] = useState({
-    category: 'all',
-    vegOnly: false,
-    spicyOnly: false,
-    sortBy: 'popularity',
-    priceRange: 1000,
+    category: searchParams.get('category') || 'all',
+    vegOnly: searchParams.get('filter') === 'veg',
+    spicyOnly: searchParams.get('filter') === 'spicy',
+    sortBy: searchParams.get('sort') || 'popularity',
+    priceRange: parseInt(searchParams.get('max_price') || '1000', 10),
   })
+
+  // Sync state to URL on change
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (filters.category !== 'all') params.set('category', filters.category)
+    if (filters.vegOnly) params.set('filter', 'veg')
+    if (filters.spicyOnly) params.set('filter', 'spicy')
+    if (filters.sortBy !== 'popularity') params.set('sort', filters.sortBy)
+    if (filters.priceRange !== 1000) params.set('max_price', filters.priceRange.toString())
+    
+    // Use replace to avoid filling history
+    router.replace(`/menu?${params.toString()}`, { scroll: false })
+  }, [filters, router])
 
   const resetFilters = () => {
     setFilters({
@@ -190,6 +207,7 @@ export default function MenuPage() {
       priceRange: 1000,
     })
     setSearchQuery('')
+    router.replace('/menu', { scroll: false })
   }
 
   const filteredProducts = useMemo(() => {

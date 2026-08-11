@@ -120,12 +120,17 @@ export async function calculateOrderTotal(
   }
 }
 
+/** COD verification threshold — orders above this amount get 'cod_pending' status */
+const COD_VERIFICATION_THRESHOLD = 1000
+
 /**
- * Server Action to place an order into Supabase
+ * Server Action to place an order into Supabase.
+ * COD orders above ₹1,000 are created with status 'cod_pending' (not shown in KDS until admin verifies).
  */
 export async function createOrder(payload: {
   cartItems: CartItem[]
   address: any
+  paymentMethod?: 'razorpay' | 'cashfree' | 'cod'
   notes?: string
   couponCode?: string
 }) {
@@ -143,18 +148,26 @@ export async function createOrder(payload: {
     // 2. Get current user if authenticated
     const { data: { user } } = await supabase.auth.getUser()
 
-    // 3. Insert order
+    // 3. Determine initial order status
+    //    COD fraud gate: high-value COD orders enter 'cod_pending' to allow phone verification
+    //    before appearing on the KDS. Online payment orders stay 'pending' until webhook confirms.
+    const isCod = payload.paymentMethod === 'cod'
+    const initialStatus = (isCod && total > COD_VERIFICATION_THRESHOLD)
+      ? 'cod_pending'
+      : 'pending'
+
+    // 4. Insert order
     const { data: order, error: orderErr } = await supabase
       .from('orders')
       .insert({
         user_id: user?.id || null,
-        status: 'pending',
+        status: initialStatus,
         subtotal,
         tax,
         delivery_fee: deliveryFee,
         discount,
         total,
-        address_json: payload.address,
+        address_json: { ...payload.address, paymentMethod: payload.paymentMethod || 'razorpay' },
         notes: payload.notes || null,
       })
       .select()
@@ -170,7 +183,7 @@ export async function createOrder(payload: {
       .select('id, slug')
       .in('slug', payload.cartItems.map((i) => i.slug))
 
-    // 4. Insert order items with UUID validation
+    // 5. Insert order items with UUID validation
     const orderItems = payload.cartItems.map((item) => {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)
       const matchedDbProd = dbProducts?.find((p: { id: string; slug: string }) => p.slug === item.slug || p.id === item.id)
@@ -190,14 +203,26 @@ export async function createOrder(payload: {
       console.error('Error inserting order items:', itemsErr.message)
     }
 
-    // 5. Add initial status history entry
+    // 6. Add initial status history entry
     await supabase.from('order_status_history').insert({
       order_id: order.id,
-      status: 'pending',
-      notes: 'Order placed by customer',
+      status: initialStatus,
+      notes: initialStatus === 'cod_pending'
+        ? `COD order above ₹${COD_VERIFICATION_THRESHOLD} — pending admin phone verification`
+        : 'Order placed by customer',
     })
 
-    // 6. Trigger Resend Transactional Email
+    // 7. For COD orders below threshold, also insert confirmed payment record
+    if (isCod && total <= COD_VERIFICATION_THRESHOLD) {
+      await supabase.from('payments').insert({
+        order_id: order.id,
+        gateway: 'cod',
+        amount: total,
+        status: 'pending_collection',
+      }).throwOnError().catch(() => {})
+    }
+
+    // 8. Trigger Resend Transactional Email
     if (payload.address?.email) {
       sendOrderConfirmationEmail(payload.address.email, {
         orderId: order.id,
@@ -211,6 +236,8 @@ export async function createOrder(payload: {
       success: true,
       orderId: order.id,
       total: order.total,
+      status: initialStatus,
+      requiresVerification: initialStatus === 'cod_pending',
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Order creation failed' }

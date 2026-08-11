@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
   Settings, LogOut, ExternalLink,
   ChevronRight, CreditCard, UtensilsCrossed, Truck, X, Palette,
-  TrendingUp, Boxes, FileText, Users, Contact, ShieldAlert, History
+  TrendingUp, Boxes, FileText, Users, Contact, ShieldAlert, History, Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +27,7 @@ const ADMIN_LINKS = [
   { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed },
   { label: 'Deliveries', href: '/admin/deliveries', icon: Truck },
   { label: 'Products', href: '/admin/products', icon: Pizza },
+  { label: 'Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
   { label: 'Payments', href: '/admin/payments', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },

@@ -22,6 +22,9 @@ export default function KitchenDisplayPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [activeMobileTab, setActiveMobileTab] = useState<OrderStatus>('confirmed')
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set())
+  const [stockModalOpen, setStockModalOpen] = useState(false)
+  const [products, setProducts] = useState<any[]>([])
   const previousOrderCountRef = useRef<number>(0)
 
   const fetchOrders = async () => {
@@ -68,6 +71,22 @@ export default function KitchenDisplayPage() {
     }
   }
 
+  const fetchProducts = async () => {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.from('products').select('id, name, is_available').order('name')
+      if (data) setProducts(data)
+    } catch {}
+  }
+
+  const toggleProductAvailability = async (id: string, currentStatus: boolean) => {
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, is_available: !currentStatus } : p))
+    try {
+      const supabase = createClient()
+      await supabase.from('products').update({ is_available: !currentStatus }).eq('id', id)
+    } catch {}
+  }
+
   useEffect(() => {
     fetchOrders()
 
@@ -106,6 +125,27 @@ export default function KitchenDisplayPage() {
     await syncOrderStatus(orderId, nextStatus)
   }
 
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrders((prev) => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
+
+  const handleBatchUpdate = async (nextStatus: OrderStatus) => {
+    const ids = Array.from(selectedOrders)
+    if (ids.length === 0) return
+
+    setOrders((prev) => prev.map((ord) => ids.includes(ord.id) ? { ...ord, status: nextStatus } : ord))
+    setSelectedOrders(new Set())
+
+    for (const id of ids) {
+      await syncOrderStatus(id, nextStatus)
+    }
+  }
+
   const getNextAction = (status: OrderStatus) => {
     switch (status) {
       case 'pending':
@@ -135,6 +175,12 @@ export default function KitchenDisplayPage() {
         </div>
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
+          <button
+            onClick={() => { fetchProducts(); setStockModalOpen(true); }}
+            className="flex items-center gap-2 px-3.5 py-2 bg-[#FEF2F2] hover:bg-[#FEE2E2] border border-[#FECACA] rounded-lg text-xs font-bold text-[#B91C1C] transition-all shadow-xs"
+          >
+            <UtensilsCrossed size={14} /> In-Shift Stock Toggle
+          </button>
           <button
             onClick={fetchOrders}
             className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-[#F4EFEA] border border-[#E7E0D8] rounded-lg text-xs font-semibold text-[#1C1917] transition-all shadow-xs"
@@ -220,10 +266,18 @@ export default function KitchenDisplayPage() {
                     const itemsList = ord.items || (ord as any).order_items || []
 
                     return (
-                      <div key={ord.id} className="p-4 rounded-xl bg-white border border-[#E7E0D8] hover:border-[#B91C1C]/40 transition-all space-y-3 shadow-xs">
+                      <div key={ord.id} className={`p-4 rounded-xl bg-white border transition-all space-y-3 shadow-xs ${selectedOrders.has(ord.id) ? 'border-[#B91C1C] ring-1 ring-[#B91C1C]' : 'border-[#E7E0D8] hover:border-[#B91C1C]/40'}`}>
                         {/* Ticket Header */}
                         <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-2">
-                          <span className="font-mono font-bold text-sm text-[#B91C1C]">#{String(ord.id).slice(-6).toUpperCase()}</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrders.has(ord.id)}
+                              onChange={() => toggleOrderSelection(ord.id)}
+                              className="w-4 h-4 rounded border-[#D6D3D1] text-[#B91C1C] focus:ring-[#B91C1C]"
+                            />
+                            <span className="font-mono font-bold text-sm text-[#B91C1C]">#{String(ord.id).slice(-6).toUpperCase()}</span>
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-[#A8A29E] flex items-center gap-1 font-semibold font-mono">
                               <Clock size={12} /> {minutesAgo}m ago
@@ -326,6 +380,75 @@ export default function KitchenDisplayPage() {
           )
         })}
       </div>
+
+      {/* Sticky Batch Action Bar */}
+      {selectedOrders.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1C1917] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-50 border border-[#3F3F46]">
+          <div className="font-bold text-sm">
+            {selectedOrders.size} {selectedOrders.size === 1 ? 'Order' : 'Orders'} Selected
+          </div>
+          <div className="flex items-center gap-2 border-l border-[#3F3F46] pl-6">
+            <button
+              onClick={() => handleBatchUpdate('preparing')}
+              className="px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] rounded-lg text-xs font-bold transition-colors"
+            >
+              Batch Prepare
+            </button>
+            <button
+              onClick={() => handleBatchUpdate('out_for_delivery')}
+              className="px-4 py-2 bg-[#9333EA] hover:bg-[#7E22CE] rounded-lg text-xs font-bold transition-colors"
+            >
+              Batch Dispatch
+            </button>
+            <button
+              onClick={() => handleBatchUpdate('delivered')}
+              className="px-4 py-2 bg-[#15803D] hover:bg-[#166534] rounded-lg text-xs font-bold transition-colors"
+            >
+              Batch Deliver
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Toggle Modal */}
+      {stockModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-[#E7E0D8] max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div>
+                <h3 className="font-serif font-bold text-lg text-[#1C1917]">Kitchen In-Shift Stock Control</h3>
+                <p className="text-xs text-[#A8A29E]">Disable sold-out pizzas/items instantly to stop menu orders</p>
+              </div>
+              <button onClick={() => setStockModalOpen(false)} className="text-[#A8A29E] hover:text-[#1C1917] font-bold text-sm">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-[#E7E0D8] pr-1">
+              {products.map((p) => (
+                <div key={p.id} className="py-3 flex items-center justify-between">
+                  <span className="font-bold text-xs text-[#1C1917]">{p.name}</span>
+                  <button
+                    onClick={() => toggleProductAvailability(p.id, p.is_available)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                      p.is_available
+                        ? 'bg-[#F0FDF4] text-[#15803D] border border-[#15803D]/30'
+                        : 'bg-[#FEF2F2] text-[#B91C1C] border border-[#B91C1C]/30'
+                    }`}
+                  >
+                    {p.is_available ? 'Available' : 'Sold Out'}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setStockModalOpen(false)}
+              className="btn btn-primary text-xs w-full py-2.5 mt-2"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
