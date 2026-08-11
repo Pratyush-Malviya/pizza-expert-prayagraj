@@ -26,9 +26,10 @@ export default async function CustomersCRMPage() {
     .neq('role', 'driver')
     .order('created_at', { ascending: false })
 
-  const registeredCustomersMap: Record<string, CustomerRow> = {}
-  
-  (customersData || []).forEach(c => {
+  const registeredCustomersMap: Record<string, CustomerRow> = {};
+
+  const rawCustomers: any[] = customersData || [];
+  rawCustomers.forEach((c: any) => {
     registeredCustomersMap[c.id] = {
       id: c.id,
       name: c.name || 'Registered Customer',
@@ -39,8 +40,8 @@ export default async function CustomersCRMPage() {
       order_count: 0,
       total_spend: 0,
       last_order_at: null,
-    }
-  })
+    };
+  });
 
   // 2. Fetch ALL orders to aggregate spend & extract Guest Orders
   const { data: allOrders } = await supabase
