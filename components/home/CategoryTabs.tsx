@@ -31,7 +31,7 @@ export default function CategoryTabs({
       <div className="container-custom">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div className="max-w-xl">
-            <span className="text-xs font-bold text-[#ffc7c6] uppercase tracking-widest block mb-2 font-mono">
+            <span className="text-xs font-bold text-vibrant-yellow uppercase tracking-widest block mb-2 font-mono">
               ◂ CRAFTED DAILY IN ALLAPUR ▸
             </span>
             <h2 id="menu-heading" className="section-title">EXPLORE THE MENU</h2>

@@ -52,7 +52,7 @@ export default function FeatureIcons() {
                 transition={{ duration: 0.4, delay: i * 0.1 }}
                 className="group"
               >
-                <div className="font-sans font-bold text-sm text-[var(--primary)] mb-3 pb-3 border-b border-[var(--border)] tracking-widest">
+                <div className="font-sans font-bold text-sm text-vibrant-yellow mb-3 pb-3 border-b border-[var(--border)] tracking-widest">
                   {feature.num}
                 </div>
                 <h3 className="font-serif font-bold text-[var(--text-primary)] text-xl mb-3">

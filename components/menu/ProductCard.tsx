@@ -78,7 +78,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
         {/* Bestseller Badge */}
         {product.sort_order === 1 && (
-          <div className="absolute top-3 right-3 bg-[#e10600] text-white px-2.5 py-1 rounded-[15px] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md z-10">
+          <div className="absolute top-3 right-3 bg-vibrant-yellow text-black px-2.5 py-1 rounded-[15px] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md z-10">
             <Sparkles size={11} /> Bestseller
           </div>
         )}
@@ -108,7 +108,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             onClick={handleAddToCart}
             className={`btn btn-sm rounded-[15px] font-bold px-4 py-1.5 text-xs uppercase tracking-wider transition-all shadow-xs ${
               added
-                ? 'bg-emerald-700 text-white border-emerald-700'
+                ? 'bg-vibrant-green text-[#260212] border-vibrant-green'
                 : 'btn-primary'
             }`}
             aria-label={`Add ${product.name} to cart`}

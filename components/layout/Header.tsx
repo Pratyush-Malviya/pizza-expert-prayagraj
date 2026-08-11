@@ -151,7 +151,7 @@ export default function Header() {
               <ShoppingCart size={17} />
               <span className="hidden sm:inline">CART</span>
               {mounted && itemCount > 0 && (
-                <span className="bg-[#ffffff] text-[#e10600] font-black text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                <span className="bg-vibrant-yellow text-black font-black text-xs w-5 h-5 rounded-full flex items-center justify-center">
                   {itemCount}
                 </span>
               )}

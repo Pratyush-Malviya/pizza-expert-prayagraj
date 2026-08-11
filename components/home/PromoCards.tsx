@@ -54,7 +54,7 @@ export default function PromoCards() {
     <section className="section-py bg-[#260212] border-y border-black" aria-labelledby="promos-heading">
       <div className="container-custom">
         <div className="text-center mb-14">
-          <span className="text-xs font-bold text-[#e10600] uppercase tracking-widest block mb-2 font-mono">
+          <span className="text-xs font-bold text-vibrant-green uppercase tracking-widest block mb-2 font-mono">
             ◂ SPECIAL DEALS & OFFERS ▸
           </span>
           <h2 id="promos-heading" className="section-title">HANDCRAFTED DEALS</h2>

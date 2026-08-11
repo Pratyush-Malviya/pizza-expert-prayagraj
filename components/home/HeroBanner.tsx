@@ -121,7 +121,7 @@ export default function HeroBanner() {
               style={{ color: textCol }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[15px] bg-[#4f0423] border border-[#e10600]/30 flex items-center justify-center text-amber-400">
+                <div className="w-8 h-8 rounded-[15px] bg-[#4f0423] border border-[#e10600]/30 flex items-center justify-center text-vibrant-yellow">
                   <Star size={15} fill="currentColor" />
                 </div>
                 <div>
@@ -133,7 +133,7 @@ export default function HeroBanner() {
               <div className="w-px h-8 bg-black/40" />
 
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[15px] bg-[#4f0423] border border-[#e10600]/30 flex items-center justify-center text-emerald-400">
+                <div className="w-8 h-8 rounded-[15px] bg-[#4f0423] border border-[#e10600]/30 flex items-center justify-center text-vibrant-green">
                   <Truck size={15} />
                 </div>
                 <div>
@@ -183,12 +183,12 @@ export default function HeroBanner() {
                 transition={{ delay: 0.7, duration: 0.5 }}
                 className="absolute bottom-6 left-6 bg-[#000000]/90 backdrop-blur-md border border-[#e10600]/40 p-3.5 rounded-[15px] flex items-center gap-3 shadow-2xl"
               >
-                <div className="w-9 h-9 rounded-[12px] bg-[#15803d] flex items-center justify-center text-white font-bold text-base shadow-md">
+                <div className="w-9 h-9 rounded-[12px] bg-vibrant-green flex items-center justify-center text-[#260212] font-bold text-base shadow-md">
                   🛵
                 </div>
                 <div>
                   <span className="block font-bold text-white text-xs uppercase tracking-wider">FREE DELIVERY</span>
-                  <span className="block text-[10px] text-emerald-400 font-mono">ON ORDERS ABOVE ₹{store.freeDeliveryAbove || 499}</span>
+                  <span className="block text-[10px] text-vibrant-green font-mono">ON ORDERS ABOVE ₹{store.freeDeliveryAbove || 499}</span>
                 </div>
               </motion.div>
             </div>
