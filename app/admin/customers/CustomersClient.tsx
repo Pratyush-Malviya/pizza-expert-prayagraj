@@ -1,12 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { blockCustomer, unblockCustomer, adjustLoyaltyPoints, getCustomerDetails, seedDemoCustomers } from '@/app/actions/customers'
+import {
+  blockCustomer, unblockCustomer, adjustLoyaltyPoints, getCustomerDetails,
+  seedDemoCustomers, createCustomer, updateCustomer, deleteCustomer, getCustomerAuditLogs
+} from '@/app/actions/customers'
 import { toast } from 'sonner'
 import {
   Users, Search, Download, ShieldAlert, Award, Phone,
   Calendar, ShoppingBag, Eye, Ban, CheckCircle2, X, MapPin,
-  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, Sparkles
+  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, Sparkles,
+  UserPlus, Edit, Trash2, Activity, History, Key, UserCheck, Mail
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +24,7 @@ export interface CustomerRow {
   order_count: number
   total_spend: number
   last_order_at: string | null
+  role?: string
 }
 
 export default function CustomersClient({ initialCustomers }: { initialCustomers: CustomerRow[] }) {
@@ -27,31 +32,31 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all')
   const [isSeeding, setIsSeeding] = useState(false)
+  const [loadingActionId, setLoadingActionId] = useState<string | null>(null)
 
-  async function handleSeedDemoData() {
-    setIsSeeding(true)
-    const res = await seedDemoCustomers()
-    setIsSeeding(false)
-    if (res.success) {
-      toast.success('Sample CRM customers seeded successfully!')
-      window.location.reload()
-    } else {
-      toast.error(res.error || 'Failed to seed sample data')
-    }
-  }
+  // Modals state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
-  // Selected customer for modal
+  const [editingCustomer, setEditingCustomer] = useState<CustomerRow | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const [deletingCustomer, setDeletingCustomer] = useState<CustomerRow | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Selected customer for detail modal & activity trace
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null)
+  const [activeTab, setActiveTab] = useState<'orders' | 'addresses' | 'activity'>('orders')
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false)
   const [customerAddresses, setCustomerAddresses] = useState<any[]>([])
   const [customerOrders, setCustomerOrders] = useState<any[]>([])
+  const [customerAuditLogs, setCustomerAuditLogs] = useState<any[]>([])
 
   // Points adjustment modal state
   const [pointsModalCustomer, setPointsModalCustomer] = useState<CustomerRow | null>(null)
   const [deltaPoints, setDeltaPoints] = useState<number>(50)
   const [adjustReason, setAdjustReason] = useState<string>('Manual Admin Grant')
   const [isAdjustingPoints, setIsAdjustingPoints] = useState(false)
-  const [loadingActionId, setLoadingActionId] = useState<string | null>(null)
 
   // Filter logic
   const filteredCustomers = customers.filter(c => {
@@ -65,17 +70,91 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
     return matchesSearch
   })
 
-  // Open detail modal
+  // Open detail modal & fetch details + audit timeline
   async function handleOpenDetails(customer: CustomerRow) {
     setSelectedCustomer(customer)
+    setActiveTab('orders')
     setCustomerDetailsLoading(true)
-    const res = await getCustomerDetails(customer.id)
+
+    const [detailsRes, auditRes] = await Promise.all([
+      getCustomerDetails(customer.id),
+      getCustomerAuditLogs(customer.id)
+    ])
+
     setCustomerDetailsLoading(false)
+    if (detailsRes.success) {
+      setCustomerAddresses(detailsRes.addresses || [])
+      setCustomerOrders(detailsRes.orders || [])
+    }
+    if (auditRes.success) {
+      setCustomerAuditLogs(auditRes.logs || [])
+    }
+  }
+
+  // Handle Add Customer Submit
+  async function handleCreateUserSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsCreating(true)
+    const formData = new FormData(e.currentTarget)
+    const res = await createCustomer(formData)
+    setIsCreating(false)
+
     if (res.success) {
-      setCustomerAddresses(res.addresses || [])
-      setCustomerOrders(res.orders || [])
+      toast.success('User created successfully!')
+      setShowAddModal(false)
+      window.location.reload()
     } else {
-      toast.error('Could not fetch extra details')
+      toast.error(res.error || 'Failed to create user')
+    }
+  }
+
+  // Handle Edit Customer Submit
+  async function handleEditUserSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!editingCustomer) return
+    setIsUpdating(true)
+    const formData = new FormData(e.currentTarget)
+
+    const res = await updateCustomer(editingCustomer.id, {
+      name: formData.get('name') as string,
+      phone: (formData.get('phone') as string) || null,
+      role: formData.get('role') as string,
+      loyalty_points: Number(formData.get('loyalty_points') || 0),
+      is_active: formData.get('is_active') === 'true',
+    })
+    setIsUpdating(false)
+
+    if (res.success) {
+      toast.success('User details updated successfully')
+      setCustomers(customers.map(c => c.id === editingCustomer.id ? {
+        ...c,
+        name: formData.get('name') as string,
+        phone: (formData.get('phone') as string) || null,
+        loyalty_points: Number(formData.get('loyalty_points') || 0),
+        is_active: formData.get('is_active') === 'true',
+      } : c))
+      setEditingCustomer(null)
+    } else {
+      toast.error(res.error || 'Failed to update user')
+    }
+  }
+
+  // Handle Delete Customer Submit
+  async function handleDeleteUserConfirm() {
+    if (!deletingCustomer) return
+    setIsDeleting(true)
+    const res = await deleteCustomer(deletingCustomer.id)
+    setIsDeleting(false)
+
+    if (res.success) {
+      toast.success('User account deleted')
+      setCustomers(customers.filter(c => c.id !== deletingCustomer.id))
+      setDeletingCustomer(null)
+      if (selectedCustomer?.id === deletingCustomer.id) {
+        setSelectedCustomer(null)
+      }
+    } else {
+      toast.error(res.error || 'Failed to delete user')
     }
   }
 
@@ -91,9 +170,6 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
     if (result.success) {
       toast.success(isCurrentlyActive ? 'Customer blocked' : 'Customer unblocked')
       setCustomers(customers.map(c => c.id === customer.id ? { ...c, is_active: !isCurrentlyActive } : c))
-      if (selectedCustomer?.id === customer.id) {
-        setSelectedCustomer({ ...selectedCustomer, is_active: !isCurrentlyActive })
-      }
     } else {
       toast.error(result.error || 'Action failed')
     }
@@ -110,12 +186,22 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
     if (res.success) {
       toast.success(`Loyalty points updated to ${res.newPoints}`)
       setCustomers(customers.map(c => c.id === pointsModalCustomer.id ? { ...c, loyalty_points: res.newPoints! } : c))
-      if (selectedCustomer?.id === pointsModalCustomer.id) {
-        setSelectedCustomer({ ...selectedCustomer, loyalty_points: res.newPoints! })
-      }
       setPointsModalCustomer(null)
     } else {
       toast.error(res.error || 'Failed to adjust points')
+    }
+  }
+
+  // Handle Seed Demo
+  async function handleSeedDemoData() {
+    setIsSeeding(true)
+    const res = await seedDemoCustomers()
+    setIsSeeding(false)
+    if (res.success) {
+      toast.success('Sample CRM customers seeded successfully!')
+      window.location.reload()
+    } else {
+      toast.error(res.error || 'Failed to seed sample data')
     }
   }
 
@@ -145,7 +231,6 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
     toast.success('CSV Export downloaded')
   }
 
-  // Compute CRM Aggregates
   const totalCustomersCount = customers.length
   const activeCustomersCount = customers.filter(c => c.is_active !== false).length
   const totalLTV = customers.reduce((sum, c) => sum + Number(c.total_spend || 0), 0)
@@ -208,7 +293,7 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
           />
         </div>
 
-        {/* Filters & Export */}
+        {/* Filters & Actions */}
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={statusFilter}
@@ -219,6 +304,13 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
             <option value="active">Active Only</option>
             <option value="blocked">Blocked Only</option>
           </select>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-[#B91C1C] hover:bg-[#991B1B] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs uppercase tracking-wider"
+          >
+            <UserPlus size={15} /> Add New User
+          </button>
 
           <button
             onClick={handleExportCSV}
@@ -232,7 +324,7 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
             disabled={isSeeding}
             className="bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#B91C1C] border border-[#FCA5A5] px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors shadow-xs disabled:opacity-70"
           >
-            {isSeeding ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Seed Sample Customers
+            {isSeeding ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Seed Demo Customers
           </button>
         </div>
       </div>
@@ -325,13 +417,29 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenDetails(customer)}
                             className="p-1.5 rounded-lg border border-[#E7E0D8] text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#1C1917] transition-colors"
-                            title="View Full Customer History"
+                            title="View Detailed Customer Actions & History"
                           >
                             <Eye size={15} />
+                          </button>
+
+                          <button
+                            onClick={() => setEditingCustomer(customer)}
+                            className="p-1.5 rounded-lg border border-[#E7E0D8] text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#B91C1C] transition-colors"
+                            title="Edit User Profile"
+                          >
+                            <Edit size={15} />
+                          </button>
+
+                          <button
+                            onClick={() => setDeletingCustomer(customer)}
+                            className="p-1.5 rounded-lg border border-[#FCA5A5] text-[#B91C1C] hover:bg-[#FEF2F2] transition-colors"
+                            title="Delete User Account"
+                          >
+                            <Trash2 size={15} />
                           </button>
 
                           <button
@@ -340,16 +448,17 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                             className={cn(
                               "px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border",
                               isActive
-                                ? "border-[#FCA5A5] text-[#B91C1C] hover:bg-[#FEF2F2]"
+                                ? "border-[#E7E0D8] text-[#78716C] hover:bg-[#F5F5F4]"
                                 : "border-[#86EFAC] text-[#15803D] hover:bg-[#F0FDF4]"
                             )}
+                            title={isActive ? "Block Account" : "Unblock Account"}
                           >
                             {loadingActionId === customer.id ? (
                               <Loader2 size={13} className="animate-spin" />
                             ) : isActive ? (
-                              <><Ban size={13} /> Block</>
+                              <Ban size={13} />
                             ) : (
-                              <><CheckCircle2 size={13} /> Unblock</>
+                              <CheckCircle2 size={13} />
                             )}
                           </button>
                         </div>
@@ -363,10 +472,10 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
         </div>
       </div>
 
-      {/* Customer Detail Drawer / Modal */}
+      {/* Customer Action & History Drawer / Modal */}
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#E7E0D8] p-6 space-y-6">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#E7E0D8] p-6 space-y-6">
             <div className="flex items-start justify-between border-b border-[#E7E0D8] pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-[#B91C1C] text-white flex items-center justify-center font-bold font-serif text-lg uppercase">
@@ -390,83 +499,352 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
               </button>
             </div>
 
+            {/* Navigation Tabs inside Customer Modal */}
+            <div className="flex border-b border-[#E7E0D8] gap-4 text-xs font-bold">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={cn("pb-2.5 flex items-center gap-1.5 transition-colors border-b-2", activeTab === 'orders' ? "border-[#B91C1C] text-[#B91C1C]" : "border-transparent text-[#A8A29E] hover:text-[#1C1917]")}
+              >
+                <ShoppingBag size={15} /> Order History ({customerOrders.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('addresses')}
+                className={cn("pb-2.5 flex items-center gap-1.5 transition-colors border-b-2", activeTab === 'addresses' ? "border-[#B91C1C] text-[#B91C1C]" : "border-transparent text-[#A8A29E] hover:text-[#1C1917]")}
+              >
+                <MapPin size={15} /> Saved Addresses ({customerAddresses.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={cn("pb-2.5 flex items-center gap-1.5 transition-colors border-b-2", activeTab === 'activity' ? "border-[#B91C1C] text-[#B91C1C]" : "border-transparent text-[#A8A29E] hover:text-[#1C1917]")}
+              >
+                <History size={15} /> Detailed Action Trace ({customerAuditLogs.length})
+              </button>
+            </div>
+
             {customerDetailsLoading ? (
               <div className="py-12 flex flex-col items-center justify-center text-[#A8A29E] gap-2">
                 <Loader2 size={24} className="animate-spin text-[#B91C1C]" />
-                <span className="text-xs">Loading customer addresses & order history...</span>
+                <span className="text-xs">Loading customer detailed actions & history...</span>
               </div>
             ) : (
-              <div className="space-y-6">
-                {/* Stats row inside modal */}
+              <div className="space-y-4">
+                {/* Stats Header Bar */}
                 <div className="grid grid-cols-3 gap-3 bg-[#FBF9F5] p-3 rounded-xl border border-[#E7E0D8]">
                   <div className="text-center">
-                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Total Spend</span>
+                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Lifetime Spend</span>
                     <p className="font-bold text-[#1C1917] text-base">₹{selectedCustomer.total_spend}</p>
                   </div>
                   <div className="text-center border-x border-[#E7E0D8]">
-                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Orders</span>
+                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Total Orders</span>
                     <p className="font-bold text-[#1C1917] text-base">{selectedCustomer.order_count}</p>
                   </div>
                   <div className="text-center">
-                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Loyalty Points</span>
+                    <span className="text-[10px] text-[#A8A29E] uppercase font-semibold">Loyalty Ledger</span>
                     <p className="font-bold text-[#D97706] text-base">{selectedCustomer.loyalty_points} pts</p>
                   </div>
                 </div>
 
-                {/* Saved Addresses */}
-                <div>
-                  <h3 className="text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <MapPin size={14} className="text-[#B91C1C]" /> Saved Delivery Addresses ({customerAddresses.length})
-                  </h3>
-                  {customerAddresses.length === 0 ? (
-                    <p className="text-xs text-[#A8A29E] italic">No saved addresses found.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {customerAddresses.map((addr) => (
-                        <div key={addr.id} className="p-3 bg-white border border-[#E7E0D8] rounded-lg text-xs space-y-1">
+                {/* Tab 1: Orders */}
+                {activeTab === 'orders' && (
+                  <div className="space-y-2">
+                    {customerOrders.length === 0 ? (
+                      <p className="text-xs text-[#A8A29E] italic py-4 text-center">No order history found for this customer.</p>
+                    ) : (
+                      customerOrders.map((ord) => (
+                        <div key={ord.id} className="p-3 bg.white border border-[#E7E0D8] rounded-xl flex items-center justify-between text-xs hover:border-[#B91C1C]/30 transition-colors">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#1C1917]">Order #{String(ord.id).slice(0, 8).toUpperCase()}</span>
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full uppercase bg-[#DCFCE7] text-[#166534] capitalize">{ord.status}</span>
+                            </div>
+                            <span className="text-[#A8A29E] text-[11px] block mt-0.5">{new Date(ord.created_at).toLocaleString()}</span>
+                            <div className="text-[11px] text-[#57534E] mt-1 font-medium">
+                              {ord.order_items?.map((item: any) => `${item.quantity}x ${item.product_name}`).join(', ') || 'Items details'}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-black text-[#1C1917] text-sm">₹{ord.total}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 2: Addresses */}
+                {activeTab === 'addresses' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {customerAddresses.length === 0 ? (
+                      <p className="text-xs text-[#A8A29E] italic py-4 col-span-2 text-center">No saved delivery addresses found.</p>
+                    ) : (
+                      customerAddresses.map((addr) => (
+                        <div key={addr.id} className="p-3 bg-white border border-[#E7E0D8] rounded-xl text-xs space-y-1">
                           <div className="font-bold text-[#1C1917] flex items-center justify-between">
                             <span>{addr.label || 'Address'}</span>
                             {addr.is_default && (
-                              <span className="text-[9px] bg-[#DCFCE7] text-[#166534] font-bold px-1.5 py-0.5 rounded">Default</span>
+                              <span className="text-[9px] bg-[#DCFCE7] text-[#166534] font-bold px-1.5 py-0.5 rounded">Default Address</span>
                             )}
                           </div>
                           <p className="text-[#57534E]">{addr.line1} {addr.line2}</p>
                           <p className="text-[#A8A29E]">{addr.city}, {addr.state} - {addr.pincode}</p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
 
-                {/* Recent Orders */}
-                <div>
-                  <h3 className="text-xs font-bold text-[#1C1917] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <ShoppingBag size={14} className="text-[#B91C1C]" /> Recent Orders ({customerOrders.length})
-                  </h3>
-                  {customerOrders.length === 0 ? (
-                    <p className="text-xs text-[#A8A29E] italic">No recent order history found.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {customerOrders.map((ord) => (
-                        <div key={ord.id} className="p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg flex items-center justify-between text-xs">
+                {/* Tab 3: Detailed Action Trace / Activity Log */}
+                {activeTab === 'activity' && (
+                  <div className="space-y-2">
+                    {customerAuditLogs.length === 0 ? (
+                      <p className="text-xs text-[#A8A29E] italic py-4 text-center">No detailed action log history recorded for this user.</p>
+                    ) : (
+                      customerAuditLogs.map((log) => (
+                        <div key={log.id} className="p-3 bg-[#FBF9F5] border border-[#E7E0D8] rounded-xl text-xs flex items-start justify-between">
                           <div>
-                            <span className="font-bold text-[#1C1917]">#{String(ord.id).slice(0, 8).toUpperCase()}</span>
-                            <span className="text-[#A8A29E] ml-2">{new Date(ord.created_at).toLocaleDateString()}</span>
-                            <div className="text-[11px] text-[#57534E] mt-0.5">
-                              {ord.order_items?.map((item: any) => `${item.quantity}x ${item.product_name}`).join(', ') || 'Order Items'}
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 text-[10px] font-bold bg-[#FEF2F2] text-[#B91C1C] rounded font-mono uppercase">{log.action}</span>
+                              <span className="text-[#A8A29E] text-[11px] font-mono">{new Date(log.created_at).toLocaleString()}</span>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold text-[#1C1917]">₹{ord.total}</span>
-                            <span className="block text-[10px] capitalize font-medium text-[#15803D]">{ord.status}</span>
+                            <p className="text-[#57534E] font-mono text-[11px] mt-1">
+                              Target Table: {log.target_table || 'N/A'} • IP: {log.ip_address || 'Internal'}
+                            </p>
+                            {log.after && (
+                              <pre className="mt-1 p-2 bg-[#18181B] text-[#86EFAC] text-[10px] rounded font-mono overflow-x-auto max-h-24">
+                                {JSON.stringify(log.after, null, 2)}
+                              </pre>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Add New User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#E7E0D8] p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <h3 className="font-bold text-[#1C1917] flex items-center gap-2">
+                <UserPlus size={18} className="text-[#B91C1C]" /> Add New Customer / Staff Account
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="text-[#A8A29E] hover:text-[#1C1917]">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Full Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="e.g. Ramesh Kumar"
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Email Address</label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="ramesh@example.com"
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="+91 9876543210"
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Account Role</label>
+                <select
+                  name="role"
+                  defaultValue="customer"
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm bg-white focus:outline-none focus:border-[#B91C1C]"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="staff">Staff (Kitchen)</option>
+                  <option value="manager">Manager</option>
+                  <option value="driver">Delivery Driver</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Initial Loyalty Points</label>
+                <input
+                  type="number"
+                  name="loyalty_points"
+                  defaultValue={100}
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-lg border border-[#E7E0D8] font-bold text-[#57534E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="px-4 py-2 rounded-lg bg-[#B91C1C] hover:bg-[#991B1B] text-white font-bold flex items-center gap-1.5 uppercase tracking-wider"
+                >
+                  {isCreating && <Loader2 size={14} className="animate-spin" />} Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#E7E0D8] p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <h3 className="font-bold text-[#1C1917] flex items-center gap-2">
+                <Edit size={18} className="text-[#B91C1C]" /> Edit User Details
+              </h3>
+              <button onClick={() => setEditingCustomer(null)} className="text-[#A8A29E] hover:text-[#1C1917]">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUserSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Full Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  defaultValue={editingCustomer.name}
+                  required
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  defaultValue={editingCustomer.phone || ''}
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Role</label>
+                <select
+                  name="role"
+                  defaultValue={editingCustomer.role || 'customer'}
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm bg-white focus:outline-none focus:border-[#B91C1C]"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                  <option value="driver">Driver</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Loyalty Points</label>
+                <input
+                  type="number"
+                  name="loyalty_points"
+                  defaultValue={editingCustomer.loyalty_points}
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#A8A29E] mb-1 uppercase">Account Status</label>
+                <select
+                  name="is_active"
+                  defaultValue={editingCustomer.is_active !== false ? 'true' : 'false'}
+                  className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm bg-white focus:outline-none focus:border-[#B91C1C]"
+                >
+                  <option value="true">Active Account</option>
+                  <option value="false">Blocked / Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="px-4 py-2 rounded-lg border border-[#E7E0D8] font-bold text-[#57534E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="px-4 py-2 rounded-lg bg-[#B91C1C] text-white font-bold flex items-center gap-1.5 uppercase"
+                >
+                  {isUpdating && <Loader2 size={14} className="animate-spin" />} Save Updates
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {deletingCustomer && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#FCA5A5] p-6 space-y-4">
+            <div className="flex items-center gap-3 text-[#B91C1C]">
+              <div className="w-10 h-10 rounded-full bg-[#FEF2F2] flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-[#1C1917]">Delete User Account</h3>
+                <p className="text-xs text-[#A8A29E]">Permanent Account Removal</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#57534E]">
+              Are you sure you want to delete <strong className="text-[#1C1917]">{deletingCustomer.name}</strong> ({deletingCustomer.phone || deletingCustomer.id})? This will remove their user profile and revoke authentication.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E0D8]">
+              <button
+                type="button"
+                onClick={() => setDeletingCustomer(null)}
+                className="px-4 py-2 rounded-lg border border-[#E7E0D8] text-xs font-bold text-[#57534E]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUserConfirm}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold flex items-center gap-1.5"
+              >
+                {isDeleting && <Loader2 size={14} className="animate-spin" />} Delete Account
+              </button>
+            </div>
           </div>
         </div>
       )}
