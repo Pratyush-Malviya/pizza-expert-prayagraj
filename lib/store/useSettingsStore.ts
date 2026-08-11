@@ -293,9 +293,9 @@ export const useSettingsStore = create<SettingsState>()(
       flashBannerLink: '/menu',
       flashBannerImageUrl: '',
 
-      enableRazorpay: false,
-      razorpayKeyId: '',
-      razorpayKeySecret: '',
+      enableRazorpay: true,
+      razorpayKeyId: 'rzp_test_TOUKlh4UdsSiXL',
+      razorpayKeySecret: '7jQXoto16ovDYBjCXXv6rFTM',
 
       // Admin Profile Defaults
       adminName: 'Pratyush Malviya',

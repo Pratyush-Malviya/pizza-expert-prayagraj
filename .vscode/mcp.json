@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "razorpay": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.razorpay.com/mcp",
+        "--header",
+        "Authorization: Bearer cnpwX3Rlc3RfVE9VS2xoNFVkc1NpWEw6N2pRWG90bzE2b3ZEWUJqQ1hYdjZyRlRN"
+      ],
+      "env": {
+        "RAZORPAY_KEY_ID": "rzp_test_TOUKlh4UdsSiXL",
+        "RAZORPAY_KEY_SECRET": "7jQXoto16ovDYBjCXXv6rFTM"
+      }
+    }
+  }
+}
