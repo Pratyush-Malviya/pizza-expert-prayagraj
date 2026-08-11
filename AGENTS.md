@@ -1,3 +1,22 @@
+# Frontend Design Skills
+
+This repository contains 21 opinionated web design skills from 12 sources.
+Skills are located in the `skills-src/` directory — each contains a `SKILL.md` with instructions.
+
+## Available Skill Categories
+
+- **Meta**: `webdesign-review` — comprehensive design review orchestrating all domains
+- **Core Design**: `ui-design`, `ux-design` — layout, grids, hierarchy, IA, interaction
+- **Detail**: `web-typography`, `color-theory`, `accessibility` — fonts, color, WCAG/BFSG
+- **Implementation**: `usability`, `responsive-design`, `navigation-design`, `images-media`, `branding-identity`
+- **Strategy**: `customer-journey`, `design-process`, `ai-design-workflow`, `landing-pages`, `website-audit`
+- **Trends & Patterns**: `design-trends`, `ui-patterns`, `visual-direction`, `component-patterns`, `agent-ui-design`
+
+## Usage
+
+To use a skill, read the `SKILL.md` file in the corresponding `skills-src/<name>/` directory.
+For a comprehensive design review, start with `webdesign-review` which orchestrates all domain skills.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
@@ -7,21 +26,3 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
-
-# gstack Workflow Skills Suite (Garry Tan's AI Engineering Team Setup)
-
-The project includes the full `gstack` 53-skill suite installed in `.agents/skills/`.
-Available slash commands and roles:
-- `/office-hours`: Product strategy & 6 forcing questions.
-- `/plan-ceo-review`: CEO strategic review & 4 scope modes.
-- `/plan-eng-review`: Architecture & engineering manager review.
-- `/plan-design-review` & `/design-consultation`: UX, visual polish, and AI slop prevention.
-- `/cso`: OWASP + STRIDE security audit.
-- `/autoplan`: Autonomous end-to-end plan creation.
-- `/review`: Code review & bug detection.
-- `/qa` & `/qa-only`: Automated browser QA testing.
-- `/ship`: Release engineering & PR preparation.
-- `/investigate`: Root cause debugging methodology.
-- `/retro`: Retrospectives.
-- `/learn`: Skill learning and memory persistence.
-

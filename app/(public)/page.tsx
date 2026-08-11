@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import HeroBanner from '@/components/home/HeroBanner'
+import OfferCarousel from '@/components/home/OfferCarousel'
 import PromoCards from '@/components/home/PromoCards'
 import CategoryTabs from '@/components/home/CategoryTabs'
 import FeatureIcons from '@/components/home/FeatureIcons'
@@ -298,26 +299,30 @@ export default async function HomePage() {
       {/* 1. Dark Hero Section */}
       <HeroBanner />
 
-      {/* 2. Light Menu Section */}
+      {/* 2. Auto-Sliding Flash Offer Carousel */}
+      <OfferCarousel />
+
+      {/* 3. Light Menu Section */}
       <CategoryTabs
         categories={HOMEPAGE_CATEGORIES}
         productsByCategory={PRODUCTS_BY_CATEGORY}
       />
 
-      {/* 3. Surface Offers Section */}
+      {/* 4. Surface Offers Section */}
       <PromoCards />
 
-      {/* 4. Subtle Brand Story Section */}
+      {/* 5. Subtle Brand Story Section */}
       <FeatureIcons />
 
-      {/* 5. Dark Social Proof Section */}
+      {/* 6. Dark Social Proof Section */}
       <GoogleReviews />
 
-      {/* Instagram Carousel (Toggleable from settings) */}
+      {/* Instagram Carousel */}
       <InstagramCarousel />
 
-      {/* 6. Light FAQ Section */}
+      {/* 7. Light FAQ Section */}
       <FaqSnippet />
     </>
   )
 }
+

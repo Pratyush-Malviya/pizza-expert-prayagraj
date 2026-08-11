@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, User, Menu, X } from 'lucide-react'
+import { ShoppingBag, User, Menu, X, Flame, Sparkles } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createClient } from '@/lib/supabase/client'
@@ -44,20 +44,10 @@ export default function Header() {
           const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
           setSessionInfo({ loggedIn: true, role: profile?.role || 'super_admin' })
         } else {
-          const isSimpleAdmin = typeof document !== 'undefined' && document.cookie.includes('simple_admin=true')
-          if (isSimpleAdmin) {
-            setSessionInfo({ loggedIn: true, role: 'super_admin' })
-          } else {
-            setSessionInfo({ loggedIn: false, role: null })
-          }
-        }
-      } catch (e) {
-        const isSimpleAdmin = typeof document !== 'undefined' && document.cookie.includes('simple_admin=true')
-        if (isSimpleAdmin) {
-          setSessionInfo({ loggedIn: true, role: 'super_admin' })
-        } else {
           setSessionInfo({ loggedIn: false, role: null })
         }
+      } catch (e) {
+        setSessionInfo({ loggedIn: false, role: null })
       }
     }
     fetchSession()
@@ -69,34 +59,47 @@ export default function Header() {
 
   return (
     <>
-      {/* Main Sticky Butcher Black Header */}
+      {/* Top Banner Alert Strip */}
+      <div className="bg-gradient-to-r from-[#FF3B00] via-[#E03400] to-[#FFC01D] text-black font-extrabold text-[11px] py-1.5 px-4 text-center tracking-wider uppercase flex items-center justify-center gap-2">
+        <Sparkles size={13} className="animate-spin" />
+        <span>⚡ FREE Delivery on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj</span>
+      </div>
+
+      {/* Main Sticky Header */}
       <header
         className={cn(
-          'sticky top-0 z-40 bg-[#000000] border-b border-[#260212] transition-all',
-          isScrolled ? 'py-3.5 shadow-xl' : 'py-4.5'
+          'sticky top-0 z-40 bg-[#0D0D11]/90 backdrop-blur-xl border-b border-white/10 transition-all duration-300',
+          isScrolled ? 'py-3 shadow-[0_10px_30px_rgba(0,0,0,0.7)]' : 'py-4'
         )}
       >
         <div className="container-custom flex items-center justify-between">
-          {/* Brand Logo - Impossible Red Wordmark */}
-          <Link href="/" className="flex items-center gap-2 group z-50 relative shrink-0">
+          
+          {/* Brand Logo & Location Subtitle */}
+          <Link href="/" className="flex items-center gap-3 group z-50 relative shrink-0">
             {mounted && logoDataUrl ? (
               <div className="relative w-36 h-10">
                 <Image src={logoDataUrl} alt="Store Logo" fill className="object-contain object-left" />
               </div>
             ) : (
               <div className="flex flex-col">
-                <span className="font-serif font-black text-2xl tracking-wider leading-none text-[#e10600] group-hover:text-white transition-colors uppercase">
-                  PIZZA EXPERT
-                </span>
-                <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#ffc7c6] mt-1 font-bold">
-                  PRAYAGRAJ • ALLAPUR
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-[#FF3B00] group-hover:text-white transition-colors">
+                    PIZZA EXPERT
+                  </span>
+                  <span className="bg-[#FF3B00]/15 text-[#FF3B00] border border-[#FF3B00]/30 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md hidden sm:inline-block">
+                    PRO
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                  <span className="uppercase tracking-wider">ALLAPUR • PRAYAGRAJ</span>
+                </div>
               </div>
             )}
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-8 bg-white/5 border border-white/10 px-6 py-2 rounded-full backdrop-blur-md">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href
               return (
@@ -104,15 +107,15 @@ export default function Header() {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    'text-xs tracking-wider font-bold transition-colors relative py-1.5 uppercase',
-                    isActive ? 'text-[#e10600]' : 'text-[#ffffff] hover:text-[#ffc7c6]'
+                    'text-xs tracking-wider font-extrabold transition-colors relative py-1 uppercase',
+                    isActive ? 'text-[#FF3B00]' : 'text-zinc-300 hover:text-white'
                   )}
                 >
                   {link.label}
                   {isActive && (
                     <motion.span
                       layoutId="activeNavIndicator"
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#e10600]"
+                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#FF3B00] rounded-full"
                     />
                   )}
                 </Link>
@@ -120,63 +123,63 @@ export default function Header() {
             })}
           </nav>
 
-          {/* Action Buttons */}
+          {/* Right Action Buttons */}
           <div className="flex items-center gap-3">
             {sessionInfo?.loggedIn ? (
               <Link
                 href={isAdminRole ? '/admin' : '/account'}
-                className="p-2.5 text-[#ffffff] hover:text-[#ffc7c6] hover:bg-[#260212] rounded-[15px] transition-colors hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                className="p-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
                 aria-label="Account"
               >
-                <User size={18} />
-                <span>{isAdminRole ? 'ADMIN' : 'MY ACCOUNT'}</span>
+                <User size={16} className="text-[#FF3B00]" />
+                <span>{isAdminRole ? 'ADMIN' : 'ACCOUNT'}</span>
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="p-2.5 text-[#ffffff] hover:text-[#ffc7c6] hover:bg-[#260212] rounded-[15px] transition-colors hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                className="p-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
                 aria-label="Account"
               >
-                <User size={18} />
+                <User size={16} className="text-[#FF3B00]" />
                 <span>SIGN IN</span>
               </Link>
             )}
 
-            {/* Cart Button - Impossible Red Fill, 15px Radius */}
+            {/* Cart Button */}
             <button
               onClick={toggleCart}
-              className="btn btn-primary rounded-[15px] flex items-center gap-2 px-4 shadow-md font-bold text-xs uppercase tracking-wider"
+              className="btn btn-primary rounded-full flex items-center gap-2 px-4 sm:px-5 py-2.5 font-extrabold text-xs tracking-wider shadow-lg shadow-[#FF3B00]/30"
               aria-label="Cart"
             >
-              <ShoppingCart size={17} />
-              <span className="hidden sm:inline">CART</span>
+              <ShoppingBag size={17} />
+              <span className="hidden sm:inline uppercase">CART</span>
               {mounted && itemCount > 0 && (
-                <span className="bg-vibrant-yellow text-black font-black text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                <span className="bg-[#FFC01D] text-black font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-xs">
                   {itemCount}
                 </span>
               )}
             </button>
 
-            {/* Mobile Hamburger */}
+            {/* Mobile Menu Hamburger */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="p-2 text-[#ffffff] md:hidden hover:bg-[#260212] rounded-[15px]"
+              className="p-2.5 text-white md:hidden hover:bg-white/10 rounded-full border border-white/10"
               aria-label="Menu"
             >
-              {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {isMobileOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#000000] border-b border-[#260212] overflow-hidden sticky top-[68px] z-30 shadow-2xl"
+            className="md:hidden bg-[#0D0D11] border-b border-white/10 overflow-hidden sticky top-[68px] z-30 shadow-2xl"
           >
             <div className="container-custom py-6 flex flex-col gap-4">
               {NAV_LINKS.map((link) => (
@@ -185,11 +188,12 @@ export default function Header() {
                   href={link.href}
                   onClick={() => setIsMobileOpen(false)}
                   className={cn(
-                    'py-3 border-b border-[#260212] font-serif text-lg font-bold tracking-wider uppercase transition-colors',
-                    pathname === link.href ? 'text-[#e10600]' : 'text-[#ffffff]'
+                    'py-3 border-b border-white/10 font-heading text-xl font-bold tracking-tight transition-colors flex items-center justify-between',
+                    pathname === link.href ? 'text-[#FF3B00]' : 'text-white'
                   )}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {pathname === link.href && <span className="w-2 h-2 rounded-full bg-[#FF3B00]" />}
                 </Link>
               ))}
 
@@ -198,7 +202,7 @@ export default function Header() {
                   <Link
                     href={isAdminRole ? '/admin' : '/account'}
                     onClick={() => setIsMobileOpen(false)}
-                    className="btn btn-secondary w-full rounded-[15px] justify-center text-xs font-bold uppercase tracking-wider"
+                    className="btn btn-secondary w-full rounded-2xl justify-center text-xs font-bold uppercase tracking-wider py-3"
                   >
                     <User size={16} /> {isAdminRole ? 'Admin Portal' : 'My Account'}
                   </Link>
@@ -206,7 +210,7 @@ export default function Header() {
                   <Link
                     href="/login"
                     onClick={() => setIsMobileOpen(false)}
-                    className="btn btn-secondary w-full rounded-[15px] justify-center text-xs font-bold uppercase tracking-wider"
+                    className="btn btn-secondary w-full rounded-2xl justify-center text-xs font-bold uppercase tracking-wider py-3"
                   >
                     <User size={16} /> Sign In to Your Account
                   </Link>
@@ -219,3 +223,4 @@ export default function Header() {
     </>
   )
 }
+

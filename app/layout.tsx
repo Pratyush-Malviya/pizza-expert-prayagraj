@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import FloatingCartButton from '@/components/shared/FloatingCartButton'
 import CartDrawer from '@/components/cart/CartDrawer'
 import CustomerRealtimeNotifier from '@/components/notifications/CustomerRealtimeNotifier'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 
 export const metadata: Metadata = {
   title: {
@@ -57,6 +58,7 @@ export default function RootLayout({
         {children}
         <CustomerRealtimeNotifier />
         <FloatingCartButton />
+        <MobileBottomNav />
         <CartDrawer />
         <Toaster
           position="top-right"

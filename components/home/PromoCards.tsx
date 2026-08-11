@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Copy, Check, ArrowRight } from 'lucide-react'
+import { Copy, Check, ArrowRight, Tag } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
@@ -12,7 +12,7 @@ const PROMOS = [
     id: 'promo-1',
     image: FOOD_IMAGES['margherita-pizza'],
     title: 'WOOD-FIRED MARGHERITA',
-    subtitle: 'Fresh mozzarella & basil on signature crust',
+    subtitle: 'Fresh mozzarella & aromatic basil on signature crust',
     price: '₹249',
     cta: 'ORDER NOW',
     href: '/product/margherita-pizza',
@@ -51,13 +51,16 @@ export default function PromoCards() {
   }
 
   return (
-    <section className="section-py bg-[#260212] border-y border-black" aria-labelledby="promos-heading">
+    <section className="section-py bg-[#16161E] border-y border-white/10" aria-labelledby="promos-heading">
       <div className="container-custom">
-        <div className="text-center mb-14">
-          <span className="text-xs font-bold text-vibrant-green uppercase tracking-widest block mb-2 font-mono">
-            ◂ SPECIAL DEALS & OFFERS ▸
-          </span>
-          <h2 id="promos-heading" className="section-title">HANDCRAFTED DEALS</h2>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 text-xs font-black text-[#10B981] uppercase tracking-widest mb-3">
+            <Tag size={14} />
+            <span>SPECIAL DEALS & PROMOS</span>
+          </div>
+          <h2 id="promos-heading" className="section-title text-white">
+            HANDCRAFTED OFFERS
+          </h2>
           <p className="section-subtitle mx-auto max-w-lg">
             Delicious combos and exclusive discounts designed for family dinners and weekend feasts.
           </p>
@@ -72,27 +75,27 @@ export default function PromoCards() {
               whileHover={{ y: -8 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="group cursor-pointer bg-[#4f0423] rounded-[12px] overflow-hidden border border-black shadow-xl hover:border-[#e10600]/60 transition-all duration-300 flex flex-col"
+              className="group cursor-pointer bg-[#0D0D11] rounded-3xl overflow-hidden border border-white/10 shadow-xl hover:border-[#FF3B00]/50 transition-all duration-300 flex flex-col"
             >
-              <div className="relative aspect-[4/3] overflow-hidden bg-[#370318]">
+              <div className="relative aspect-[4/3] overflow-hidden bg-[#08080B]">
                 <img
                   src={promo.image}
                   alt={promo.title}
                   className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#260212]/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D11] via-transparent to-transparent opacity-80" />
               </div>
               
               <div className="p-6 flex flex-col flex-1">
-                <h3 className="font-serif font-bold text-xl uppercase tracking-wider text-[#ffc7c6] mb-2 group-hover:text-white transition-colors">
+                <h3 className="font-heading font-extrabold text-xl uppercase tracking-tight text-white mb-2 group-hover:text-[#FF3B00] transition-colors">
                   {promo.title}
                 </h3>
-                <p className="text-[#ffc7c6]/80 text-sm mb-6 leading-relaxed">
+                <p className="text-zinc-400 text-sm mb-6 leading-relaxed font-normal">
                   {promo.subtitle}
                 </p>
                 
-                <div className="flex items-center justify-between mt-auto pt-4 border-t border-black">
-                  <span className="font-mono font-bold text-xl text-white">
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10">
+                  <span className="font-mono font-black text-xl text-white">
                     {promo.price}
                   </span>
                   
@@ -100,7 +103,7 @@ export default function PromoCards() {
                     <motion.button
                       whileTap={{ scale: 0.92 }}
                       onClick={(e) => handleCopy(e, promo.price, promo.id)}
-                      className="btn btn-primary rounded-[15px] font-bold text-xs px-4"
+                      className="btn btn-primary rounded-full font-extrabold text-xs px-5 py-2"
                     >
                       {copiedId === promo.id ? (
                         <span className="flex items-center gap-1.5"><Check size={14} /> COPIED</span>
@@ -112,7 +115,7 @@ export default function PromoCards() {
                     <Link href={promo.href}>
                       <motion.span
                         whileTap={{ scale: 0.92 }}
-                        className="btn btn-primary rounded-[15px] font-bold text-xs px-4 flex items-center gap-1.5"
+                        className="btn btn-primary rounded-full font-extrabold text-xs px-5 py-2 flex items-center gap-1.5"
                       >
                         {promo.cta} <ArrowRight size={14} />
                       </motion.span>
@@ -127,3 +130,4 @@ export default function PromoCards() {
     </section>
   )
 }
+
