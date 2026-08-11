@@ -3,16 +3,23 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingBag, ArrowRight } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
 
 export default function FloatingCartButton() {
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const { openCart, getItemCount, getSubtotal } = useCartStore()
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Hide on admin or driver routes
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/driver')) {
+    return null
+  }
 
   const itemCount = getItemCount()
   const subtotal = getSubtotal()
