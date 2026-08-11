@@ -1,9 +1,9 @@
 # 🍕 Pizza Expert Prayagraj — Product Requirements Document (PRD)
 
-**Version:** 2.0  
+**Version:** 2.1 (Production Release - User Management & Fleet Edition)  
 **Last Updated:** August 2026  
 **Author:** Pratyush Malviya  
-**Status:** 🟢 Active Development  
+**Status:** 🟢 Active Production  
 **Live URL:** https://pizza-kappa-nine.vercel.app  
 **GitHub:** https://github.com/Pratyush-Malviya/pizza-expert-prayagraj
 
@@ -229,11 +229,53 @@ erDiagram
         string email
         string phone
         enum role
+        boolean is_active
+        string invite_status
+        uuid invited_by FK
+        timestamp last_login_at
         int loyalty_points
-        uuid tier_id FK
-        date date_of_birth
-        string avatar_url
+        jsonb notification_prefs
         timestamp created_at
+    }
+
+    STAFF_DETAILS {
+        uuid id PK_FK
+        string department
+        string employee_code
+        date hire_date
+        string shift_pattern
+        decimal hourly_rate
+    }
+
+    DRIVER_DETAILS {
+        uuid id PK_FK
+        enum vehicle_type
+        string vehicle_number
+        string license_number
+        enum verification_status
+        string rejection_reason
+        boolean is_online
+    }
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid actor_id FK
+        string action
+        string target_table
+        string target_id
+        jsonb before
+        jsonb after
+        string ip_address
+        timestamp created_at
+    }
+
+    USER_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        string device_info
+        string ip_address
+        timestamp created_at
+        timestamp revoked_at
     }
 
     LOYALTY_TIERS {
@@ -453,14 +495,18 @@ stateDiagram-v2
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | All admin access | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Manage users & roles | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Customer CRM & User CRUD (Add/Edit/Delete) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View Customer Action Trace & LTV | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Driver Fleet & Verify KYC | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Security & Audit Log Trail | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Manage products & menu | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Manage orders & status | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | KDS (kitchen view) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Create coupons | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | View analytics | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | Manage site settings | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Place orders | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Accept deliveries | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Self-Service Account & Preferences | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Accept & Complete Deliveries | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
@@ -547,10 +593,13 @@ Confirmed  →  Preparing  →  Ready  →  Out for Delivery  →  Delivered
 | Section | Features |
 |---|---|
 | **Profile** | Name, phone, email, avatar upload |
-| **Saved Addresses** | Add/edit/delete addresses, set default |
-| **Order History** | All past orders with status, items, total |
+| **Notification Preferences** | SMS, WhatsApp & Email toggles for order updates and promo deals |
+| **Privacy & GDPR Data Export** | One-click JSON download of complete profile, addresses, and order history |
+| **Account Deactivation** | Self-service account soft-deactivation with 30-day grace period |
+| **Saved Addresses** | Add/edit/delete normalized addresses, set default |
+| **Order History** | All past orders with live status, items, unit prices, total |
 | **Quick Reorder** | One-click replay of last order |
-| **Loyalty Points** | Current points balance, tier status, perks |
+| **Loyalty Points** | Current points balance, tier status, perks, retention ledger |
 
 ---
 
@@ -672,6 +721,42 @@ Designed for a **10" tablet** mounted in the kitchen:
 - Tax breakdown: CGST + SGST + IGST
 - Export: Date-range CSV for accountant handoff
 - Print-ready invoice template
+
+### 8.8 Customer CRM Directory & User Management — /admin/customers
+
+- **Unified Customer Aggregation:** Combines registered user profiles (`profiles`) and guest checkout customers (automatically extracted from `orders.address_json`).
+- **Lifetime Value (LTV) Metrics:** Displays total orders placed, cumulative spending (₹ LTV), and last order timestamp.
+- **Detailed Customer Action Trace (Eye Icon 👁️):**
+  - *Order History Tab:* Itemized breakdown of past orders, statuses, and totals.
+  - *Saved Addresses Tab:* Normalized delivery locations (Home, Work, Pincode).
+  - *Detailed Action Trace Tab:* Real-time timeline of customer audit events (logins, order placements, address changes, profile edits, IP addresses).
+- **User CRUD & Account Management:**
+  - *Add New User Modal:* Create new user accounts directly from the CRM with role selection.
+  - *Edit User Modal:* Modify name, phone, role, loyalty points, and active/blocked status.
+  - *Delete User Confirmation Modal:* Soft/hard delete user profiles with full audit trail logging.
+- **Loyalty Ledger & Rewards Adjustments:** Manual point grants/deductions with custom reason notes.
+- **Data Export & Seeding:** Client-side CSV export of filtered records + 1-click sample demo customer seeding.
+
+### 8.9 Security & Audit Log Trail — /admin/audit-log
+
+- **Event Compliance Trace:** Centralized activity log capturing administrative actions, role modifications, customer blocks, and system events.
+- **Before / After JSON State Diffs:** Collapsible diff viewer displaying exact state changes per action.
+- **Actor & IP Resolution:** Resolves actor user IDs to human-readable names and logs requesting IP addresses.
+- **Compliance Export:** One-click CSV export for security audits and management review.
+
+### 8.10 Driver Fleet & KYC Onboarding — /admin/drivers
+
+- **Fleet Roster & Duty Status:** Manage delivery drivers, vehicle types (Bike, Scooter, E-Bike, Car), and license plate numbers.
+- **Online/Offline Realtime Toggle:** One-click switch for driver availability.
+- **Document KYC Workflow:** Inspect driving licenses and ID proofs with *Approve & Verify* or *Reject* (with mandatory rejection reason input).
+- **Fleet KPI Metrics:** Live cards displaying *Total Fleet*, *Online Now*, and *Pending KYC Review*.
+
+### 8.11 Staff Roster & Access Controls — /admin/staff
+
+- **Team Roster:** Manage kitchen staff, managers, and super admins.
+- **Department & Employee Code:** Assign operational departments (Kitchen, Dispatch, Inventory) and employee codes.
+- **Instant Deactivation & Session Revocation:** Soft-deactivate accounts with instant global auth session invalidation (`signOut(userId, 'global')`).
+- **Last Login Tracking:** Displays `last_login_at` timestamps for operational visibility.
 
 ---
 
@@ -925,18 +1010,23 @@ flowchart LR
 
 ## 16. Implementation Roadmap
 
-### Current State (v1 — Live)
+### Current State (v2.1 — Live Production)
 
 ✅ Next.js 16.3 + React 19 + Tailwind v4  
-✅ Supabase auth (Google OAuth + email)  
+✅ Supabase auth (Google OAuth + email/password)  
 ✅ Full menu browsing with filters and customization  
 ✅ Cart + checkout with coupon engine  
 ✅ Razorpay + Cashfree + COD payment  
 ✅ Real-time admin order feed with audio + desktop notifications  
-✅ Kitchen Display System (KDS)  
-✅ Delivery dispatch board  
+✅ Kitchen Display System (KDS) & Delivery dispatch board  
 ✅ Catalog CMS (products, categories, options)  
-✅ Staff roster with role-based access  
+✅ Staff Roster with department tags, status badges & instant session revocation  
+✅ **User Management Module (Milestones A - F Completed):**  
+  - 👥 **Customer CRM Directory (`/admin/customers`):** Registered & Guest Customer aggregation, LTV calculation, User CRUD (Add, Edit, Delete modals), loyalty adjustments, CSV export.  
+  - 👁️ **Detailed Customer Action Trace:** Itemized order history tab, saved addresses tab, and real-time audit log timeline tab per customer.  
+  - 🛡️ **Security & Audit Log Trail (`/admin/audit-log`):** Centralized event trail with before/after JSON state diffs and CSV export.  
+  - 🚚 **Driver Fleet & KYC Onboarding (`/admin/drivers`):** Fleet KPI metrics, vehicle classification, document KYC review (Approve/Reject), online status toggle.  
+  - ⚙️ **Self-Service Account (`/account/profile`):** SMS/Email notification toggles, GDPR personal data export (JSON download), 30-day account deactivation.  
 ✅ Theme & Customizer  
 
 ### Phased Roadmap
