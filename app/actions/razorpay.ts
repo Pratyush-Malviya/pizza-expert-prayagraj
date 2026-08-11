@@ -28,42 +28,36 @@ export async function createRazorpayOrder(payload: {
 
     const isPlaceholder = !keyId || keyId.includes('xxxx') || !keySecret || keySecret.includes('your-') || keyId === 'rzp_test_placeholder'
 
-    // If live/sandbox Razorpay keys are configured properly
-    if (!isPlaceholder) {
-      const razorpay = new Razorpay({
-        key_id: keyId,
-        key_secret: keySecret,
-      })
-
-      const options = {
-        amount: Math.round(payload.amount * 100), // amount in paise
-        currency: 'INR',
-        receipt: payload.orderId,
-        notes: {
-          orderId: payload.orderId,
-        },
-      }
-
-      const order = await razorpay.orders.create(options)
-
+    if (isPlaceholder) {
       return {
-        success: true,
-        razorpayOrderId: order.id,
-        keyId,
-        amount: options.amount,
-        currency: 'INR',
-        isTestMode: false,
+        success: false,
+        error: 'Razorpay Payment Gateway is not configured. Please configure valid NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Admin Settings or Vercel Environment Variables.',
       }
     }
 
-    // Demo / Test Mode Fallback: If keys are unconfigured, return test mode order
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    })
+
+    const options = {
+      amount: Math.round(payload.amount * 100), // amount in paise
+      currency: 'INR',
+      receipt: payload.orderId,
+      notes: {
+        orderId: payload.orderId,
+      },
+    }
+
+    const order = await razorpay.orders.create(options)
+
     return {
       success: true,
-      razorpayOrderId: `order_test_${Date.now()}_${payload.orderId.slice(0, 6)}`,
-      keyId: 'rzp_test_demo',
-      amount: Math.round(payload.amount * 100),
+      razorpayOrderId: order.id,
+      keyId,
+      amount: options.amount,
       currency: 'INR',
-      isTestMode: true,
+      isTestMode: keyId.startsWith('rzp_test_'),
     }
   } catch (err: any) {
     console.warn('Razorpay order creation fallback to test mode:', err?.message || err)

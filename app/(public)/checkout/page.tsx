@@ -234,29 +234,8 @@ export default function CheckoutPage() {
 
       if (!rzpRes.success || !rzpRes.razorpayOrderId) {
         setPaymentError(rzpRes.error || 'Failed to initialize Razorpay payment modal')
-        toast.error('Payment gateway error. Please try again or choose COD.')
+        toast.error(rzpRes.error || 'Razorpay keys not configured. Please try Cash on Delivery or configure keys in Admin Settings.')
         setLoading(false)
-        return
-      }
-
-      // If in Test Mode / Keys not set in Vercel, complete test payment directly without modal
-      if (rzpRes.isTestMode) {
-        const verifyRes = await verifyRazorpayPayment({
-          orderId,
-          razorpayPaymentId: `pay_demo_${Date.now()}`,
-          razorpayOrderId: rzpRes.razorpayOrderId,
-          razorpaySignature: 'demo_signature',
-          isTestMode: true,
-        })
-
-        if (verifyRes.success) {
-          toast.success('🎉 Order Placed Successfully! (Demo/Test Online Payment)')
-          clearCart()
-          router.push(`/order/${orderId}`)
-        } else {
-          setPaymentError(verifyRes.error || 'Payment verification failed.')
-          setLoading(false)
-        }
         return
       }
 
