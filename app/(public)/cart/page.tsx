@@ -10,6 +10,7 @@ import { fetchEta } from '@/app/actions/eta'
 import { EtaEstimate } from '@/lib/eta'
 import CartUpsell from '@/components/cart/CartUpsell'
 
+export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, getSubtotal, getItemKey } = useCartStore()
   const [couponCode, setCouponCode] = useState('')
   const [discount, setDiscount] = useState(0)

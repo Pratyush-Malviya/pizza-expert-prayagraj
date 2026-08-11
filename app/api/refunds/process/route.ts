@@ -156,13 +156,15 @@ export async function POST(request: Request) {
     await supabase.from('orders').update({ status: 'refunded' }).eq('id', orderId)
 
     // ─── 8. Audit log ──────────────────────────────────────────────────
-    await supabase.from('audit_log').insert({
-      actor_id: user.id,
-      action: 'REFUND_INITIATED',
-      target_table: 'orders',
-      target_id: orderId,
-      after: { refund_id: refundRecord.id, amount, gateway_refund_id: gatewayRefundId, reason },
-    }).throwOnError().catch(() => {}) // audit log failure should not block refund
+    try {
+      await supabase.from('audit_log').insert({
+        actor_id: user.id,
+        action: 'REFUND_INITIATED',
+        target_table: 'orders',
+        target_id: orderId,
+        after: { refund_id: refundRecord.id, amount, gateway_refund_id: gatewayRefundId, reason },
+      })
+    } catch {} // audit log failure should not block refund
 
     return NextResponse.json({
       success: true,

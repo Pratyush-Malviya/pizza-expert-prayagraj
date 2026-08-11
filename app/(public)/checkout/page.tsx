@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { createOrder } from '@/app/actions/orders'

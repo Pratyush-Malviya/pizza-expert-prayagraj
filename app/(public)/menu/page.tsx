@@ -354,3 +354,11 @@ function MenuContent() {
     </div>
   )
 }
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={<div className="container-custom py-12 text-center text-xs text-[#A8A29E]">Loading menu...</div>}>
+      <MenuContent />
+    </Suspense>
+  )
+}

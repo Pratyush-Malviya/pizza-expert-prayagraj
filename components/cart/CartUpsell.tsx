@@ -16,17 +16,21 @@ export default function CartUpsell() {
   const addItem = useCartStore((state) => state.addItem)
   const items = useCartStore((state) => state.items)
 
-  const cartItemIds = new Set(items.map((i) => i.productId))
+  const cartItemIds = new Set(items.map((i) => i.id))
   const availableUpsells = POPULAR_ADDONS.filter((addon) => !cartItemIds.has(addon.id))
 
   if (availableUpsells.length === 0) return null
 
   const handleAdd = (addon: typeof POPULAR_ADDONS[0]) => {
     addItem({
-      productId: addon.id,
+      id: addon.id,
       name: addon.name,
+      slug: addon.id,
       price: addon.price,
+      imageUrl: '',
+      isVeg: true,
       quantity: 1,
+      selectedOptions: [],
     })
     toast.success(`Added ${addon.name} to your cart!`)
   }

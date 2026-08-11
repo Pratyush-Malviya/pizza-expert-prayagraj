@@ -214,12 +214,14 @@ export async function createOrder(payload: {
 
     // 7. For COD orders below threshold, also insert confirmed payment record
     if (isCod && total <= COD_VERIFICATION_THRESHOLD) {
-      await supabase.from('payments').insert({
-        order_id: order.id,
-        gateway: 'cod',
-        amount: total,
-        status: 'pending_collection',
-      }).throwOnError().catch(() => {})
+      try {
+        await supabase.from('payments').insert({
+          order_id: order.id,
+          gateway: 'cod',
+          amount: total,
+          status: 'pending_collection',
+        })
+      } catch {}
     }
 
     // 8. Trigger Resend Transactional Email
