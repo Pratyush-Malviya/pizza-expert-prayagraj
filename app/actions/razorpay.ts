@@ -60,14 +60,10 @@ export async function createRazorpayOrder(payload: {
       isTestMode: keyId.startsWith('rzp_test_'),
     }
   } catch (err: any) {
-    console.warn('Razorpay order creation fallback to test mode:', err?.message || err)
+    console.error('Razorpay order creation error:', err?.message || err)
     return {
-      success: true,
-      razorpayOrderId: `order_test_${Date.now()}_${payload.orderId.slice(0, 6)}`,
-      keyId: 'rzp_test_demo',
-      amount: Math.round(payload.amount * 100),
-      currency: 'INR',
-      isTestMode: true,
+      success: false,
+      error: `Razorpay API Error: ${err?.message || 'Invalid API Key or Secret'}. Please check your keys in Admin Settings or select Cash on Delivery.`,
     }
   }
 }
