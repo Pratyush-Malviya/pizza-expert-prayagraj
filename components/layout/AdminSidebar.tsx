@@ -182,6 +182,9 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
+    if (typeof document !== 'undefined') {
+      document.cookie = 'simple_admin=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    }
     window.location.href = '/admin/login'
   }
 

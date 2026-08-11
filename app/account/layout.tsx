@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { User, ShoppingBag, MapPin, LogOut, LayoutDashboard } from 'lucide-react'
+import LogoutButton from '@/components/layout/LogoutButton'
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   // Using headers to extract pathname in Server Components can be tricky in Next.js without middleware hacks,
@@ -33,9 +34,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             </nav>
 
             <div className="mt-8 pt-6 border-t border-[#E7E0D8]">
-              <Link href="/login" className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-bold text-[#B91C1C] hover:bg-[#FEF2F2] transition-colors">
-                <LogOut size={18} /> Sign Out
-              </Link>
+              <LogoutButton />
             </div>
           </div>
         </aside>
