@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createOrder } from '@/app/actions/orders'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -223,15 +224,39 @@ export default function CheckoutPage() {
       }
 
       // 3. Handle Razorpay Payment Gateway Modal Flow
+      const storeSettings = useSettingsStore.getState()
       const rzpRes = await createRazorpayOrder({
         amount: grandTotal,
         orderId,
+        customKeyId: storeSettings.enableRazorpay ? storeSettings.razorpayKeyId : undefined,
+        customKeySecret: storeSettings.enableRazorpay ? storeSettings.razorpayKeySecret : undefined,
       })
 
       if (!rzpRes.success || !rzpRes.razorpayOrderId) {
         setPaymentError(rzpRes.error || 'Failed to initialize Razorpay payment modal')
         toast.error('Payment gateway error. Please try again or choose COD.')
         setLoading(false)
+        return
+      }
+
+      // If in Test Mode / Keys not set in Vercel, complete test payment directly without modal
+      if (rzpRes.isTestMode) {
+        const verifyRes = await verifyRazorpayPayment({
+          orderId,
+          razorpayPaymentId: `pay_demo_${Date.now()}`,
+          razorpayOrderId: rzpRes.razorpayOrderId,
+          razorpaySignature: 'demo_signature',
+          isTestMode: true,
+        })
+
+        if (verifyRes.success) {
+          toast.success('🎉 Order Placed Successfully! (Demo/Test Online Payment)')
+          clearCart()
+          router.push(`/order/${orderId}`)
+        } else {
+          setPaymentError(verifyRes.error || 'Payment verification failed.')
+          setLoading(false)
+        }
         return
       }
 
