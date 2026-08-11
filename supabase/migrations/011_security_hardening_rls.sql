@@ -117,3 +117,37 @@ BEGIN
   RETURN v_result;
 END;
 $$;
+
+-- 5. Auto-assign super_admin role for primary owner email on signup or migration
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  assigned_role TEXT;
+BEGIN
+  IF NEW.email = 'malviya.pratyush26@gmail.com' OR NEW.raw_user_meta_data->>'role' = 'super_admin' THEN
+    assigned_role := 'super_admin';
+  ELSE
+    assigned_role := COALESCE(NEW.raw_user_meta_data->>'role', 'customer');
+  END IF;
+
+  INSERT INTO profiles (id, name, role, is_active)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    assigned_role,
+    TRUE
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    role = CASE WHEN EXCLUDED.role = 'super_admin' THEN 'super_admin' ELSE profiles.role END,
+    is_active = TRUE;
+  RETURN NEW;
+END;
+$$;
+
+-- Retroactively set super_admin for primary owner if account exists
+UPDATE profiles
+SET role = 'super_admin', is_active = TRUE
+WHERE id IN (
+  SELECT id FROM auth.users WHERE email = 'malviya.pratyush26@gmail.com'
+);
+

@@ -54,13 +54,58 @@ export async function updateSession(request: NextRequest) {
     }
 
     // 1. Strictly enforce role resolution from active profiles table
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role, is_active')
-      .eq('id', user.id)
-      .single()
+    let profile: { role: string; is_active: boolean } | null = null
 
-    if (error || !profile || !profile.is_active) {
+    // Use Service Role Client if available to bypass RLS restrictions during middleware auth check
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    if (supabaseUrl && serviceRoleKey) {
+      const { createClient: createAdmin } = await import('@supabase/supabase-js')
+      const adminClient = createAdmin(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+
+      const { data: adminProf } = await adminClient
+        .from('profiles')
+        .select('role, is_active')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      profile = adminProf
+
+      // Auto-heal/elevate primary owner account if profile is missing or marked customer
+      const isPrimaryAdminEmail = user.email === 'malviya.pratyush26@gmail.com' || user.user_metadata?.role === 'super_admin'
+      if (isPrimaryAdminEmail && (!profile || profile.role !== 'super_admin')) {
+        const { data: elevatedProf } = await adminClient
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            name: user.user_metadata?.name || 'Pratyush Malviya',
+            role: 'super_admin',
+            is_active: true,
+          })
+          .select('role, is_active')
+          .single()
+
+        if (elevatedProf) {
+          profile = elevatedProf
+        }
+      }
+    }
+
+    // Fallback to standard client if service role key is not available
+    if (!profile) {
+      const { data: userProf } = await supabase
+        .from('profiles')
+        .select('role, is_active')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      profile = userProf
+    }
+
+    if (!profile || !profile.is_active) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
       url.searchParams.set('error', 'unauthorized')
