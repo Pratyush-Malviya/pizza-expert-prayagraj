@@ -834,6 +834,10 @@ sequenceDiagram
     DB-->>FE: Authorized data only
 ```
 
+**Strict Authentication Enforcement:** 
+- All legacy "one-click" admin bypasses and hardcoded demo credentials have been fully removed. Authentication strictly requires valid Supabase email/password verification or Google OAuth. 
+- Active sessions are securely terminated on logout across both customer and admin portals by destroying the Supabase auth session and clearing any legacy admin cookies.
+
 ---
 
 ## 11. System Workflows & Data Flows
@@ -1013,7 +1017,8 @@ flowchart LR
 ### Current State (v2.1 — Live Production)
 
 ✅ Next.js 16.3 + React 19 + Tailwind v4  
-✅ Supabase auth (Google OAuth + email/password)  
+✅ Supabase auth (Google OAuth + email/password) — **Strict enforcement, all bypasses removed**  
+✅ Vibrant Modern UI — Dynamic vibrant green & yellow accents across primary workflows  
 ✅ Full menu browsing with filters and customization  
 ✅ Cart + checkout with coupon engine  
 ✅ Razorpay + Cashfree + COD payment  
