@@ -8,6 +8,20 @@ export interface FaqItem {
   answer: string
 }
 
+export interface CarouselOffer {
+  id: string
+  badge: string
+  badgeColor?: 'orange' | 'yellow' | 'green' | 'purple'
+  title: string
+  subtitle: string
+  code?: string
+  discount: string
+  expiryText: string
+  imageUrl: string
+  href: string
+  active?: boolean
+}
+
 interface SettingsState {
   logoDataUrl: string | null
   setLogoDataUrl: (url: string | null) => void
@@ -43,6 +57,14 @@ interface SettingsState {
   updateFaq: (id: string, faq: Partial<FaqItem>) => void
   deleteFaq: (id: string) => void
   
+  // Flash Offers Carousel CRUD
+  carouselOffers: CarouselOffer[]
+  addCarouselOffer: (offer: Omit<CarouselOffer, 'id'>) => void
+  updateCarouselOffer: (id: string, offer: Partial<CarouselOffer>) => void
+  deleteCarouselOffer: (id: string) => void
+  reorderCarouselOffers: (offers: CarouselOffer[]) => void
+  toggleCarouselOfferActive: (id: string) => void
+
   // Business Details
   businessName: string
   phone: string
@@ -109,13 +131,68 @@ const DEFAULT_FAQS: FaqItem[] = [
     id: 'faq-4',
     category: 'Payments & Refunds',
     question: 'What payment options are available?',
-    answer: 'We accept Razorpay (UPI, Credit/Debit Cards, Net Banking), Cashfree, and Cash on Delivery (COD).',
+    answer: 'We accept Razorpay (UPI, Credit/Debit Cards, Net Banking) and Cash on Delivery (COD).',
   },
   {
     id: 'faq-5',
     category: 'Food & Ingredients',
     question: 'Are your vegetarian items prepared separately?',
     answer: 'Yes! We follow strict separation protocols. Pure vegetarian items are prepared using dedicated utensils and separate oven spaces.',
+  },
+]
+
+const DEFAULT_CAROUSEL_OFFERS: CarouselOffer[] = [
+  {
+    id: 'offer-1',
+    badge: 'FLASH DEAL ⚡',
+    badgeColor: 'orange',
+    title: '20% OFF YOUR FIRST ORDER',
+    subtitle: 'Taste Prayagraj’s finest wood-fired pizza crafted with 48h fermented dough.',
+    code: 'WELCOME20',
+    discount: 'FLAT 20% OFF',
+    expiryText: 'Valid for all new users',
+    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80',
+    href: '/menu',
+    active: true,
+  },
+  {
+    id: 'offer-2',
+    badge: 'WEEKEND SPECIAL 🔥',
+    badgeColor: 'yellow',
+    title: 'BUY 1 LARGE PIZZA, GET 2ND AT 50% OFF',
+    subtitle: 'Double the pizza, double the joy! Choose any 2 Large gourmet wood-fired pizzas.',
+    code: 'BOGO50',
+    discount: 'SAVE UP TO ₹250',
+    expiryText: 'Limited period offer',
+    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80',
+    href: '/menu?category=pizzas',
+    active: true,
+  },
+  {
+    id: 'offer-3',
+    badge: 'FREE GIFT 🎁',
+    badgeColor: 'green',
+    title: 'FREE CHEESY GARLIC BREAD & 2 COKES',
+    subtitle: 'Add any 2 Pizzas to cart & enjoy complimentary sides automatically!',
+    code: 'FREECOMBO',
+    discount: 'WORTH ₹199 FREE',
+    expiryText: 'Orders above ₹599',
+    imageUrl: 'https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=600&q=80',
+    href: '/offers',
+    active: true,
+  },
+  {
+    id: 'offer-4',
+    badge: 'MEGA COMBO 🍕',
+    badgeColor: 'purple',
+    title: 'ULTIMATE FAMILY FEAST @ JUST ₹899',
+    subtitle: '2 Large Pizzas + Stuffed Garlic Bread + 4 Drinks. Save ₹450 today!',
+    code: 'FEAST899',
+    discount: 'FLAT 35% SAVINGS',
+    expiryText: 'Popular in Allapur',
+    imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80',
+    href: '/menu',
+    active: true,
   },
 ]
 
@@ -165,6 +242,32 @@ export const useSettingsStore = create<SettingsState>()(
           faqs: state.faqs.filter((item) => item.id !== id),
         })),
 
+      // Carousel Offers Defaults & Handlers
+      carouselOffers: DEFAULT_CAROUSEL_OFFERS,
+      addCarouselOffer: (offer) =>
+        set((state) => ({
+          carouselOffers: [
+            ...state.carouselOffers,
+            { ...offer, id: `offer-${Date.now()}`, active: offer.active ?? true },
+          ],
+        })),
+      updateCarouselOffer: (id, updated) =>
+        set((state) => ({
+          carouselOffers: state.carouselOffers.map((item) => (item.id === id ? { ...item, ...updated } : item)),
+        })),
+      deleteCarouselOffer: (id) =>
+        set((state) => ({
+          carouselOffers: state.carouselOffers.filter((item) => item.id !== id),
+        })),
+      reorderCarouselOffers: (newOffers) =>
+        set({ carouselOffers: newOffers }),
+      toggleCarouselOfferActive: (id) =>
+        set((state) => ({
+          carouselOffers: state.carouselOffers.map((item) =>
+            item.id === id ? { ...item, active: !item.active } : item
+          ),
+        })),
+
       businessName: 'Pizza Expert Prayagraj',
       phone: '+91-9999999999',
       whatsapp: '919999999999',
@@ -206,3 +309,4 @@ export const useSettingsStore = create<SettingsState>()(
     }
   )
 )
+

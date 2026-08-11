@@ -7,10 +7,12 @@ import { Flame, ChevronLeft, ChevronRight, Copy, Check, ArrowRight, Clock, Zap }
 import { toast } from 'sonner'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+
 export interface FlashOffer {
   id: string
   badge: string
-  badgeColor: 'orange' | 'yellow' | 'green' | 'purple'
+  badgeColor?: 'orange' | 'yellow' | 'green' | 'purple'
   title: string
   subtitle: string
   code?: string
@@ -20,69 +22,57 @@ export interface FlashOffer {
   href: string
 }
 
-const OFFERS: FlashOffer[] = [
-  {
-    id: 'offer-1',
-    badge: 'FLASH DEAL ⚡',
-    badgeColor: 'orange',
-    title: '20% OFF YOUR FIRST ORDER',
-    subtitle: 'Taste Prayagraj’s finest wood-fired pizza crafted with 48h fermented dough.',
-    code: 'WELCOME20',
-    discount: 'FLAT 20% OFF',
-    expiryText: 'Valid for all new users',
-    imageUrl: FOOD_IMAGES['margherita-pizza'],
-    href: '/menu',
-  },
-  {
-    id: 'offer-2',
-    badge: 'WEEKEND SPECIAL 🔥',
-    badgeColor: 'yellow',
-    title: 'BUY 1 LARGE PIZZA, GET 2ND AT 50% OFF',
-    subtitle: 'Double the pizza, double the joy! Choose any 2 Large gourmet wood-fired pizzas.',
-    code: 'BOGO50',
-    discount: 'SAVE UP TO ₹250',
-    expiryText: 'Expires in 04:59 mins',
-    imageUrl: FOOD_IMAGES['paneer-tikka-pizza'],
-    href: '/menu?category=pizzas',
-  },
-  {
-    id: 'offer-3',
-    badge: 'FREE GIFT 🎁',
-    badgeColor: 'green',
-    title: 'FREE CHEESY GARLIC BREAD & 2 COKES',
-    subtitle: 'Add any 2 Pizzas to cart & enjoy complimentary sides automatically!',
-    code: 'FREECOMBO',
-    discount: 'WORTH ₹199 FREE',
-    expiryText: 'Orders above ₹599',
-    imageUrl: FOOD_IMAGES['garlic-bread'],
-    href: '/offers',
-  },
-  {
-    id: 'offer-4',
-    badge: 'MEGA COMBO 🍕',
-    badgeColor: 'purple',
-    title: 'ULTIMATE FAMILY FEAST @ JUST ₹899',
-    subtitle: '2 Large Pizzas + Stuffed Garlic Bread + 4 Drinks. Save ₹450 today!',
-    code: 'FEAST899',
-    discount: 'FLAT 35% SAVINGS',
-    expiryText: 'Popular in Allapur',
-    imageUrl: FOOD_IMAGES['family-feast-combo'],
-    href: '/product/family-feast-combo',
-  },
-]
-
 export default function OfferCarousel() {
+  const store = useSettingsStore()
+  const [mounted, setMounted] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState<number>(1)
   const [isPaused, setIsPaused] = useState(false)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Active offers list
+  const activeOffers = (mounted && store.carouselOffers && store.carouselOffers.length > 0)
+    ? store.carouselOffers.filter((o) => o.active !== false)
+    : [
+        {
+          id: 'offer-1',
+          badge: 'FLASH DEAL ⚡',
+          badgeColor: 'orange' as const,
+          title: '20% OFF YOUR FIRST ORDER',
+          subtitle: 'Taste Prayagraj’s finest wood-fired pizza crafted with 48h fermented dough.',
+          code: 'WELCOME20',
+          discount: 'FLAT 20% OFF',
+          expiryText: 'Valid for all new users',
+          imageUrl: FOOD_IMAGES['margherita-pizza'],
+          href: '/menu',
+        },
+      ]
+
+  const OFFERS = activeOffers.length > 0 ? activeOffers : [
+    {
+      id: 'offer-fallback',
+      badge: 'SPECIAL OFFER 🔥',
+      badgeColor: 'orange' as const,
+      title: 'HOT WOOD-FIRED PIZZAS IN ALLAPUR',
+      subtitle: 'Order online now for 30-min fast delivery across Prayagraj!',
+      code: 'PIZZA20',
+      discount: '20% OFF',
+      expiryText: 'Limited period',
+      imageUrl: FOOD_IMAGES['margherita-pizza'],
+      href: '/menu',
+    }
+  ]
+
   const intervalTime = 4000 // 4 seconds per slide
 
   // Auto-play logic with smooth progress bar reset
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || OFFERS.length <= 1) return
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -95,7 +85,7 @@ export default function OfferCarousel() {
     }, intervalTime / 40)
 
     return () => clearInterval(progressInterval)
-  }, [currentIndex, isPaused])
+  }, [currentIndex, isPaused, OFFERS.length])
 
   const handleNext = () => {
     setDirection(1)

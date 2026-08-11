@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Building, CreditCard, Image as ImageIcon, Upload, Link as LinkIcon, MapPin, Camera, LayoutTemplate } from 'lucide-react'
+import Link from 'next/link'
+import { Save, Building, CreditCard, Image as ImageIcon, Upload, Link as LinkIcon, MapPin, Camera, LayoutTemplate, Flame } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
@@ -399,6 +400,21 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-[#0D0D11] border border-white/20 rounded-xl text-white shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#FF3B00] text-white flex items-center justify-center font-bold shadow-md">
+                <Flame size={20} />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-white">Homepage Flash Offers Carousel Manager</p>
+                <p className="text-xs text-zinc-400">Add, edit, reorder, and customize dynamic offer slides on homepage.</p>
+              </div>
+            </div>
+            <Link href="/admin/offers" className="btn bg-[#FF3B00] hover:bg-[#D63200] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-lg">
+              Manage Slides →
+            </Link>
           </div>
 
           <div className="flex items-center justify-between p-4 bg-[#FBF9F5] border border-[#E7E0D8] rounded-lg">

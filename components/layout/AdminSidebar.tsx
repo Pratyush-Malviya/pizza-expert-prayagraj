@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, ShoppingBag, Pizza, Tag,
+  LayoutDashboard, ShoppingBag, Pizza, Tag, Flame,
   Settings, LogOut, ChevronDown, ChevronRight,
   CreditCard, UtensilsCrossed, Truck, X, Palette,
   TrendingUp, Boxes, FileText, Users, Contact, History, Star
@@ -50,6 +50,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     icon: Pizza,
     items: [
       { label: 'Products', href: '/admin/products', icon: Pizza },
+      { label: 'Flash Offers Carousel', href: '/admin/offers', icon: Flame },
       { label: 'Coupons', href: '/admin/coupons', icon: Tag },
       { label: 'Reviews', href: '/admin/reviews', icon: Star },
     ],
