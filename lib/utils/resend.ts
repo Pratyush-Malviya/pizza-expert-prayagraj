@@ -56,7 +56,7 @@ export async function sendEmail({
 }
 
 /**
- * Send Transactional Order Confirmation Email
+ * Send Transactional Order Confirmation Email to Customer
  */
 export async function sendOrderConfirmationEmail(toEmail: string, orderData: {
   orderId: string
@@ -98,6 +98,62 @@ export async function sendOrderConfirmationEmail(toEmail: string, orderData: {
   return sendEmail({
     to: toEmail,
     subject: `🍕 Order Confirmed #${orderData.orderId} - Pizza Expert Prayagraj`,
+    html,
+  })
+}
+
+/**
+ * Send High-Priority Instant Email Alert to Admin / Store Owner when a customer places an order
+ */
+export async function sendAdminNewOrderAlert(orderData: {
+  orderId: string
+  customerName: string
+  phone: string
+  address: string
+  items: Array<{ name: string; quantity: number; unitPrice: number }>
+  total: number
+  paymentMethod: string
+}) {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'malviya.pratyush26@gmail.com'
+
+  const itemsHtml = orderData.items
+    .map(i => `<tr><td style="padding:8px;border-bottom:1px solid #E7E0D8;"><strong>${i.quantity}x</strong> ${i.name}</td><td style="padding:8px;border-bottom:1px solid #E7E0D8;text-align:right;">₹${(i.unitPrice * i.quantity).toFixed(2)}</td></tr>`)
+    .join('')
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#1C1917;color:#FFF;">
+      <div style="background:#FF3B00;color:#FFF;padding:20px;text-align:center;border-radius:10px 10px 0 0;">
+        <h1 style="margin:0;font-size:24px;">🚨 NEW ORDER RECEIVED!</h1>
+        <p style="margin:5px 0 0 0;font-size:16px;font-weight:bold;">Order #${orderData.orderId}</p>
+      </div>
+
+      <div style="background:#FFF;color:#1C1917;padding:25px;border-radius:0 0 10px 10px;">
+        <div style="background:#FEF2F2;border:1px solid #FECACA;padding:15px;border-radius:8px;margin-bottom:15px;">
+          <p style="margin:4px 0;"><strong>Customer Name:</strong> ${orderData.customerName}</p>
+          <p style="margin:4px 0;"><strong>Phone Number:</strong> <a href="tel:${orderData.phone}" style="color:#B91C1C;font-weight:bold;">${orderData.phone}</a></p>
+          <p style="margin:4px 0;"><strong>Delivery Address:</strong> ${orderData.address}</p>
+          <p style="margin:4px 0;"><strong>Payment Method:</strong> <span style="background:#E0E7FF;color:#3730A3;padding:2px 8px;border-radius:4px;font-weight:bold;">${orderData.paymentMethod}</span></p>
+        </div>
+
+        <h3 style="color:#B91C1C;border-bottom:2px solid #B91C1C;padding-bottom:5px;">Items to Prepare</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;">
+          ${itemsHtml}
+          <tr>
+            <td style="padding:10px;font-weight:bold;font-size:16px;">Total Bill Amount:</td>
+            <td style="padding:10px;font-weight:bold;text-align:right;color:#B91C1C;font-size:18px;">₹${orderData.total.toFixed(2)}</td>
+          </tr>
+        </table>
+
+        <p style="text-align:center;margin-top:25px;">
+          <a href="https://pizza-kappa-nine.vercel.app/admin/kitchen" style="background:#16A34A;color:#FFF;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;font-size:16px;">Open Kitchen Display System (KDS)</a>
+        </p>
+      </div>
+    </div>
+  `
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `🚨 NEW ORDER #${orderData.orderId.slice(0, 8)} (₹${orderData.total}) - Pizza Expert`,
     html,
   })
 }
@@ -170,3 +226,4 @@ export async function sendRefundNotificationEmail(toEmail: string, refundData: {
     html,
   })
 }
+

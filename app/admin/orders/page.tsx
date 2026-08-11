@@ -37,7 +37,7 @@ export interface AdminOrder {
   created_at: string
 }
 
-const MOCK_INITIAL_ORDERS: AdminOrder[] = []
+import { playNotificationSound, requestNotificationPermission, triggerSystemNotification } from '@/lib/utils/notifications'
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([])
@@ -46,12 +46,18 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refunding, setRefunding] = useState(false)
+  const [notificationsGranted, setNotificationsGranted] = useState(false)
 
-  // Fetch real orders from Supabase on mount
+  // Fetch real orders from Supabase & Subscribe to Realtime INSERT events
   useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationsGranted(Notification.permission === 'granted')
+    }
+
+    const supabase = createClient()
+
     async function fetchOrders() {
       try {
-        const supabase = createClient()
         const { data, error } = await supabase
           .from('orders')
           .select('*, order_items(*, products(name))')
@@ -100,6 +106,35 @@ export default function AdminOrdersPage() {
     }
 
     fetchOrders()
+
+    // Realtime Postgres listener for new incoming orders
+    const channel = supabase
+      .channel('admin-orders-live-stream')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        const newOrder = payload.new as any
+        const addr = newOrder.address_json || {}
+        
+        playNotificationSound('alert')
+
+        toast.success(`🚨 NEW ORDER RECEIVED! #${newOrder.id.slice(0, 8)}`, {
+          description: `Customer: ${addr.name || 'Customer'} • Total: ₹${newOrder.total}`,
+          duration: 10000,
+        })
+
+        triggerSystemNotification('🚨 NEW ORDER RECEIVED! Pizza Expert', {
+          body: `Order #${newOrder.id.slice(0, 8)} - ₹${newOrder.total} from ${addr.name || 'Customer'} (${addr.phone || ''})`,
+        })
+
+        fetchOrders()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        fetchOrders()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -189,6 +224,27 @@ export default function AdminOrdersPage() {
             View, track, inspect details, update status, and manage received orders.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const granted = await requestNotificationPermission()
+            setNotificationsGranted(granted)
+            if (granted) {
+              toast.success('🔔 Desktop & sound notifications enabled!')
+              playNotificationSound('alert')
+            } else {
+              toast.info('Browser notification permission is blocked in site settings.')
+            }
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs border ${
+            notificationsGranted
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+              : 'bg-[#FF3B00] border-red-600 text-white hover:bg-red-700 animate-pulse'
+          }`}
+        >
+          <span>{notificationsGranted ? '🔔 Sound & Desktop Alerts Active' : '🔔 Enable Sound & Desktop Alerts'}</span>
+        </button>
       </div>
 
       {/* Filters & Search */}

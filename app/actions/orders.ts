@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CartItem } from '@/types'
-import { sendOrderConfirmationEmail } from '@/lib/utils/resend'
+import { sendOrderConfirmationEmail, sendAdminNewOrderAlert } from '@/lib/utils/resend'
 
 export interface PricingCalculationResult {
   subtotal: number
@@ -226,15 +226,35 @@ export async function createOrder(payload: {
       } catch {}
     }
 
-    // 8. Trigger Resend Transactional Email
+    // 8. Trigger Email Notifications (Customer & Admin Store Owner)
+    const itemsListForEmail = payload.cartItems.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      unitPrice: i.price,
+    }))
+
+    const fullAddrStr = [payload.address?.line1, payload.address?.line2, payload.address?.city, payload.address?.pincode].filter(Boolean).join(', ')
+
+    // Send to Customer
     if (payload.address?.email) {
       sendOrderConfirmationEmail(payload.address.email, {
         orderId: order.id,
         customerName: payload.address.name || 'Customer',
-        items: payload.cartItems.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.price })),
+        items: itemsListForEmail,
         total: order.total,
-      }).catch(err => console.warn('Order confirmation email note:', err))
+      }).catch((err: any) => console.warn('Order confirmation email note:', err))
     }
+
+    // ALWAYS Send to Store Owner / Admin
+    sendAdminNewOrderAlert({
+      orderId: order.id,
+      customerName: payload.address?.name || 'Customer',
+      phone: payload.address?.phone || 'N/A',
+      address: fullAddrStr || 'Prayagraj',
+      items: itemsListForEmail,
+      total: order.total,
+      paymentMethod: isCod ? 'Cash on Delivery (COD)' : 'Razorpay',
+    }).catch((err: any) => console.warn('Admin new order alert email note:', err))
 
     return {
       success: true,
