@@ -3,11 +3,16 @@
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
-// Create a Supabase client with the Service Role key for admin actions
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !serviceKey || serviceKey === 'your-service-role-key') {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured in Vercel environment variables. Please set a valid Supabase service_role key.')
+  }
+
+  return createClient(url, serviceKey)
+}
 
 export async function inviteStaffMember(formData: FormData) {
   try {
@@ -20,7 +25,7 @@ export async function inviteStaffMember(formData: FormData) {
     }
 
     // 1. Invite the user via Supabase Auth Admin API
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    const { data: inviteData, error: inviteError } = await getSupabaseAdmin().auth.admin.inviteUserByEmail(
       email,
       { data: { name, role } }
     )
@@ -32,7 +37,7 @@ export async function inviteStaffMember(formData: FormData) {
     const userId = inviteData.user.id
 
     // 2. Insert/Update the profile with the assigned role
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileError } = await getSupabaseAdmin()
       .from('profiles')
       .upsert({
         id: userId,
@@ -53,7 +58,7 @@ export async function inviteStaffMember(formData: FormData) {
 
 export async function updateStaffRole(userId: string, newRole: string) {
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await getSupabaseAdmin()
       .from('profiles')
       .update({ role: newRole })
       .eq('id', userId)
