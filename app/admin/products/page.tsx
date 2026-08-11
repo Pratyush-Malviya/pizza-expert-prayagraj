@@ -97,7 +97,7 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p8', slug: 'double-chicken-patty-burger', name: 'Double Chicken Patty Burger', category_id: 'cat-burgers', category: 'Burgers', price: 259, description: 'Two juicy chicken patties, double cheese, lettuce, and smoky BBQ sauce.', image_url: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
 
   // Pasta
-  { id: 'p9', slug: 'penne-arrabiata', name: 'Penne Arrabiata', category_id: 'cat-pasta', category: 'Pasta', price: 199, description: 'Classic Italian-style penne in a spicy tomato sauce with garlic, chili, and fresh herbs.', image_url: 'https://images.unsplash.com/photo-1621996346565-e3d5d6281274?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: true, is_bestseller: false, is_available: true },
+  { id: 'p9', slug: 'penne-arrabiata', name: 'Penne Arrabiata', category_id: 'cat-pasta', category: 'Pasta', price: 199, description: 'Classic Italian-style penne in a spicy tomato sauce with garlic, chili, and fresh herbs.', image_url: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80', is_veg: true, is_spicy: true, is_bestseller: false, is_available: true },
   { id: 'p10', slug: 'chicken-alfredo-pasta', name: 'Chicken Alfredo Pasta', category_id: 'cat-pasta', category: 'Pasta', price: 249, description: 'Creamy white sauce pasta with grilled chicken strips, mushrooms, and Parmesan cheese.', image_url: 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=800&q=80', is_veg: false, is_spicy: false, is_bestseller: false, is_available: true },
 
   // Sides

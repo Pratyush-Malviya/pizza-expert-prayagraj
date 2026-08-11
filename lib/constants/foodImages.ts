@@ -14,7 +14,7 @@ export const FOOD_IMAGES: Record<string, string> = {
   'double-chicken-patty-burger': 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=800&q=80',
 
   // Pasta
-  'penne-arrabiata': 'https://images.unsplash.com/photo-1621996346565-e3d5d6281274?auto=format&fit=crop&w=800&q=80',
+  'penne-arrabiata': 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80',
   'chicken-alfredo-pasta': 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=800&q=80',
 
   // Sides

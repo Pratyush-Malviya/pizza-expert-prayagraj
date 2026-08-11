@@ -2,12 +2,12 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://cdn.pixabay.com;
+  img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://cdn.pixabay.com https://*.razorpay.com https://cdn.razorpay.com;
   font-src 'self';
-  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com;
-  frame-src 'self' https://checkout.razorpay.com;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://lumberjack-cx.razorpay.com https://*.razorpay.com;
+  frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
@@ -25,10 +25,17 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'plus.unsplash.com',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'cdn.pixabay.com',
+        pathname: '/**',
       },
     ],
   },
