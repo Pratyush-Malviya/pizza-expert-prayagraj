@@ -23,13 +23,19 @@ export default async function AccountProfilePage() {
   const defaultProfile = {
     name: profile?.name || user.user_metadata?.name || '',
     phone: profile?.phone || '',
-    email: user.email || ''
+    email: user.email || '',
+    notification_prefs: profile?.notification_prefs || {
+      email_orders: true,
+      email_marketing: false,
+      sms_orders: true,
+      sms_marketing: false,
+    }
   }
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-black font-serif text-[#1C1917] uppercase tracking-tight border-b border-[#E7E0D8] pb-4">
-        My Profile
+        My Profile & Preferences
       </h1>
 
       <ProfileClient initialProfile={defaultProfile} userId={user.id} />

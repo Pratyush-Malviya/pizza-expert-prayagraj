@@ -33,11 +33,15 @@ export default async function StaffManagementPage() {
 
     const { data } = await supabase
       .from('profiles')
-      .select('id, name, phone, role, created_at')
-      .neq('role', 'customer')
+      .select('id, name, phone, role, is_active, invite_status, last_login_at, created_at, staff_details(department, employee_code, hire_date)')
+      .in('role', ['super_admin', 'manager', 'staff', 'viewer'])
       .order('created_at', { ascending: false })
 
-    staffList = data || []
+    staffList = data?.map((m: any) => ({
+      ...m,
+      department: m.staff_details?.[0]?.department || m.staff_details?.department || null,
+      employee_code: m.staff_details?.[0]?.employee_code || m.staff_details?.employee_code || null,
+    })) || []
   }
 
   return (

@@ -8,15 +8,18 @@ import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
   Settings, LogOut, ExternalLink,
   ChevronRight, CreditCard, UtensilsCrossed, Truck, X, Palette,
-  TrendingUp, Boxes, FileText, Users
+  TrendingUp, Boxes, FileText, Users, Contact, ShieldAlert, History
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const ADMIN_LINKS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Analytics & BI', href: '/admin/analytics', icon: TrendingUp },
+  { label: 'Customer CRM', href: '/admin/customers', icon: Contact },
+  { label: 'Drivers (Fleet)', href: '/admin/drivers', icon: Truck },
   { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
   { label: 'GST Compliance', href: '/admin/compliance', icon: FileText },
+  { label: 'Audit Log', href: '/admin/audit-log', icon: History },
   { label: 'Suppliers & POs', href: '/admin/suppliers', icon: Truck },
   { label: 'Staff Roster', href: '/admin/staff', icon: Users },
   { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
