@@ -18,54 +18,86 @@ export default async function CustomersCRMPage() {
     redirect('/login')
   }
 
-  // 1. Fetch customer profiles
+  // 1. Fetch registered customer profiles
   const { data: customersData } = await supabase
     .from('profiles')
     .select('id, name, phone, loyalty_points, is_active, created_at')
-    .eq('role', 'customer')
+    .neq('role', 'staff')
+    .neq('role', 'driver')
     .order('created_at', { ascending: false })
 
-  const rawCustomers = customersData || []
-
-  // 2. Fetch order aggregates for each customer
-  const customerIds = rawCustomers.map(c => c.id)
-
-  let ordersMap: Record<string, { count: number; total_spend: number; last_order_at: string | null }> = {}
-
-  if (customerIds.length > 0) {
-    const { data: ordersData } = await supabase
-      .from('orders')
-      .select('user_id, total, created_at')
-      .in('user_id', customerIds)
-
-    if (ordersData) {
-      ordersData.forEach(ord => {
-        if (!ord.user_id) return
-        if (!ordersMap[ord.user_id]) {
-          ordersMap[ord.user_id] = { count: 0, total_spend: 0, last_order_at: null }
-        }
-        ordersMap[ord.user_id].count += 1
-        ordersMap[ord.user_id].total_spend += Number(ord.total || 0)
-        
-        if (!ordersMap[ord.user_id].last_order_at || new Date(ord.created_at) > new Date(ordersMap[ord.user_id].last_order_at!)) {
-          ordersMap[ord.user_id].last_order_at = ord.created_at
-        }
-      })
+  const registeredCustomersMap: Record<string, CustomerRow> = {}
+  
+  (customersData || []).forEach(c => {
+    registeredCustomersMap[c.id] = {
+      id: c.id,
+      name: c.name || 'Registered Customer',
+      phone: c.phone || null,
+      loyalty_points: c.loyalty_points || 0,
+      is_active: c.is_active !== false,
+      created_at: c.created_at,
+      order_count: 0,
+      total_spend: 0,
+      last_order_at: null,
     }
+  })
+
+  // 2. Fetch ALL orders to aggregate spend & extract Guest Orders
+  const { data: allOrders } = await supabase
+    .from('orders')
+    .select('id, user_id, total, address_json, created_at')
+    .order('created_at', { ascending: false })
+
+  const guestCustomersMap: Record<string, CustomerRow> = {}
+
+  if (allOrders) {
+    allOrders.forEach(ord => {
+      const orderTotal = Number(ord.total || 0)
+      const orderDate = ord.created_at
+
+      if (ord.user_id && registeredCustomersMap[ord.user_id]) {
+        // Aggregate for registered customer
+        const cust = registeredCustomersMap[ord.user_id]
+        cust.order_count += 1
+        cust.total_spend += orderTotal
+        if (!cust.last_order_at || new Date(orderDate) > new Date(cust.last_order_at)) {
+          cust.last_order_at = orderDate
+        }
+      } else {
+        // Guest customer from address_json
+        const addr = ord.address_json || {}
+        const guestPhone = addr.phone || addr.email || `guest_${String(ord.id).slice(0, 8)}`
+        const guestName = addr.name || 'Guest Customer'
+
+        if (!guestCustomersMap[guestPhone]) {
+          guestCustomersMap[guestPhone] = {
+            id: `guest-${String(ord.id).slice(0, 8)}`,
+            name: `${guestName} (Guest)`,
+            phone: addr.phone || null,
+            loyalty_points: 0,
+            is_active: true,
+            created_at: orderDate,
+            order_count: 1,
+            total_spend: orderTotal,
+            last_order_at: orderDate,
+          }
+        } else {
+          const guest = guestCustomersMap[guestPhone]
+          guest.order_count += 1
+          guest.total_spend += orderTotal
+          if (new Date(orderDate) > new Date(guest.last_order_at!)) {
+            guest.last_order_at = orderDate
+          }
+        }
+      }
+    })
   }
 
-  // 3. Assemble CustomerRow[]
-  const customersList: CustomerRow[] = rawCustomers.map(c => ({
-    id: c.id,
-    name: c.name || 'Guest User',
-    phone: c.phone || null,
-    loyalty_points: c.loyalty_points || 0,
-    is_active: c.is_active !== false,
-    created_at: c.created_at,
-    order_count: ordersMap[c.id]?.count || 0,
-    total_spend: ordersMap[c.id]?.total_spend || 0,
-    last_order_at: ordersMap[c.id]?.last_order_at || null,
-  }))
+  // Combine registered and guest customers
+  const finalCustomersList: CustomerRow[] = [
+    ...Object.values(registeredCustomersMap),
+    ...Object.values(guestCustomersMap),
+  ]
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -80,7 +112,7 @@ export default async function CustomersCRMPage() {
         </div>
       </div>
 
-      <CustomersClient initialCustomers={customersList} />
+      <CustomersClient initialCustomers={finalCustomersList} />
     </div>
   )
 }

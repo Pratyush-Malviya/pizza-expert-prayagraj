@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { blockCustomer, unblockCustomer, adjustLoyaltyPoints, getCustomerDetails } from '@/app/actions/customers'
+import { blockCustomer, unblockCustomer, adjustLoyaltyPoints, getCustomerDetails, seedDemoCustomers } from '@/app/actions/customers'
 import { toast } from 'sonner'
 import {
   Users, Search, Download, ShieldAlert, Award, Phone,
   Calendar, ShoppingBag, Eye, Ban, CheckCircle2, X, MapPin,
-  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2
+  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +26,19 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
   const [customers, setCustomers] = useState<CustomerRow[]>(initialCustomers)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked'>('all')
+  const [isSeeding, setIsSeeding] = useState(false)
+
+  async function handleSeedDemoData() {
+    setIsSeeding(true)
+    const res = await seedDemoCustomers()
+    setIsSeeding(false)
+    if (res.success) {
+      toast.success('Sample CRM customers seeded successfully!')
+      window.location.reload()
+    } else {
+      toast.error(res.error || 'Failed to seed sample data')
+    }
+  }
 
   // Selected customer for modal
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null)
@@ -212,6 +225,14 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
             className="bg-[#18181B] hover:bg-[#27272A] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
           >
             <Download size={14} /> Export CSV
+          </button>
+
+          <button
+            onClick={handleSeedDemoData}
+            disabled={isSeeding}
+            className="bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#B91C1C] border border-[#FCA5A5] px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors shadow-xs disabled:opacity-70"
+          >
+            {isSeeding ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Seed Sample Customers
           </button>
         </div>
       </div>
