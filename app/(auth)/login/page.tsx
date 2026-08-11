@@ -206,14 +206,6 @@ function LoginForm() {
 
             {/* Quick Demo Admin & OAuth */}
             <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleDemoAdminLogin}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 border border-amber-500/40 rounded-2xl text-xs font-black text-amber-300 uppercase tracking-wider transition-all duration-200 shadow-lg group"
-              >
-                <Sparkles size={16} className="text-amber-400 animate-pulse" />
-                <span>⚡ 1-Click Demo Admin Panel Access</span>
-              </button>
 
               <button
                 type="button"
