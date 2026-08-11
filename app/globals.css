@@ -2,6 +2,10 @@
 
 @import "tailwindcss";
 
+@theme {
+  --color-vibrant-green: #10b981;
+  --color-vibrant-yellow: #facc15;
+}
 @layer base {
   /* ─── Impossible Foods / Punk-Wine Design Tokens ─────────────── */
   :root {
@@ -12,6 +16,10 @@
     --color-blush-highlight: #ffc7c6; /* Secondary Text & Pill Off-State */
     --color-butcher-black:   #000000; /* Top Nav & Hairline Borders */
     --color-bone-white:      #ffffff; /* Main Body Copy & Inverted Labels */
+    
+    /* Vibrant Color Additions */
+    --color-vibrant-green:   #10b981; /* Emerald/Vibrant Green */
+    --color-vibrant-yellow:  #facc15; /* Bright/Vibrant Yellow */
 
     /* Mapped Theme Tokens */
     --primary:         #e10600;
