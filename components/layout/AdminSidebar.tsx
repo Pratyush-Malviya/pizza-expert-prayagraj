@@ -148,7 +148,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
         if (user) {
           let userRole = (user.email === 'malviya.pratyush26@gmail.com' || user.email === 'admin@demo.com') ? 'super_admin' : ''
           if (!userRole) {
-            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
             userRole = profile?.role || user.user_metadata?.role || 'super_admin'
           }
           setRole(userRole || 'super_admin')

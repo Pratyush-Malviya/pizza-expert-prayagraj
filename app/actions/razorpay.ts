@@ -26,43 +26,37 @@ export async function createRazorpayOrder(payload: {
 
     const isPlaceholder = !keyId || keyId.includes('xxxx') || !keySecret || keySecret.includes('your-')
 
-    // If live/sandbox Razorpay keys are configured properly
-    if (!isPlaceholder) {
-      const razorpay = new Razorpay({
-        key_id: keyId,
-        key_secret: keySecret,
-      })
-
-      const options = {
-        amount: Math.round(payload.amount * 100), // amount in paise
-        currency: 'INR',
-        receipt: payload.orderId,
-        notes: {
-          orderId: payload.orderId,
-        },
-      }
-
-      const order = await razorpay.orders.create(options)
-
+    // If Razorpay keys are not configured or are placeholder keys
+    if (isPlaceholder) {
       return {
-        success: true,
-        razorpayOrderId: order.id,
-        keyId,
-        amount: options.amount,
-        currency: 'INR',
-        isTestMode: false,
+        success: false,
+        error: 'Razorpay keys are not configured. Please configure valid NEXT_PUBLIC_RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET in Admin Settings or environment variables.',
       }
     }
 
-    // Fallback: If placeholder keys in dev, generate sandbox order ID for testing modal UI
-    const mockRazorpayOrderId = `order_mock_${Date.now()}_${payload.orderId.slice(0, 6)}`
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    })
+
+    const options = {
+      amount: Math.round(payload.amount * 100), // amount in paise
+      currency: 'INR',
+      receipt: payload.orderId,
+      notes: {
+        orderId: payload.orderId,
+      },
+    }
+
+    const order = await razorpay.orders.create(options)
+
     return {
       success: true,
-      razorpayOrderId: mockRazorpayOrderId,
-      keyId: keyId || 'rzp_test_placeholder',
-      amount: Math.round(payload.amount * 100),
+      razorpayOrderId: order.id,
+      keyId,
+      amount: options.amount,
       currency: 'INR',
-      isTestMode: true,
+      isTestMode: false,
     }
   } catch (err: any) {
     console.error('Razorpay order creation error:', err)

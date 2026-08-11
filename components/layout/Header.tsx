@@ -41,7 +41,7 @@ export default function Header() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
           setSessionInfo({ loggedIn: true, role: profile?.role || 'super_admin' })
         } else {
           setSessionInfo({ loggedIn: false, role: null })

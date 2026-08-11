@@ -1,16 +1,23 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingBag, ArrowRight } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
 
 export default function FloatingCartButton() {
+  const [mounted, setMounted] = useState(false)
   const { openCart, getItemCount, getSubtotal } = useCartStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const itemCount = getItemCount()
   const subtotal = getSubtotal()
 
-  if (itemCount === 0) return null
+  if (!mounted || itemCount === 0) return null
 
   return (
     <AnimatePresence>
