@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminNotificationDropdown from '@/components/layout/AdminNotificationDropdown'
-import { Menu } from 'lucide-react'
+import { Menu, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -117,6 +118,15 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
+            <Link
+              href="/"
+              target="_blank"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#57534E] hover:text-[#1C1917] hover:bg-[#F4EFEA] border border-[#E7E0D8] transition-colors"
+            >
+              <ExternalLink size={13} />
+              <span>View Site</span>
+            </Link>
+
             <AdminNotificationDropdown />
 
             <div className="flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8]">

@@ -6,31 +6,97 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag,
-  Settings, LogOut, ExternalLink,
-  ChevronRight, CreditCard, UtensilsCrossed, Truck, X, Palette,
-  TrendingUp, Boxes, FileText, Users, Contact, ShieldAlert, History, Star
+  Settings, LogOut, ChevronDown, ChevronRight,
+  CreditCard, UtensilsCrossed, Truck, X, Palette,
+  TrendingUp, Boxes, FileText, Users, Contact, History, Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const ADMIN_LINKS = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Analytics & BI', href: '/admin/analytics', icon: TrendingUp },
-  { label: 'Customer CRM', href: '/admin/customers', icon: Contact },
-  { label: 'Drivers (Fleet)', href: '/admin/drivers', icon: Truck },
-  { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
-  { label: 'GST Compliance', href: '/admin/compliance', icon: FileText },
-  { label: 'Audit Log', href: '/admin/audit-log', icon: History },
-  { label: 'Suppliers & POs', href: '/admin/suppliers', icon: Truck },
-  { label: 'Staff Roster', href: '/admin/staff', icon: Users },
-  { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
-  { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
-  { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed },
-  { label: 'Deliveries', href: '/admin/deliveries', icon: Truck },
-  { label: 'Products', href: '/admin/products', icon: Pizza },
-  { label: 'Reviews', href: '/admin/reviews', icon: Star },
-  { label: 'Coupons', href: '/admin/coupons', icon: Tag },
-  { label: 'Payments', href: '/admin/payments', icon: CreditCard },
-  { label: 'Settings', href: '/admin/settings', icon: Settings },
+export interface NavSubItem {
+  label: string
+  href: string
+  icon: any
+}
+
+export interface NavGroup {
+  id: string
+  label: string
+  icon: any
+  href?: string
+  items?: NavSubItem[]
+}
+
+const ADMIN_NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    href: '/admin',
+    icon: LayoutDashboard,
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    icon: UtensilsCrossed,
+    items: [
+      { label: 'Orders', href: '/admin/orders', icon: ShoppingBag },
+      { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed },
+      { label: 'Deliveries', href: '/admin/deliveries', icon: Truck },
+      { label: 'Drivers (Fleet)', href: '/admin/drivers', icon: Truck },
+    ],
+  },
+  {
+    id: 'catalog',
+    label: 'Catalog & Engagement',
+    icon: Pizza,
+    items: [
+      { label: 'Products', href: '/admin/products', icon: Pizza },
+      { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+      { label: 'Reviews', href: '/admin/reviews', icon: Star },
+    ],
+  },
+  {
+    id: 'customers',
+    label: 'Customers',
+    icon: Contact,
+    items: [
+      { label: 'Customer CRM', href: '/admin/customers', icon: Contact },
+    ],
+  },
+  {
+    id: 'supply_staff',
+    label: 'Supply Chain & Staff',
+    icon: Boxes,
+    items: [
+      { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
+      { label: 'Suppliers & POs', href: '/admin/suppliers', icon: Truck },
+      { label: 'Staff Roster', href: '/admin/staff', icon: Users },
+    ],
+  },
+  {
+    id: 'finance',
+    label: 'Finance & Compliance',
+    icon: CreditCard,
+    items: [
+      { label: 'Payments', href: '/admin/payments', icon: CreditCard },
+      { label: 'GST Compliance', href: '/admin/compliance', icon: FileText },
+      { label: 'Audit Log', href: '/admin/audit-log', icon: History },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics & BI',
+    href: '/admin/analytics',
+    icon: TrendingUp,
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: Settings,
+    items: [
+      { label: 'Settings', href: '/admin/settings', icon: Settings },
+      { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
+    ],
+  },
 ]
 
 interface AdminSidebarProps {
@@ -41,6 +107,37 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
   const [role, setRole] = useState<string | null>(null)
+  
+  // Track open state of collapsible groups
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ operations: true })
+
+  // Initialize from localStorage and auto-expand active parent group
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin_sidebar_open_groups')
+      if (saved) {
+        setOpenGroups(JSON.parse(saved))
+      }
+    } catch {}
+
+    // Auto-expand group containing current route
+    ADMIN_NAV_GROUPS.forEach((group) => {
+      if (group.items?.some((item) => item.href === pathname)) {
+        setOpenGroups((prev) => ({ ...prev, [group.id]: true }))
+      }
+    })
+  }, [pathname])
+
+  // Save expanded states
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => {
+      const updated = { ...prev, [groupId]: !prev[groupId] }
+      try {
+        localStorage.setItem('admin_sidebar_open_groups', JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }
 
   useEffect(() => {
     const fetchRole = async () => {
@@ -57,35 +154,36 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
         } else {
           setRole('super_admin')
         }
-      } catch (e) {
+      } catch {
         setRole('super_admin')
       }
     }
     fetchRole()
   }, [])
 
-  // Filter links based on role
-  const visibleLinks = ADMIN_LINKS.filter((link) => {
-    if (!role) return false // Hide until role is loaded
-    if (role === 'super_admin') return true
-    
+  // Filter items inside groups based on user role
+  const isLinkAllowed = (href: string) => {
+    if (!role || role === 'super_admin') return true
     if (role === 'manager') {
       const hiddenForManager = ['/admin/staff', '/admin/theme', '/admin/settings']
-      return !hiddenForManager.includes(link.href)
+      return !hiddenForManager.includes(href)
     }
-    
     if (role === 'staff') {
       const allowedForStaff = ['/admin/kitchen', '/admin/inventory']
-      return allowedForStaff.includes(link.href)
+      return allowedForStaff.includes(href)
     }
-    
     if (role === 'viewer') {
       const allowedForViewer = ['/admin', '/admin/orders', '/admin/analytics']
-      return allowedForViewer.includes(link.href)
+      return allowedForViewer.includes(href)
     }
-    
     return false
-  })
+  }
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/admin/login'
+  }
 
   return (
     <>
@@ -100,91 +198,127 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
       {/* Sidebar Container */}
       <aside
         className={cn(
-          'w-64 bg-[#18181B] text-white flex flex-col border-r border-[#27272A] flex-shrink-0 z-50 transition-transform duration-300 ease-in-out',
-          // Desktop behavior: fixed layout, always visible
-          'lg:static lg:translate-x-0 lg:min-h-screen',
-          // Mobile drawer behavior: fixed overlay sliding from left
-          'fixed inset-y-0 left-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          'fixed lg:static top-0 left-0 bottom-0 z-50 w-64 bg-[#1C1917] text-[#E7E0D8] flex flex-col transition-transform duration-300 ease-in-out shrink-0 border-r border-[#292524]',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Brand Header */}
-        <div className="p-5 border-b border-[#27272A] flex items-center justify-between">
-          <Link
-            href="/admin"
-            onClick={() => setMobileOpen?.(false)}
-            className="flex items-center gap-3"
-          >
-            <div className="w-9 h-9 bg-[#B91C1C] rounded-md flex items-center justify-center font-bold text-white font-serif">
-              PE
+        {/* Sidebar Header */}
+        <div className="h-16 px-5 flex items-center justify-between border-b border-[#292524]">
+          <Link href="/admin" className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center font-bold text-lg font-serif">
+              🍕
             </div>
             <div>
-              <span className="block font-serif font-bold text-base text-white">
+              <span className="font-serif font-bold text-white text-base block leading-tight">
                 Pizza Expert
               </span>
-              <span className="block text-[9px] text-[#B91C1C] font-bold tracking-widest uppercase">
-                Admin Portal
+              <span className="text-[10px] text-[#A8A29E] font-sans block uppercase tracking-wider font-semibold">
+                Admin Control
               </span>
             </div>
           </Link>
 
-          {/* Close Button for Mobile */}
+          {/* Close button for mobile */}
           <button
             onClick={() => setMobileOpen?.(false)}
-            className="lg:hidden p-1.5 rounded-md text-[#A8A29E] hover:text-white hover:bg-[#27272A]"
+            className="lg:hidden text-[#A8A29E] hover:text-white p-1"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Nav Links */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {!role ? (
-            <div className="text-xs text-[#A8A29E] px-3.5 py-2.5 animate-pulse">Loading menu...</div>
-          ) : (
-            visibleLinks.map((link) => {
-              const Icon = link.icon
-              const isActive = pathname === link.href
+        {/* Grouped Navigation Links */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {ADMIN_NAV_GROUPS.map((group) => {
+            const GroupIcon = group.icon
+
+            // Standalone Link
+            if (group.href) {
+              if (!isLinkAllowed(group.href)) return null
+              const isActive = pathname === group.href
 
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen?.(false)}
+                  key={group.id}
+                  href={group.href}
                   className={cn(
-                    'flex items-center justify-between px-3.5 py-2.5 rounded-md text-xs sm:text-sm font-semibold transition-all',
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all',
                     isActive
                       ? 'bg-[#B91C1C] text-white shadow-xs'
-                      : 'text-[#A8A29E] hover:text-white hover:bg-[#27272A]'
+                      : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
                   )}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Icon size={16} />
-                    <span>{link.label}</span>
-                  </div>
-                  {isActive && <ChevronRight size={14} />}
+                  <GroupIcon size={16} />
+                  <span>{group.label}</span>
                 </Link>
               )
-            })
-          )}
-        </nav>
+            }
 
-        {/* Footer Links */}
-        <div className="p-3 border-t border-[#27272A] space-y-1">
-          <Link
-            href="/"
-            target="_blank"
-            className="flex items-center justify-between px-3.5 py-2 rounded-md text-xs font-semibold text-[#A8A29E] hover:text-white hover:bg-[#27272A] transition-all"
+            // Collapsible Group
+            const visibleItems = group.items?.filter((i) => isLinkAllowed(i.href)) || []
+            if (visibleItems.length === 0) return null
+
+            const isChildActive = visibleItems.some((i) => i.href === pathname)
+            const isOpen = Boolean(openGroups[group.id])
+
+            return (
+              <div key={group.id} className="space-y-1 pt-1">
+                {/* Group Header Button */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all',
+                    isChildActive
+                      ? 'text-white bg-[#292524]'
+                      : 'text-[#A8A29E] hover:bg-[#292524]/60 hover:text-white'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <GroupIcon size={16} className={isChildActive ? 'text-[#B91C1C]' : ''} />
+                    <span>{group.label}</span>
+                  </div>
+                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+
+                {/* Collapsible Submenu */}
+                {isOpen && (
+                  <div className="pl-4 space-y-1 border-l border-[#292524] ml-4 my-1">
+                    {visibleItems.map((item) => {
+                      const ItemIcon = item.icon
+                      const isActive = pathname === item.href
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                            isActive
+                              ? 'bg-[#B91C1C] text-white font-bold shadow-2xs'
+                              : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
+                          )}
+                        >
+                          <ItemIcon size={14} />
+                          <span>{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-[#292524] space-y-2">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-[#A8A29E] hover:bg-[#292524] hover:text-red-400 transition-all"
           >
-            <span>Public Website</span>
-            <ExternalLink size={13} />
-          </Link>
-          <Link
-            href="/login"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold text-[#B91C1C] hover:bg-[#FEF2F2]/10 transition-all"
-          >
-            <LogOut size={15} /> Sign Out
-          </Link>
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
     </>
