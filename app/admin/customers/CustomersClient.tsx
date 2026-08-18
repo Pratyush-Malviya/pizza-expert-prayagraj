@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 export interface CustomerRow {
   id: string
   name: string
+  email?: string | null
   phone: string | null
   loyalty_points: number
   is_active: boolean
@@ -62,6 +63,7 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
   const filteredCustomers = customers.filter(c => {
     const matchesSearch =
       (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.phone || '').includes(searchTerm) ||
       c.id.includes(searchTerm)
 
@@ -207,10 +209,11 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
 
   // Export to CSV
   function handleExportCSV() {
-    const headers = ['ID', 'Name', 'Phone', 'Loyalty Points', 'Total Orders', 'Total Spend (INR)', 'Status', 'Last Order Date', 'Joined Date']
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Loyalty Points', 'Total Orders', 'Total Spend (INR)', 'Status', 'Last Order Date', 'Joined Date']
     const rows = filteredCustomers.map(c => [
       c.id,
       `"${c.name || 'Guest'}"`,
+      `"${c.email || ''}"`,
       `"${c.phone || ''}"`,
       c.loyalty_points,
       c.order_count,
@@ -369,13 +372,21 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                       </td>
 
                       <td className="py-3.5 px-4 font-mono text-xs text-[#57534E]">
-                        {customer.phone ? (
-                          <span className="flex items-center gap-1.5">
-                            <Phone size={12} className="text-[#A8A29E]" /> {customer.phone}
-                          </span>
-                        ) : (
-                          <span className="text-[#A8A29E]">No phone</span>
-                        )}
+                        <div className="space-y-0.5">
+                          {customer.email ? (
+                            <span className="flex items-center gap-1.5 text-xs text-[#1C1917] font-medium font-sans">
+                              <Mail size={12} className="text-[#B91C1C] shrink-0" />
+                              <span className="truncate max-w-[180px]">{customer.email}</span>
+                            </span>
+                          ) : null}
+                          {customer.phone ? (
+                            <span className="flex items-center gap-1.5 text-[11px] text-[#78716C]">
+                              <Phone size={11} className="text-[#A8A29E] shrink-0" /> {customer.phone}
+                            </span>
+                          ) : !customer.email ? (
+                            <span className="text-[#A8A29E] text-xs">No contact details</span>
+                          ) : null}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -483,10 +494,18 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-[#1C1917]">{selectedCustomer.name || 'Guest User'}</h2>
-                  <div className="flex items-center gap-3 text-xs text-[#A8A29E] mt-0.5">
-                    <span>Phone: {selectedCustomer.phone || 'N/A'}</span>
-                    <span>•</span>
-                    <span>Joined: {new Date(selectedCustomer.created_at).toLocaleDateString()}</span>
+                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-[#78716C] mt-0.5">
+                    {selectedCustomer.email && (
+                      <span className="flex items-center gap-1 text-[#1C1917] font-medium">
+                        <Mail size={12} className="text-[#B91C1C]" /> {selectedCustomer.email}
+                      </span>
+                    )}
+                    {selectedCustomer.phone && (
+                      <span className="flex items-center gap-1 font-mono">
+                        <Phone size={12} className="text-[#A8A29E]" /> {selectedCustomer.phone}
+                      </span>
+                    )}
+                    <span>• Joined: {new Date(selectedCustomer.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
