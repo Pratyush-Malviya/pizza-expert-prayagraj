@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { inviteDriver, verifyDriver, rejectDriver, toggleDriverOnline } from '@/app/actions/drivers'
+import { inviteDriver, onboardDriverDirect, verifyDriver, rejectDriver, toggleDriverOnline } from '@/app/actions/drivers'
 import { toast } from 'sonner'
 import {
   Truck, UserPlus, ShieldCheck, Clock, CheckCircle2, XCircle,
@@ -27,6 +27,7 @@ export interface DriverRow {
 export default function DriversClient({ initialDrivers }: { initialDrivers: DriverRow[] }) {
   const [drivers, setDrivers] = useState<DriverRow[]>(initialDrivers)
   const [isInviting, setIsInviting] = useState(false)
+  const [onboardMode, setOnboardMode] = useState<'direct' | 'invite'>('direct')
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null)
 
   // Verification modal state
@@ -34,16 +35,25 @@ export default function DriversClient({ initialDrivers }: { initialDrivers: Driv
   const [rejectionReasonInput, setRejectionReasonInput] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
 
-  async function handleInviteSubmit(formData: FormData) {
+  async function handleFormSubmit(formData: FormData) {
     setIsInviting(true)
-    const result = await inviteDriver(formData)
-    setIsInviting(false)
-
-    if (result.success) {
-      toast.success('Driver invited successfully!')
-      window.location.reload()
+    if (onboardMode === 'direct') {
+      const result = await onboardDriverDirect(formData)
+      setIsInviting(false)
+      if (result.success && result.driver) {
+        toast.success(`🎉 Rider ${result.driver.name} onboarded successfully!`)
+        setDrivers([result.driver as DriverRow, ...drivers])
+      } else {
+        toast.error(result.error || 'Failed to onboard driver')
+      }
     } else {
-      toast.error(result.error || 'Failed to invite driver')
+      const result = await inviteDriver(formData)
+      setIsInviting(false)
+      if (result.success) {
+        toast.success('Driver onboarding invite sent!')
+      } else {
+        toast.error(result.error || 'Failed to invite driver')
+      }
     }
   }
 
@@ -219,84 +229,128 @@ export default function DriversClient({ initialDrivers }: { initialDrivers: Driv
           <h2 className="font-bold text-[#1C1917]">Onboard New Driver</h2>
         </div>
 
-        <form action={handleInviteSubmit} className="space-y-4">
+        {/* Mode Selector */}
+        <div className="flex items-center bg-[#FBF9F5] p-1 rounded-xl border border-[#E7E0D8] text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setOnboardMode('direct')}
+            className={`flex-1 py-1.5 rounded-lg transition-all ${
+              onboardMode === 'direct' ? 'bg-[#1C1917] text-white shadow-xs font-bold' : 'text-[#78716C] hover:text-[#1C1917]'
+            }`}
+          >
+            Direct Instant Add
+          </button>
+          <button
+            type="button"
+            onClick={() => setOnboardMode('invite')}
+            className={`flex-1 py-1.5 rounded-lg transition-all ${
+              onboardMode === 'invite' ? 'bg-[#1C1917] text-white shadow-xs font-bold' : 'text-[#78716C] hover:text-[#1C1917]'
+            }`}
+          >
+            Email Invite Link
+          </button>
+        </div>
+
+        <form action={handleFormSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Driver Full Name</label>
+            <label className="block text-xs font-semibold text-[#78716C] mb-1">Driver Full Name *</label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
               <input
                 type="text"
                 name="name"
                 required
-                className="w-full pl-9 pr-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+                className="w-full pl-9 pr-4 py-2 border border-[#E7E0D8] rounded-xl text-sm focus:outline-none focus:border-[#B91C1C]"
                 placeholder="e.g. Vikram Singh"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Email Address</label>
+            <label className="block text-xs font-semibold text-[#78716C] mb-1">
+              {onboardMode === 'invite' ? 'Email Address *' : 'Email Address (Optional)'}
+            </label>
             <input
               type="email"
               name="email"
-              required
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
-              placeholder="vikram.driver@pizzaexpert.in"
+              required={onboardMode === 'invite'}
+              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-xl text-sm focus:outline-none focus:border-[#B91C1C]"
+              placeholder="vikram.driver@gmail.com"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Phone Number</label>
-            <input
-              type="tel"
-              name="phone"
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
-              placeholder="+91 98765 43210"
-            />
+            <label className="block text-xs font-semibold text-[#78716C] mb-1">Mobile Phone (WhatsApp) *</label>
+            <div className="relative">
+              <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+              <input
+                type="tel"
+                name="phone"
+                required
+                className="w-full pl-9 pr-4 py-2 border border-[#E7E0D8] rounded-xl text-sm font-mono focus:outline-none focus:border-[#B91C1C]"
+                placeholder="+91 98765 43210"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-[#78716C] mb-1">Vehicle Type</label>
+              <select
+                name="vehicle_type"
+                defaultValue="bike"
+                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-xl text-xs bg-white focus:outline-none focus:border-[#B91C1C]"
+              >
+                <option value="bike">Motorcycle (Hero/Bajaj)</option>
+                <option value="scooter">Scooter (Activa/Jupiter)</option>
+                <option value="ebike">E-Bike / EV</option>
+                <option value="bicycle">Bicycle</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#78716C] mb-1">Number Plate</label>
+              <input
+                type="text"
+                name="vehicle_number"
+                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-xl text-xs font-mono focus:outline-none focus:border-[#B91C1C]"
+                placeholder="UP 70 AB 1234"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Vehicle Type</label>
-            <select
-              name="vehicle_type"
-              defaultValue="bike"
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm bg-white focus:outline-none focus:border-[#B91C1C]"
-            >
-              <option value="bike">Motorcycle / Bike</option>
-              <option value="scooter">Scooter / Moped</option>
-              <option value="ebike">E-Bike / EV</option>
-              <option value="car">Four Wheeler / Car</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Vehicle Number Plate</label>
-            <input
-              type="text"
-              name="vehicle_number"
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
-              placeholder="UP70 AB 1234"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Driving License Number</label>
+            <label className="block text-xs font-semibold text-[#78716C] mb-1">Driving License Number</label>
             <input
               type="text"
               name="license_number"
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C]"
+              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-xl text-sm font-mono focus:outline-none focus:border-[#B91C1C]"
               placeholder="UP-70-2024-0012345"
             />
           </div>
 
+          {onboardMode === 'direct' && (
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#1C1917] cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                name="auto_verify"
+                value="true"
+                defaultChecked
+                className="rounded border-[#E7E0D8] text-[#B91C1C] focus:ring-[#B91C1C]"
+              />
+              <span>Auto-approve & mark KYC verified immediately</span>
+            </label>
+          )}
+
           <button
             type="submit"
             disabled={isInviting}
-            className="w-full bg-[#B91C1C] hover:bg-[#991B1B] text-white py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+            className="w-full bg-[#B91C1C] hover:bg-[#991B1B] text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 disabled:opacity-70 shadow-xs"
           >
             {isInviting ? (
-              <><Loader2 size={16} className="animate-spin" /> Onboarding...</>
+              <><Loader2 size={16} className="animate-spin" /> Processing...</>
+            ) : onboardMode === 'direct' ? (
+              <><UserPlus size={16} /> Register & Onboard Driver</>
             ) : (
               <><UserPlus size={16} /> Send Onboarding Invite</>
             )}

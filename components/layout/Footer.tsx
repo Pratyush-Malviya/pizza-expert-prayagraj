@@ -27,10 +27,11 @@ const TwitterIcon = ({ size = 20 }: { size?: number }) => (
 const QUICK_LINKS = [
   { label: 'HOME',        href: '/' },
   { label: 'MENU',        href: '/menu' },
+  { label: 'TRACK ORDER', href: '/track' },
   { label: 'OFFERS',      href: '/offers' },
   { label: 'ABOUT US',    href: '/about' },
+  { label: 'DELIVER WITH US', href: '/partner/join' },
   { label: 'CONTACT US',  href: '/contact' },
-  { label: 'FAQS',        href: '/faq' },
 ]
 
 export default function Footer() {

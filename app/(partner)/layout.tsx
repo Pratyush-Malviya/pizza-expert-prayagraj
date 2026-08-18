@@ -47,29 +47,37 @@ export default function PartnerLayout({
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#E7E0D8] shadow-lg">
-        <div className="max-w-md mx-auto grid grid-cols-3 py-2 text-center">
+        <div className="max-w-md mx-auto grid grid-cols-4 py-2 text-center">
           <Link
             href="/partner/deliveries"
             className="flex flex-col items-center justify-center gap-1 text-[#B91C1C] font-bold text-[10px]"
           >
-            <Bike size={18} />
-            <span>Active Trips</span>
+            <Bike size={17} />
+            <span>Trips</span>
+          </Link>
+
+          <Link
+            href="/partner/join"
+            className="flex flex-col items-center justify-center gap-1 text-[#78716C] hover:text-[#1C1917] font-semibold text-[10px]"
+          >
+            <User size={17} />
+            <span>Join/Apply</span>
           </Link>
 
           <Link
             href="/track"
             className="flex flex-col items-center justify-center gap-1 text-[#78716C] hover:text-[#1C1917] font-semibold text-[10px]"
           >
-            <Compass size={18} />
-            <span>Customer Map</span>
+            <Compass size={17} />
+            <span>Track Map</span>
           </Link>
 
           <Link
             href="/admin/deliveries"
             className="flex flex-col items-center justify-center gap-1 text-[#78716C] hover:text-[#1C1917] font-semibold text-[10px]"
           >
-            <ShieldCheck size={18} />
-            <span>Fleet View</span>
+            <ShieldCheck size={17} />
+            <span>Fleet</span>
           </Link>
         </div>
       </nav>

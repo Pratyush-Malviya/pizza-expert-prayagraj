@@ -105,7 +105,24 @@ export default function AdminDeliveriesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/admin/drivers"
+            className="btn btn-primary text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs"
+          >
+            <Plus size={15} />
+            <span>Onboard Delivery Person</span>
+          </Link>
+
+          <Link
+            href="/partner/join"
+            target="_blank"
+            className="btn btn-outline text-xs px-4 py-2 rounded-xl flex items-center gap-1.5"
+          >
+            <ExternalLink size={14} />
+            <span>Rider Application Page</span>
+          </Link>
+
           <Link
             href="/partner/deliveries"
             target="_blank"
