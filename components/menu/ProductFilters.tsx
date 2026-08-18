@@ -31,17 +31,17 @@ export default function ProductFilters({
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-[#E7E0D8]">
         <div className="flex items-center gap-2">
-          <Filter size={16} className="text-[#B91C1C]" />
+          <Filter size={18} className="text-[#B91C1C]" />
           <h3 className="font-serif font-bold text-[#1C1917] text-base">Filters</h3>
-          <span className="bg-[#FEF2F2] text-[#B91C1C] text-xs font-bold px-2 py-0.5 rounded-md">
+          <span className="bg-[#FEF2F2] text-[#B91C1C] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#FECACA]">
             {totalCount}
           </span>
         </div>
         <button
           onClick={onReset}
-          className="text-xs font-semibold text-[#57534E] hover:text-[#B91C1C] flex items-center gap-1 transition-colors"
+          className="text-xs font-bold text-[#78716C] hover:text-[#B91C1C] flex items-center gap-1.5 transition-colors cursor-pointer"
         >
-          <RotateCcw size={12} /> Reset
+          <RotateCcw size={13} className="text-[#B91C1C]" /> Reset
         </button>
       </div>
 
@@ -51,9 +51,9 @@ export default function ProductFilters({
         <div className="space-y-1">
           <button
             onClick={() => onFilterChange({ ...filters, category: 'all' })}
-            className={`w-full text-left px-3 py-2 rounded-md text-xs sm:text-sm font-semibold transition-all flex items-center justify-between ${
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between cursor-pointer ${
               filters.category === 'all'
-                ? 'bg-[#FEF2F2] text-[#B91C1C]'
+                ? 'bg-[#FEF2F2] text-[#B91C1C] font-bold border border-[#FECACA] shadow-2xs'
                 : 'text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#1C1917]'
             }`}
           >
@@ -63,9 +63,9 @@ export default function ProductFilters({
             <button
               key={cat.id}
               onClick={() => onFilterChange({ ...filters, category: cat.slug })}
-              className={`w-full text-left px-3 py-2 rounded-md text-xs sm:text-sm font-semibold transition-all flex items-center justify-between ${
+              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between cursor-pointer ${
                 filters.category === cat.slug
-                  ? 'bg-[#FEF2F2] text-[#B91C1C]'
+                  ? 'bg-[#FEF2F2] text-[#B91C1C] font-bold border border-[#FECACA] shadow-2xs'
                   : 'text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#1C1917]'
               }`}
             >

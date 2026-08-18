@@ -260,21 +260,21 @@ function MenuContent() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar & Mobile Filter Toggle */}
         <div className="max-w-xl mx-auto mb-8 flex gap-3">
           <div className="relative flex-1">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#B91C1C]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search pizzas, burgers, pasta..."
-              className="input-field pl-10 pr-4 py-3 rounded-lg text-sm bg-white shadow-xs"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E7E0D8] text-sm bg-white text-[#1C1917] placeholder:text-[#A8A29E] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#A8A29E] hover:text-[#1C1917] bg-[#F4EFEA] rounded-md px-2 py-0.5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#78716C] hover:text-[#1C1917] bg-[#F4EFEA] hover:bg-[#E7E0D8] rounded-md px-2 py-1 transition-colors"
               >
                 Clear
               </button>
@@ -283,10 +283,18 @@ function MenuContent() {
 
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="lg:hidden btn btn-outline px-4 rounded-lg flex items-center gap-2"
+            className={`lg:hidden px-4 py-3 rounded-xl border flex items-center gap-2 text-sm font-bold transition-all shadow-xs shrink-0 cursor-pointer ${
+              showMobileFilters
+                ? 'bg-[#B91C1C] text-white border-[#B91C1C]'
+                : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F4EFEA]'
+            }`}
+            aria-label="Toggle Filter Options"
           >
-            <SlidersHorizontal size={16} />
-            <span className="hidden sm:inline">Filters</span>
+            <SlidersHorizontal size={18} className={showMobileFilters ? 'text-white' : 'text-[#B91C1C]'} />
+            <span>Filters</span>
+            {(filters.category !== 'all' || filters.vegOnly || filters.spicyOnly || filters.sortBy !== 'popularity' || filters.priceRange < 1000) && (
+              <span className={`w-2 h-2 rounded-full ${showMobileFilters ? 'bg-white' : 'bg-[#B91C1C]'}`} />
+            )}
           </button>
         </div>
 
