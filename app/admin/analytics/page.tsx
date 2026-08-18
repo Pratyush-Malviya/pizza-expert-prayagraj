@@ -31,13 +31,13 @@ import {
   fetchWeekOverWeekRevenue, fetchRevenueSeries,
   fetchPostHogDevices, fetchPostHogTopPages,
   fetchPostHogUTMSources, fetchAnomalyAlerts,
-  fetchAIInsights,
+  fetchAIInsights, fetchPostHogEngineStatus,
   type PostHogMetrics, type RealMetrics, type ProductStat,
   type CategoryStat, type HeatmapCell, type CustomerSegments,
   type OrderStatusStat, type PaymentMethodStat, type CouponStat,
   type ReviewSentiment, type WeekOverWeekDay, type RevenueSeries,
   type DeviceStat, type TopPage, type UTMSource,
-  type AnomalyAlert, type AIInsight
+  type AnomalyAlert, type AIInsight, type PostHogEngineStatus
 } from '@/app/actions/analytics'
 
 // ─── Fallback mock series for revenue chart when DB view has no data ───
@@ -223,6 +223,7 @@ export default function AdminAnalyticsPage() {
   const [isLiveStreaming, setIsLiveStreaming] = useState(true)
   const [newOrderCount, setNewOrderCount] = useState(0)
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<number>>(new Set())
+  const [engineStatus, setEngineStatus] = useState<PostHogEngineStatus | null>(null)
 
   const daysDays = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90
 
@@ -293,7 +294,7 @@ export default function AdminAnalyticsPage() {
       }
 
       // All server actions in parallel
-      const [dbMetrics, phMetrics, prodPerf, catDist, heatmap, segs, ordStatus, payMethods, coupons, reviews, wowRev, revSeries, devices, pages, utm, anomalies] = await Promise.all([
+      const [dbMetrics, phMetrics, prodPerf, catDist, heatmap, segs, ordStatus, payMethods, coupons, reviews, wowRev, revSeries, devices, pages, utm, anomalies, engine] = await Promise.all([
         fetchSupabaseMetrics(),
         fetchPostHogMetrics(),
         fetchProductPerformance(),
@@ -310,7 +311,10 @@ export default function AdminAnalyticsPage() {
         fetchPostHogTopPages(),
         fetchPostHogUTMSources(),
         fetchAnomalyAlerts(),
+        fetchPostHogEngineStatus(),
       ])
+
+      setEngineStatus(engine)
 
       // KPI
       setNewUsersThisWeek(dbMetrics.newUsersThisWeek)
@@ -1194,10 +1198,26 @@ export default function AdminAnalyticsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { label: 'PostHog Public Key', value: POSTHOG_KEY ? `${POSTHOG_KEY.slice(0, 12)}…${POSTHOG_KEY.slice(-4)}` : 'Not configured', active: !!POSTHOG_KEY },
-                { label: 'Ingestion Host', value: POSTHOG_HOST, active: true },
-                { label: 'Personal API Key (server)', value: process.env.POSTHOG_PERSONAL_API_KEY ? 'Configured ✓' : 'Missing in .env.local', active: !!process.env.POSTHOG_PERSONAL_API_KEY },
-                { label: 'Project ID', value: process.env.POSTHOG_PROJECT_ID || 'Not set', active: !!process.env.POSTHOG_PROJECT_ID },
+                {
+                  label: 'PostHog Public Key',
+                  value: engineStatus?.publicKeyPreview || (POSTHOG_KEY ? `${POSTHOG_KEY.slice(0, 10)}…${POSTHOG_KEY.slice(-4)}` : 'Not configured'),
+                  active: Boolean(engineStatus?.publicKeyPreview || POSTHOG_KEY),
+                },
+                {
+                  label: 'Ingestion Host',
+                  value: engineStatus?.host || POSTHOG_HOST,
+                  active: true,
+                },
+                {
+                  label: 'Personal API Key (server)',
+                  value: engineStatus?.hasPersonalKey ? 'Configured ✓ (Server-side Only)' : 'Missing in .env.local',
+                  active: Boolean(engineStatus?.hasPersonalKey),
+                },
+                {
+                  label: 'Project ID',
+                  value: engineStatus?.projectId || (engineStatus?.hasProjectId ? 'Configured' : 'Not set'),
+                  active: Boolean(engineStatus?.hasProjectId),
+                },
               ].map(item => (
                 <div key={item.label} className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
                   <span className="text-[10px] font-bold uppercase text-[#78716C]">{item.label}</span>

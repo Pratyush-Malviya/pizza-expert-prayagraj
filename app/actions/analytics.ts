@@ -562,3 +562,23 @@ export async function fetchAIInsights(params: {
 
   return insights.slice(0, 6)
 }
+
+// ─── 18. Secure PostHog Engine Status ────────────────────────
+export interface PostHogEngineStatus {
+  hasPersonalKey: boolean
+  hasProjectId: boolean
+  projectId: string | null
+  host: string
+  publicKeyPreview: string | null
+}
+
+export async function fetchPostHogEngineStatus(): Promise<PostHogEngineStatus> {
+  const pubKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  return {
+    hasPersonalKey: Boolean(process.env.POSTHOG_PERSONAL_API_KEY),
+    hasProjectId: Boolean(process.env.POSTHOG_PROJECT_ID),
+    projectId: process.env.POSTHOG_PROJECT_ID || null,
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    publicKeyPreview: pubKey ? `${pubKey.slice(0, 10)}…${pubKey.slice(-4)}` : null,
+  }
+}
