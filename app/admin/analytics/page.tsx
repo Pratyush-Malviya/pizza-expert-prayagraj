@@ -89,112 +89,6 @@ interface UserReport {
   }[]
 }
 
-const SEED_USERS: UserReport[] = [
-  {
-    id: 'usr_01',
-    distinctId: 'ph_user_pratyush_01',
-    name: 'Pratyush Malviya',
-    email: 'malviya.pratyush26@gmail.com',
-    phone: '+91 98765 43210',
-    role: 'Admin / VIP',
-    totalOrders: 14,
-    totalSpend: 8420,
-    lastSeen: '2 mins ago',
-    device: 'Windows Desktop',
-    browser: 'Chrome 128.0',
-    location: 'Civil Lines, Prayagraj',
-    funnelStage: 'VIP Loyalist',
-    activityTimeline: [
-      { event: '$pageview: /admin/analytics', timestamp: '2 mins ago', details: 'Navigated to Customer Analytics & Behavioral Reports', iconType: 'view' },
-      { event: 'order_completed #ORD-8492', timestamp: 'Yesterday at 8:45 PM', details: 'Paid ₹748 via Razorpay (Farmhouse + Garlic Bread)', iconType: 'order' },
-      { event: 'coupon_applied: EXPERT50', timestamp: 'Yesterday at 8:42 PM', details: 'Discount of ₹50 applied successfully', iconType: 'coupon' },
-      { event: 'add_to_cart', timestamp: 'Yesterday at 8:38 PM', details: 'Added Farmhouse Special Pizza (Large, Cheese Burst)', iconType: 'cart' },
-      { event: '$pageview: /menu', timestamp: 'Yesterday at 8:35 PM', details: 'Browsed Gourmet Veg Category', iconType: 'view' },
-      { event: 'user_authenticated', timestamp: 'Yesterday at 8:34 PM', details: 'Logged in via Google OAuth', iconType: 'auth' },
-    ],
-  },
-  {
-    id: 'usr_02',
-    distinctId: 'ph_user_aarav_92',
-    name: 'Aarav Sharma',
-    email: 'aarav.sharma@example.com',
-    phone: '+91 91234 56780',
-    role: 'Customer',
-    totalOrders: 5,
-    totalSpend: 2890,
-    lastSeen: '18 mins ago',
-    device: 'iPhone 15 Pro',
-    browser: 'Mobile Safari',
-    location: 'Katra, Prayagraj',
-    funnelStage: 'Active Buyer',
-    activityTimeline: [
-      { event: 'add_to_cart', timestamp: '18 mins ago', details: 'Added Paneer Tikka Fusion Pizza (Medium)', iconType: 'cart' },
-      { event: '$pageview: /menu/paneer-tikka', timestamp: '22 mins ago', details: 'Viewed Product Modal & Customizations', iconType: 'view' },
-      { event: '$pageview: /', timestamp: '25 mins ago', details: 'Landed from Instagram Campaign (utm_source=ig_reels)', iconType: 'view' },
-    ],
-  },
-  {
-    id: 'usr_03',
-    distinctId: 'ph_user_ananya_44',
-    name: 'Ananya Gupta',
-    email: 'ananya.g@example.com',
-    phone: '+91 98321 09876',
-    role: 'Customer',
-    totalOrders: 2,
-    totalSpend: 1140,
-    lastSeen: '1 hour ago',
-    device: 'Samsung Galaxy S24',
-    browser: 'Chrome Mobile',
-    location: 'Tagore Town, Prayagraj',
-    funnelStage: 'Cart Abandoned',
-    activityTimeline: [
-      { event: 'cart_abandoned', timestamp: '1 hour ago', details: 'Left 2 items in cart (Total: ₹598) without initiating checkout', iconType: 'cart' },
-      { event: 'add_to_cart', timestamp: '1 hour ago', details: 'Added Cheese Burst Margherita', iconType: 'cart' },
-      { event: '$pageview: /cart', timestamp: '1 hour ago', details: 'Viewed Cart Drawer', iconType: 'view' },
-    ],
-  },
-  {
-    id: 'usr_04',
-    distinctId: 'ph_user_rohit_77',
-    name: 'Rohit Verma',
-    email: 'rohit.v@example.com',
-    phone: '+91 97654 32109',
-    role: 'Customer',
-    totalOrders: 8,
-    totalSpend: 4950,
-    lastSeen: '3 hours ago',
-    device: 'MacBook Air M2',
-    browser: 'Safari 17.4',
-    location: 'George Town, Prayagraj',
-    funnelStage: 'Active Buyer',
-    activityTimeline: [
-      { event: 'order_completed #ORD-7319', timestamp: '3 hours ago', details: 'Paid ₹649 via Cash On Delivery', iconType: 'order' },
-      { event: 'initiate_checkout', timestamp: '3 hours ago', details: 'Entered delivery address at George Town', iconType: 'order' },
-      { event: 'add_to_cart', timestamp: '4 hours ago', details: 'Added Tandoori Chicken Delight Pizza', iconType: 'cart' },
-    ],
-  },
-  {
-    id: 'usr_05',
-    distinctId: 'ph_anon_guest_902',
-    name: 'Guest Visitor #902',
-    email: 'guest_902@session.io',
-    phone: 'Not provided',
-    role: 'Guest / Anonymous',
-    totalOrders: 0,
-    totalSpend: 0,
-    lastSeen: '45 mins ago',
-    device: 'OnePlus 11',
-    browser: 'Chrome Mobile',
-    location: 'Allahabad University Campus',
-    funnelStage: 'Browsing',
-    activityTimeline: [
-      { event: '$pageview: /menu', timestamp: '45 mins ago', details: 'Browsed sides and beverages section', iconType: 'view' },
-      { event: '$pageview: /offers', timestamp: '48 mins ago', details: 'Checked Flash Offers & Discounts', iconType: 'view' },
-      { event: '$pageview: /', timestamp: '50 mins ago', details: 'Direct Search Visit', iconType: 'view' },
-    ],
-  },
-]
-
 export default function AdminAnalyticsPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'funnel' | 'financials' | 'engine_hub'>('users')
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('7d')
@@ -203,7 +97,7 @@ export default function AdminAnalyticsPage() {
   // Real DB state
   const [revenueData, setRevenueData] = useState(MOCK_REVENUE_SERIES)
   const [productStats, setProductStats] = useState(MOCK_PRODUCT_PERFORMANCE)
-  const [usersList, setUsersList] = useState<UserReport[]>(SEED_USERS)
+  const [usersList, setUsersList] = useState<UserReport[]>([])
   const [selectedUser, setSelectedUser] = useState<UserReport | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [stageFilter, setStageFilter] = useState('ALL')
@@ -301,9 +195,7 @@ export default function AdminAnalyticsPage() {
           }
         })
 
-        // Merge existing rich seeds with DB records for high presentation quality
-        const combined = [...mappedUsers, ...SEED_USERS.filter(s => !mappedUsers.some(m => m.id === s.id))]
-        setUsersList(combined)
+        setUsersList(mappedUsers)
       }
 
       // Fetch financial views if available
