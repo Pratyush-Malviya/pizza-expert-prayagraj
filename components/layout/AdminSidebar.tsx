@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag, Flame,
   Settings, LogOut, ChevronDown, ChevronRight,
   CreditCard, UtensilsCrossed, Truck, X, Palette,
-  TrendingUp, Boxes, FileText, Users, Contact, History, Star
+  TrendingUp, Boxes, FileText, Users, Contact, History, Star,
+  Layers, Package, Sparkles, ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -86,8 +87,15 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
   {
     id: 'analytics',
     label: 'Analytics & BI',
-    href: '/admin/analytics',
     icon: TrendingUp,
+    items: [
+      { label: 'Customers', href: '/admin/analytics?tab=users', icon: Users },
+      { label: 'Funnel', href: '/admin/analytics?tab=funnel', icon: Layers },
+      { label: 'Financials', href: '/admin/analytics?tab=financials', icon: TrendingUp },
+      { label: 'Operations', href: '/admin/analytics?tab=operations', icon: Package },
+      { label: 'Insights', href: '/admin/analytics?tab=insights', icon: Sparkles },
+      { label: 'Engine Hub', href: '/admin/analytics?tab=engine_hub', icon: ShieldCheck },
+    ],
   },
   {
     id: 'settings',
@@ -107,10 +115,21 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [role, setRole] = useState<string | null>(null)
   
   // Track open state of collapsible groups
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ operations: true })
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ operations: true, analytics: true })
+
+  // Check if a link is active considering query params for tabs
+  const checkIsActive = (href: string) => {
+    if (href.includes('?tab=')) {
+      const targetTab = href.split('?tab=')[1]
+      const currentTab = searchParams?.get('tab') || 'users'
+      return pathname === '/admin/analytics' && currentTab === targetTab
+    }
+    return pathname === href
+  }
 
   // Initialize from localStorage and auto-expand active parent group
   useEffect(() => {
@@ -123,11 +142,11 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
 
     // Auto-expand group containing current route
     ADMIN_NAV_GROUPS.forEach((group) => {
-      if (group.items?.some((item) => item.href === pathname)) {
+      if (group.items?.some((item) => checkIsActive(item.href))) {
         setOpenGroups((prev) => ({ ...prev, [group.id]: true }))
       }
     })
-  }, [pathname])
+  }, [pathname, searchParams])
 
   // Save expanded states
   const toggleGroup = (groupId: string) => {
@@ -164,18 +183,19 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
 
   // Filter items inside groups based on user role
   const isLinkAllowed = (href: string) => {
+    const baseHref = href.split('?')[0]
     if (!role || role === 'super_admin') return true
     if (role === 'manager') {
       const hiddenForManager = ['/admin/staff', '/admin/theme', '/admin/settings']
-      return !hiddenForManager.includes(href)
+      return !hiddenForManager.includes(baseHref)
     }
     if (role === 'staff') {
       const allowedForStaff = ['/admin/kitchen', '/admin/inventory']
-      return allowedForStaff.includes(href)
+      return allowedForStaff.includes(baseHref)
     }
     if (role === 'viewer') {
       const allowedForViewer = ['/admin', '/admin/orders', '/admin/analytics']
-      return allowedForViewer.includes(href)
+      return allowedForViewer.includes(baseHref)
     }
     return false
   }
@@ -239,7 +259,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
             // Standalone Link
             if (group.href) {
               if (!isLinkAllowed(group.href)) return null
-              const isActive = pathname === group.href
+              const isActive = checkIsActive(group.href)
 
               return (
                 <Link
@@ -262,7 +282,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
             const visibleItems = group.items?.filter((i) => isLinkAllowed(i.href)) || []
             if (visibleItems.length === 0) return null
 
-            const isChildActive = visibleItems.some((i) => i.href === pathname)
+            const isChildActive = visibleItems.some((i) => checkIsActive(i.href))
             const isOpen = Boolean(openGroups[group.id])
 
             return (
@@ -289,7 +309,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                   <div className="pl-4 space-y-1 border-l border-[#292524] ml-4 my-1">
                     {visibleItems.map((item) => {
                       const ItemIcon = item.icon
-                      const isActive = pathname === item.href
+                      const isActive = checkIsActive(item.href)
 
                       return (
                         <Link

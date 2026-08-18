@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight,
   RefreshCw, Users, Activity, MousePointerClick, Award,
@@ -156,10 +157,13 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`bg-[#F5F2EC] rounded animate-pulse ${className}`} />
 }
 
-// ─── Main Component ───────────────────────────────────────────
-export default function AdminAnalyticsPage() {
+// ─── Main Component Content ───────────────────────────────────
+function AnalyticsDashboardContent() {
   type TabId = 'users' | 'funnel' | 'financials' | 'operations' | 'insights' | 'engine_hub'
-  const [activeTab, setActiveTab] = useState<TabId>('users')
+  const searchParams = useSearchParams()
+  const tabParam = searchParams?.get('tab') as TabId | null
+  const activeTab: TabId = (tabParam && ['users', 'funnel', 'financials', 'operations', 'insights', 'engine_hub'].includes(tabParam)) ? tabParam : 'users'
+
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -363,19 +367,20 @@ export default function AdminAnalyticsPage() {
   const totalOrderCount = orderStatus.reduce((s, o) => s + o.count, 0)
   const cancellationRate = totalOrderCount > 0 ? Math.round(((orderStatus.find(o => o.status === 'cancelled')?.count || 0) / totalOrderCount) * 100) : 0
 
-  const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'users',      label: 'Customers',   icon: <Users size={14} /> },
-    { id: 'funnel',     label: 'Funnel',       icon: <Layers size={14} /> },
-    { id: 'financials', label: 'Financials',   icon: <TrendingUp size={14} /> },
-    { id: 'operations', label: 'Operations',   icon: <Package size={14} /> },
-    { id: 'insights',   label: 'Insights',     icon: <Sparkles size={14} /> },
-    { id: 'engine_hub', label: 'Engine Hub',   icon: <ShieldCheck size={14} /> },
-  ]
+  const TAB_HEADER: Record<TabId, { title: string; subtitle: string }> = {
+    users: { title: 'Customer Segmentation & CRM', subtitle: 'Customer tiers, repeat rate, churn risks & customer profiles' },
+    funnel: { title: 'Conversion Funnel & Telemetry', subtitle: 'Step-by-step visitor funnel, devices, UTM sources & live event stream' },
+    financials: { title: 'Financials & Revenue BI', subtitle: 'Week-over-week trends, daily margins, product profitability & hourly heatmap' },
+    operations: { title: 'Operations Intelligence', subtitle: 'Order status pipeline, peak kitchen hours, cancellation rate & review sentiment' },
+    insights: { title: 'Business Insights & Anomaly Detection', subtitle: 'Automated AI recommendations, system anomalies & live order feed' },
+    engine_hub: { title: 'Analytics Engine Configuration', subtitle: 'Telemetry pipeline settings, PostHog credentials & test event dispatch' },
+  }
+  const currentHeader = TAB_HEADER[activeTab] || TAB_HEADER.users
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
       {/* ── Header ── */}
-      <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-4">
+      <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div>
@@ -389,8 +394,8 @@ export default function AdminAnalyticsPage() {
                   </button>
                 )}
               </div>
-              <h1 className="text-xl font-serif font-bold text-[#1C1917] mt-1">Analytics & Intelligence</h1>
-              <p className="text-xs text-[#78716C]">Real data from Supabase + PostHog · Last refreshed just now</p>
+              <h1 className="text-xl font-serif font-bold text-[#1C1917] mt-1">{currentHeader.title}</h1>
+              <p className="text-xs text-[#78716C]">{currentHeader.subtitle}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -401,15 +406,6 @@ export default function AdminAnalyticsPage() {
               <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} /> Refresh
             </button>
           </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-[#1C1917] text-white' : 'text-[#78716C] hover:bg-[#F5F2EC]'}`}>
-              {tab.icon}{tab.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -1223,3 +1219,19 @@ export default function AdminAnalyticsPage() {
     </div>
   )
 }
+
+export default function AdminAnalyticsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-10 text-center text-xs text-[#78716C] flex items-center justify-center gap-2">
+          <RefreshCw size={14} className="animate-spin text-[#B91C1C]" />
+          <span>Loading analytics section...</span>
+        </div>
+      }
+    >
+      <AnalyticsDashboardContent />
+    </Suspense>
+  )
+}
+
