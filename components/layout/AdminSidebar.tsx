@@ -66,12 +66,14 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'supply_staff',
-    label: 'Supply Chain & Staff',
-    icon: Boxes,
+    label: 'Supply & Team (RBAC)',
+    icon: ShieldCheck,
     items: [
+      { label: 'User Management (RBAC)', href: '/admin/users', icon: ShieldCheck },
+      { label: 'Staff Roster', href: '/admin/staff', icon: Users },
+      { label: 'Driver Fleet', href: '/admin/drivers', icon: Truck },
       { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
       { label: 'Suppliers & POs', href: '/admin/suppliers', icon: Truck },
-      { label: 'Staff Roster', href: '/admin/staff', icon: Users },
     ],
   },
   {
