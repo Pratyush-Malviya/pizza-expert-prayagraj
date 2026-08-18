@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 import {
   Bike, MapPin, Compass, Phone, ShieldCheck, Clock,
-  CheckCircle2, AlertCircle, Search, ExternalLink, Plus, RefreshCw, UserCheck
+  CheckCircle2, AlertCircle, Search, ExternalLink, Plus, RefreshCw, UserCheck, Zap
 } from 'lucide-react'
 import type { DeliveryPartner } from '@/lib/tracking/types'
 import { STORE_LOCATION } from '@/lib/tracking/types'
+import { autoAssignNearestAvailableDriver } from '@/app/actions/deliveries'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
   ssr: false,
@@ -182,6 +184,77 @@ export default function AdminDeliveriesPage() {
           etaMinutes={11}
           distanceKm={2.4}
         />
+      </div>
+
+      {/* Auto-Dispatch Ready Orders Queue */}
+      <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-xs p-5 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 flex items-center justify-center font-bold">
+              ⚡
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-[#1C1917]">
+                Smart Dispatch Queue (Kitchen Ready Orders)
+              </h3>
+              <p className="text-[11px] text-[#78716C]">
+                Instantly assign orders to the nearest available idle delivery partner in Allapur.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[
+            {
+              orderId: 'ORD-982143',
+              customer: 'Pooja Verma',
+              items: '1x Farmhouse Special (Large), 1x Cheesy Bread',
+              address: 'House 42, Civil Lines, Prayagraj',
+              amount: 549,
+              status: 'Ready at Kitchen'
+            },
+            {
+              orderId: 'ORD-982195',
+              customer: 'Rohit Mishra',
+              items: '2x Paneer Makhani (Medium), 2x Coke',
+              address: 'Katra Chauraha, Near Anand Bhawan',
+              amount: 720,
+              status: 'Ready at Kitchen'
+            }
+          ].map((ord) => (
+            <div key={ord.orderId} className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] flex flex-col justify-between gap-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono font-bold text-xs text-[#B91C1C]">#{ord.orderId}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                    {ord.status}
+                  </span>
+                </div>
+                <div className="font-bold text-xs text-[#1C1917]">{ord.customer} • ₹{ord.amount}</div>
+                <div className="text-[11px] text-[#78716C] truncate mt-0.5">{ord.items}</div>
+                <div className="text-[11px] text-[#57534E] flex items-center gap-1 mt-1">
+                  <MapPin size={12} className="text-[#B91C1C]" />
+                  <span>{ord.address}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  const res = await autoAssignNearestAvailableDriver(ord.orderId)
+                  if (res.success && res.driver) {
+                    toast.success(`⚡ Order #${ord.orderId} auto-dispatched to ${res.driver.name}!`)
+                  } else {
+                    toast.error(res.error || 'Failed to auto-assign')
+                  }
+                }}
+                className="w-full bg-[#1C1917] hover:bg-black text-amber-400 py-2 px-3 rounded-lg text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-2xs border border-amber-400/30"
+              >
+                <span>⚡ Auto-Dispatch to Available Rider</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Delivery Partners Table */}

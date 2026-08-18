@@ -1,15 +1,26 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Bike, MapPin, Navigation, Phone, MessageCircle,
   CheckCircle2, Clock, AlertCircle, Play, Pause,
-  KeyRound, ShieldCheck, Flame, ExternalLink, RefreshCw
+  KeyRound, ShieldCheck, Flame, ExternalLink, RefreshCw, Compass
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_DETAILS, SIMULATED_ROUTE_CIVIL_LINES } from '@/lib/tracking/types'
 import { playNotificationSound } from '@/lib/utils/notifications'
 import { toast } from 'sonner'
+
+const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[240px] sm:h-[300px] rounded-2xl bg-[#FBF9F5] border border-[#E7E0D8] flex items-center justify-center text-xs font-mono text-[#78716C]">
+      <Compass size={24} className="text-[#B91C1C] animate-spin mr-2" />
+      <span>Loading Turn-by-Turn GPS Map...</span>
+    </div>
+  ),
+})
 
 export default function PartnerDeliveriesPage() {
   const [isOnline, setIsOnline] = useState(true)
@@ -178,6 +189,19 @@ export default function PartnerDeliveriesPage() {
               ₹499 (Paid Online)
             </span>
           </div>
+        </div>
+
+        {/* Live Rider Navigation Map */}
+        <div className="rounded-2xl overflow-hidden shadow-xs">
+          <LiveDeliveryMap
+            driverLocation={{ lat: lastCoords.lat, lng: lastCoords.lng, updatedAt: Date.now() }}
+            destinationLocation={{ lat: 25.4528, lng: 81.8346 }}
+            destinationAddress="House 42, Civil Lines, Prayagraj"
+            status={currentStep}
+            driverName="Rahul Sharma (You)"
+            etaMinutes={currentStep === 'delivered' ? 0 : 11}
+            distanceKm={currentStep === 'delivered' ? 0 : 2.4}
+          />
         </div>
 
         {/* Pickup & Drop Points */}
