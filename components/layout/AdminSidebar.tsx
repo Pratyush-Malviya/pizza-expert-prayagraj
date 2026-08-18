@@ -85,7 +85,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'analytics',
-    label: 'Analytics & PostHog',
+    label: 'Analytics & BI',
     href: '/admin/analytics',
     icon: TrendingUp,
   },

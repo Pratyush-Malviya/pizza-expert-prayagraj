@@ -105,7 +105,7 @@ const SEED_USERS: UserReport[] = [
     location: 'Civil Lines, Prayagraj',
     funnelStage: 'VIP Loyalist',
     activityTimeline: [
-      { event: '$pageview: /admin/analytics', timestamp: '2 mins ago', details: 'Navigated to Admin Analytics & PostHog Reports', iconType: 'view' },
+      { event: '$pageview: /admin/analytics', timestamp: '2 mins ago', details: 'Navigated to Customer Analytics & Behavioral Reports', iconType: 'view' },
       { event: 'order_completed #ORD-8492', timestamp: 'Yesterday at 8:45 PM', details: 'Paid ₹748 via Razorpay (Farmhouse + Garlic Bread)', iconType: 'order' },
       { event: 'coupon_applied: EXPERT50', timestamp: 'Yesterday at 8:42 PM', details: 'Discount of ₹50 applied successfully', iconType: 'coupon' },
       { event: 'add_to_cart', timestamp: 'Yesterday at 8:38 PM', details: 'Added Farmhouse Special Pizza (Large, Cheese Burst)', iconType: 'cart' },
@@ -196,7 +196,7 @@ const SEED_USERS: UserReport[] = [
 ]
 
 export default function AdminAnalyticsPage() {
-  const [activeTab, setActiveTab] = useState<'users' | 'funnel' | 'financials' | 'posthog_hub'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'funnel' | 'financials' | 'engine_hub'>('users')
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('7d')
   const [loading, setLoading] = useState<boolean>(true)
   
@@ -272,7 +272,7 @@ export default function AdminAnalyticsPage() {
 
           return {
             id: prof.id,
-            distinctId: `ph_usr_${prof.id.slice(0, 8)}`,
+            distinctId: `usr_${prof.id.slice(0, 8)}`,
             name: prof.full_name || prof.name || 'Registered Customer',
             email: prof.email || 'customer@pizzaexpert.in',
             phone: prof.phone || 'Phone on file',
@@ -343,7 +343,7 @@ export default function AdminAnalyticsPage() {
     return matchesSearch && matchesStage
   })
 
-  // Send a test PostHog event to verify live pipeline
+  // Send a test telemetry event to verify live pipeline
   const sendTestTelemetry = (eventName: string) => {
     trackPostHogEvent(eventName, {
       triggered_by: 'Admin Panel Test Trigger',
@@ -353,7 +353,7 @@ export default function AdminAnalyticsPage() {
       screen_resolution: `${window.innerWidth}x${window.innerHeight}`,
     })
     refreshTelemetry()
-    toast.success(`⚡ Event '${eventName}' captured & dispatched to PostHog!`, {
+    toast.success(`⚡ Event '${eventName}' captured & dispatched!`, {
       description: 'Check the live telemetry stream below to inspect properties.'
     })
   }
@@ -366,16 +366,16 @@ export default function AdminAnalyticsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 flex items-center gap-1">
-                <Zap size={12} className="fill-current" /> PostHog Telemetry & BI
+                <Zap size={12} className="fill-current" /> Live Telemetry & BI
               </span>
               <span className="text-xs text-[#78716C]">
                 {POSTHOG_KEY ? (
                   <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={13} /> Connected to PostHog Cloud
+                    <CheckCircle2 size={13} /> Analytics Engine Active
                   </span>
                 ) : (
                   <span className="text-amber-700 font-medium flex items-center gap-1">
-                    <AlertCircle size={13} /> Ready (Add NEXT_PUBLIC_POSTHOG_KEY in .env)
+                    <AlertCircle size={13} /> Ready (Setup in .env)
                   </span>
                 )}
               </span>
@@ -448,15 +448,15 @@ export default function AdminAnalyticsPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('posthog_hub')}
+            onClick={() => setActiveTab('engine_hub')}
             className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'posthog_hub'
+              activeTab === 'engine_hub'
                 ? 'border-[#B91C1C] text-[#B91C1C]'
                 : 'border-transparent text-[#78716C] hover:text-[#1C1917]'
             }`}
           >
             <ShieldCheck size={16} />
-            <span>⚙️ PostHog Integration Hub</span>
+            <span>⚙️ Analytics Engine Hub</span>
           </button>
         </div>
       </div>
@@ -538,7 +538,7 @@ export default function AdminAnalyticsPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" size={16} />
               <input
                 type="text"
-                placeholder="Search user by name, email, phone, distinctId..."
+                placeholder="Search user by name, email, phone, session ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C]"
@@ -574,7 +574,7 @@ export default function AdminAnalyticsPage() {
                   Individual User Profiles & Telemetry Dossiers
                 </h2>
                 <p className="text-xs text-[#78716C]">
-                  Click on any user to open their complete timeline, conversion journey, and session replay links.
+                  Click on any user to open their complete timeline, conversion journey, and activity records.
                 </p>
               </div>
               <span className="text-xs font-bold bg-[#F5F2EC] px-3 py-1 rounded-full text-[#44403C]">
@@ -587,7 +587,7 @@ export default function AdminAnalyticsPage() {
                 <thead className="bg-[#F5F2EC] text-[#78716C] uppercase text-[11px] font-bold border-b border-[#E7E0D8]">
                   <tr>
                     <th className="py-3 px-4">User / Persona</th>
-                    <th className="py-3 px-4">PostHog Distinct ID</th>
+                    <th className="py-3 px-4">Session Tracking ID</th>
                     <th className="py-3 px-4 text-center">Status / Stage</th>
                     <th className="py-3 px-4 text-right">Orders</th>
                     <th className="py-3 px-4 text-right">LTV Spend</th>
@@ -695,7 +695,7 @@ export default function AdminAnalyticsPage() {
               <div>
                 <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2">
                   <Layers className="text-[#B91C1C]" size={20} />
-                  Complete PostHog E-Commerce Conversion Funnel
+                  Complete E-Commerce Conversion Funnel
                 </h2>
                 <p className="text-xs text-[#78716C]">
                   Step-by-step visitor progression from landing page to successful payment.
@@ -1008,25 +1008,25 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* TAB 4: POSTHOG INTEGRATION & DIAGNOSTICS HUB */}
+      {/* TAB 4: TELEMETRY & ANALYTICS ENGINE HUB */}
       {/* ────────────────────────────────────────────────────────── */}
-      {activeTab === 'posthog_hub' && (
+      {activeTab === 'engine_hub' && (
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-6">
             <div>
               <h2 className="text-lg font-serif font-bold text-[#1C1917] flex items-center gap-2">
                 <ShieldCheck className="text-[#B91C1C]" size={22} />
-                PostHog Analytics Configuration & Health Status
+                Analytics Engine Configuration & Pipeline Health
               </h2>
               <p className="text-xs text-[#78716C] mt-1">
-                PostHog connects your live customer sessions, event streams, and retention funnels.
+                Monitors live customer sessions, event ingestion streams, and conversion funnels.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
                 <span className="text-[11px] font-bold uppercase text-[#78716C] block">
-                  Public API Key (`NEXT_PUBLIC_POSTHOG_KEY`)
+                  Public Ingestion Key
                 </span>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-[#1C1917]">
@@ -1042,14 +1042,14 @@ export default function AdminAnalyticsPage() {
 
               <div className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
                 <span className="text-[11px] font-bold uppercase text-[#78716C] block">
-                  PostHog Host URL (`NEXT_PUBLIC_POSTHOG_HOST`)
+                  Ingestion Server Host
                 </span>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-[#1C1917]">
                     {POSTHOG_HOST}
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800">
-                    US Cloud Endpoint
+                    Cloud Ingestion Active
                   </span>
                 </div>
               </div>
@@ -1064,7 +1064,7 @@ export default function AdminAnalyticsPage() {
                 className="px-4 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-black transition-all flex items-center gap-1.5"
               >
                 <ExternalLink size={13} />
-                <span>Open PostHog Insights Cloud</span>
+                <span>Open Cloud Insights Console</span>
               </a>
 
               <a
@@ -1074,7 +1074,7 @@ export default function AdminAnalyticsPage() {
                 className="px-4 py-2 rounded-xl border border-[#E7E0D8] bg-white text-[#1C1917] text-xs font-bold hover:bg-[#F5F2EC] transition-all flex items-center gap-1.5"
               >
                 <Play size={13} />
-                <span>View Session Recordings</span>
+                <span>View User Session Replays</span>
               </a>
 
               <button
@@ -1195,7 +1195,7 @@ export default function AdminAnalyticsPage() {
                 </div>
               </div>
 
-              {/* Direct PostHog Links */}
+              {/* Action Buttons */}
               <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between">
                 <a
                   href={`https://us.posthog.com/person/${selectedUser.distinctId}`}
@@ -1204,7 +1204,7 @@ export default function AdminAnalyticsPage() {
                   className="px-4 py-2.5 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-black transition-all flex items-center gap-2"
                 >
                   <ExternalLink size={13} />
-                  <span>Open Person in PostHog Cloud</span>
+                  <span>View Extended Cloud Profile</span>
                 </a>
 
                 <button
