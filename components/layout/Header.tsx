@@ -60,9 +60,11 @@ export default function Header() {
   return (
     <>
       {/* Top Banner Alert Strip */}
-      <div className="bg-gradient-to-r from-[#FF3B00] via-[#E03400] to-[#FFC01D] text-black font-extrabold text-[11px] py-1.5 px-4 text-center tracking-wider uppercase flex items-center justify-center gap-2">
-        <Sparkles size={13} className="animate-spin" />
-        <span>⚡ FREE Delivery on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj</span>
+      <div className="bg-gradient-to-r from-[#FF3B00] via-[#E03400] to-[#FFC01D] text-black font-extrabold text-[10px] sm:text-[11px] py-1.5 px-3 sm:px-4 text-center tracking-wider uppercase flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden w-full">
+        <Sparkles size={13} className="animate-spin shrink-0" />
+        <span className="truncate max-w-[90vw] sm:max-w-none">
+          ⚡ FREE Delivery on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj
+        </span>
       </div>
 
       {/* Main Sticky Header */}

@@ -203,21 +203,21 @@ export default function ProductDetailPage() {
   const productImage = FOOD_IMAGES[product.slug] || FOOD_IMAGES['margherita-pizza']
 
   return (
-    <div className="bg-[#FBF9F5] min-h-screen py-10 sm:py-14">
-      <div className="container-custom">
+    <div className="bg-[#FBF9F5] min-h-screen py-4 sm:py-10">
+      <div className="container-custom max-w-5xl">
         {/* Breadcrumbs */}
-        <div className="mb-6">
-          <Link href="/menu" className="inline-flex items-center gap-2 text-xs font-semibold text-[#57534E] hover:text-[#B91C1C] transition-colors">
-            <ArrowLeft size={15} /> Back to Menu
+        <div className="mb-4">
+          <Link href="/menu" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#57534E] hover:text-[#B91C1C] transition-colors py-1">
+            <ArrowLeft size={14} /> Back to Menu
           </Link>
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-xl border border-[#E7E0D8] shadow-xs overflow-hidden grid lg:grid-cols-12">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#E7E0D8] shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12">
           
-          {/* Left Column: Image (6 cols) */}
-          <div className="lg:col-span-6 bg-[#F4EFEA] p-6 sm:p-10 flex flex-col justify-between relative min-h-[320px] sm:min-h-[400px]">
-            <div className="relative w-full h-full aspect-[4/3] rounded-lg overflow-hidden border border-[#E7E0D8] shadow-xs">
+          {/* Left Column: Image (6 cols on lg) */}
+          <div className="lg:col-span-6 bg-[#F4EFEA] p-4 sm:p-8 flex flex-col justify-center relative min-h-[260px] sm:min-h-[380px]">
+            <div className="relative w-full aspect-4/3 sm:aspect-square max-h-[420px] rounded-xl sm:rounded-2xl overflow-hidden border border-[#E7E0D8] shadow-xs mx-auto">
               <img
                 src={productImage}
                 alt={product.name}
@@ -225,41 +225,41 @@ export default function ProductDetailPage() {
               />
             </div>
 
-            <div className="absolute top-8 left-8 flex flex-col gap-1.5 z-10">
-              <span className={`badge ${product.is_veg ? 'badge-veg' : 'badge-nonveg'}`}>
+            <div className="absolute top-6 left-6 flex flex-col gap-1.5 z-10">
+              <span className={`badge ${product.is_veg ? 'badge-veg' : 'badge-nonveg'} shadow-xs`}>
                 {product.is_veg ? 'Veg' : 'Non-Veg'}
               </span>
-              {product.is_spicy && <span className="badge badge-spicy">Spicy</span>}
+              {product.is_spicy && <span className="badge badge-spicy shadow-xs">Spicy</span>}
             </div>
           </div>
 
-          {/* Right Column: Details & Options (6 cols) */}
-          <div className="lg:col-span-6 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+          {/* Right Column: Details & Options (6 cols on lg) */}
+          <div className="lg:col-span-6 p-4 sm:p-6 lg:p-8 flex flex-col justify-between space-y-6">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#B91C1C]">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-2.5 py-0.5 rounded-full">
                   {product.categoryName || 'Menu Item'}
                 </span>
-                <div className="flex items-center gap-1 text-[#D97706] text-xs">
-                  <Star size={14} fill="currentColor" />
+                <div className="flex items-center gap-1.5 shrink-0 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full text-xs text-[#92400E]">
+                  <Star size={12} fill="currentColor" className="text-amber-500 shrink-0" />
                   <span className="font-bold text-[#1C1917]">4.9</span>
-                  <span className="text-[#A8A29E] text-[10px]">(150+ ratings)</span>
+                  <span className="text-[#78716C] text-[10px]">(150+ reviews)</span>
                 </div>
               </div>
 
-              <h1 className="font-serif font-bold text-2xl sm:text-3xl text-[#1C1917] mb-3 leading-tight">
+              <h1 className="font-serif font-black text-2xl sm:text-3xl text-[#1C1917] mb-2 leading-tight">
                 {product.name}
               </h1>
 
-              <p className="text-[#57534E] text-sm leading-relaxed mb-5 font-normal break-words">
+              <p className="text-[#57534E] text-xs sm:text-sm leading-relaxed mb-4 font-normal break-words">
                 {product.description}
               </p>
 
               {/* Ingredients */}
               {product.ingredients && (
-                <div className="bg-[#FBF9F5] rounded-xl p-4 border border-[#E7E0D8] mb-5 text-xs text-[#57534E]">
-                  <div className="flex items-center gap-1.5 font-bold text-[#1C1917] mb-1.5">
-                    <Flame size={14} className="text-[#B91C1C]" />
+                <div className="bg-[#FBF9F5] rounded-xl p-3.5 sm:p-4 border border-[#E7E0D8] mb-4 text-xs text-[#57534E]">
+                  <div className="flex items-center gap-1.5 font-bold text-[#1C1917] mb-1">
+                    <Flame size={14} className="text-[#B91C1C] shrink-0" />
                     <span>Ingredients:</span>
                   </div>
                   <p className="leading-relaxed break-words font-normal text-[#57534E]">
@@ -270,11 +270,11 @@ export default function ProductDetailPage() {
 
               {/* Nutrition Facts */}
               {product.nutrition && Object.keys(product.nutrition).length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                   {Object.entries(product.nutrition).map(([k, v]) => (
-                    <div key={k} className="bg-[#FBF9F5] p-2.5 rounded-xl border border-[#E7E0D8] text-center">
+                    <div key={k} className="bg-[#FBF9F5] p-2 sm:p-2.5 rounded-xl border border-[#E7E0D8] text-center">
                       <span className="text-[10px] text-[#78716C] uppercase font-bold block">{k}</span>
-                      <span className="text-xs font-bold text-[#1C1917]">{v}</span>
+                      <span className="text-xs font-bold text-[#1C1917] break-words">{v}</span>
                     </div>
                   ))}
                 </div>
@@ -282,7 +282,7 @@ export default function ProductDetailPage() {
 
               {/* Customization Options */}
               {product.options && product.options.length > 0 && (
-                <div className="space-y-4 pt-4 border-t border-[#E7E0D8]">
+                <div className="space-y-4 pt-3 border-t border-[#E7E0D8]">
                   {product.options.map((opt: ProductOption) => (
                     <div key={opt.id}>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1C1917] mb-2">
@@ -296,7 +296,7 @@ export default function ProductDetailPage() {
                               key={choice.label}
                               type="button"
                               onClick={() => handleOptionSelect(opt.name, choice.label, choice.price_delta)}
-                              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                              className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                 isSelected
                                   ? 'bg-[#B91C1C] text-white border-[#B91C1C] shadow-xs'
                                   : 'bg-[#FBF9F5] text-[#57534E] border-[#E7E0D8] hover:border-[#B91C1C]'
@@ -315,9 +315,9 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-6 border-t border-[#E7E0D8] space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-[#F4EFEA] rounded-xl px-2 py-1.5 border border-[#E7E0D8]">
+            <div className="pt-4 sm:pt-6 border-t border-[#E7E0D8] space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 bg-[#F4EFEA] rounded-xl px-2 py-1.5 border border-[#E7E0D8]">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#1C1917] hover:bg-[#E7E0D8] transition-colors font-bold text-xs cursor-pointer shadow-2xs"
@@ -337,8 +337,8 @@ export default function ProductDetailPage() {
                   </button>
                 </div>
 
-                <div>
-                  <span className="text-[10px] text-[#78716C] font-bold uppercase block text-right">Total Price</span>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#78716C] font-bold uppercase block">Total Price</span>
                   <span className="font-mono font-black text-2xl text-[#B91C1C]">
                     {formatPrice(totalPrice)}
                   </span>
@@ -352,9 +352,15 @@ export default function ProductDetailPage() {
                 <ShoppingCart size={18} /> Add to Cart — {formatPrice(totalPrice)}
               </button>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#57534E] pt-3 border-t border-[#E7E0D8]">
-                <span className="flex items-center gap-1.5"><Truck size={14} className="text-[#15803D] shrink-0" /> 30-Min Express Delivery</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#1C1917] shrink-0" /> Fresh Mozzarella Guarantee</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#57534E] pt-2 border-t border-[#E7E0D8]">
+                <div className="flex items-center gap-2 bg-[#FBF9F5] p-2 rounded-xl border border-[#E7E0D8]">
+                  <Truck size={14} className="text-[#15803D] shrink-0" />
+                  <span className="font-medium text-[#1C1917]">30-Min Express Delivery</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#FBF9F5] p-2 rounded-xl border border-[#E7E0D8]">
+                  <ShieldCheck size={14} className="text-[#B91C1C] shrink-0" />
+                  <span className="font-medium text-[#1C1917]">Fresh Mozzarella Guarantee</span>
+                </div>
               </div>
             </div>
           </div>
