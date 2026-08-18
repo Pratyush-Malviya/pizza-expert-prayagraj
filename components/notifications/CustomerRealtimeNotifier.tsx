@@ -112,9 +112,35 @@ export default function CustomerRealtimeNotifier() {
           }
         }
       )
-      .subscribe()
+    // ── Continuous Background Order Status Polling (Every 5s) ──
+    const pollActiveOrders = async () => {
+      const activeIds = getTrackedOrderIds()
+      if (activeIds.length === 0) return
+
+      try {
+        const { data: latestOrders } = await supabase
+          .from('orders')
+          .select('id, status, total, address_json')
+          .in('id', activeIds.slice(0, 10))
+
+        if (latestOrders && latestOrders.length > 0) {
+          for (const ord of latestOrders) {
+            const currentSaved = localStorage.getItem(`order_status_${ord.id}`)
+            if (currentSaved && currentSaved !== ord.status) {
+              localStorage.setItem(`order_status_${ord.id}`, ord.status)
+              window.dispatchEvent(new CustomEvent('orderStatusUpdated', {
+                detail: { orderId: ord.id, newStatus: ord.status, orderData: ord }
+              }))
+            }
+          }
+        }
+      } catch {}
+    }
+
+    const pollInterval = setInterval(pollActiveOrders, 5000)
 
     return () => {
+      clearInterval(pollInterval)
       supabase.removeChannel(channel)
     }
   }, [])

@@ -23,9 +23,11 @@ function TrackOrderContent() {
   const [paymentMethod, setPaymentMethod] = useState<string>('Razorpay UPI')
   const [orderId, setOrderId] = useState<string>(initialOrderId || 'ORD-982143')
   const [notiGranted, setNotiGranted] = useState<boolean>(false)
+  const [isLiveSyncing, setIsLiveSyncing] = useState<boolean>(true)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date())
   const supabase = createClient()
 
-  // Fetch initial status & setup Supabase Realtime subscription
+  // Fetch initial status, background auto-polling every 3.5s & setup Supabase Realtime subscription
   useEffect(() => {
     if (!orderId) return
 
@@ -45,26 +47,43 @@ function TrackOrderContent() {
         }
       } catch {}
 
-      // Fetch from Supabase
-      const { data } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single()
+      // Fetch from Supabase directly
+      try {
+        const { data } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .single()
 
-      if (data) {
-        setCurrentStatus(data.status)
-        if (data.total) setOrderTotal(Number(data.total))
-        if (data.address_json?.paymentMethod) setPaymentMethod(data.address_json.paymentMethod)
-        if (data.address_json?.line1) {
-          setAddressStr(`${data.address_json.line1}, ${data.address_json.city || 'Prayagraj'}`)
+        if (data) {
+          setCurrentStatus((prev) => {
+            if (prev !== data.status) {
+              if (data.status === 'cancelled') {
+                playNotificationSound('alert')
+              } else {
+                playNotificationSound('status_change')
+              }
+            }
+            return data.status
+          })
+          if (data.total) setOrderTotal(Number(data.total))
+          if (data.address_json?.paymentMethod) setPaymentMethod(data.address_json.paymentMethod)
+          if (data.address_json?.line1) {
+            setAddressStr(`${data.address_json.line1}, ${data.address_json.city || 'Prayagraj'}`)
+          }
+          setLastSyncedAt(new Date())
         }
-      }
+      } catch {}
     }
 
     fetchStatus()
 
-    // Realtime WebSocket Subscription
+    // ── Continuous Background Auto-Polling (No Page Reload Needed) ──
+    const pollInterval = setInterval(() => {
+      fetchStatus()
+    }, 3500)
+
+    // ── Realtime WebSocket Subscription ──
     const channel = supabase
       .channel(`order-track-${orderId}`)
       .on(
@@ -73,12 +92,17 @@ function TrackOrderContent() {
         (payload: any) => {
           if (payload.new && (payload.new.id === orderId || payload.new.order_id === orderId) && payload.new.status) {
             const newSt = payload.new.status
-            setCurrentStatus(newSt)
-            if (newSt === 'cancelled') {
-              playNotificationSound('alert')
-            } else {
-              playNotificationSound('status_change')
-            }
+            setCurrentStatus((prev) => {
+              if (prev !== newSt) {
+                if (newSt === 'cancelled') {
+                  playNotificationSound('alert')
+                } else {
+                  playNotificationSound('status_change')
+                }
+              }
+              return newSt
+            })
+            setLastSyncedAt(new Date())
           }
         }
       )
@@ -88,6 +112,7 @@ function TrackOrderContent() {
     const handleStatusSync = (e: any) => {
       if (e.detail?.orderId === orderId && e.detail?.newStatus) {
         setCurrentStatus(e.detail.newStatus)
+        setLastSyncedAt(new Date())
       } else {
         fetchStatus()
       }
@@ -97,6 +122,7 @@ function TrackOrderContent() {
     window.addEventListener('storage', handleStatusSync)
 
     return () => {
+      clearInterval(pollInterval)
       supabase.removeChannel(channel)
       window.removeEventListener('orderStatusUpdated', handleStatusSync)
       window.removeEventListener('storage', handleStatusSync)
@@ -198,6 +224,21 @@ function TrackOrderContent() {
                   {currentStatus.replace(/_/g, ' ')}
                 </div>
               </div>
+            </div>
+
+            {/* Live Auto-Refresh Pulse Bar */}
+            <div className="bg-[#FBF9F5] border border-[#E7E0D8] rounded-xl px-3.5 py-2 flex items-center justify-between text-xs text-[#57534E]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span className="font-bold text-[#1C1917]">Live Auto-Sync Active</span>
+                <span className="text-[11px] text-[#78716C] hidden sm:inline">• Auto-updating in background</span>
+              </div>
+              <span className="text-[11px] font-mono text-[#78716C]">
+                Updated: {lastSyncedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
             </div>
 
             {/* ORDER CANCELLED & REFUND STATE */}
