@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { CartItem, CartItemOption } from '@/types'
+import { trackPostHogEvent } from '@/lib/posthog'
 
 interface CartState {
   items: CartItem[]
@@ -46,6 +47,13 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         const key = getItemKey(item.id, item.selectedOptions)
+        trackPostHogEvent('add_to_cart', {
+          product_id: item.id,
+          product_name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          selected_options: item.selectedOptions,
+        })
         set((state) => {
           const existing = state.items.find(
             (i) => getItemKey(i.id, i.selectedOptions) === key
@@ -80,6 +88,7 @@ export const useCartStore = create<CartState>()(
       },
 
       removeItem: (itemKey) => {
+        trackPostHogEvent('remove_from_cart', { item_key: itemKey })
         set((state) => ({
           items: state.items.filter(
             (i) => getItemKey(i.id, i.selectedOptions) !== itemKey

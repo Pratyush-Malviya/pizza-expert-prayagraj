@@ -13,6 +13,20 @@
         "RAZORPAY_KEY_ID": "rzp_test_TOUKlh4UdsSiXL",
         "RAZORPAY_KEY_SECRET": "7jQXoto16ovDYBjCXXv6rFTM"
       }
+    },
+    "posthog": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.posthog.com/mcp",
+        "--header",
+        "Authorization: Bearer ${POSTHOG_PERSONAL_API_KEY}"
+      ],
+      "env": {
+        "POSTHOG_PERSONAL_API_KEY": "${POSTHOG_PERSONAL_API_KEY}",
+        "POSTHOG_PROJECT_ID": "${POSTHOG_PROJECT_ID}"
+      }
     }
   }
 }
