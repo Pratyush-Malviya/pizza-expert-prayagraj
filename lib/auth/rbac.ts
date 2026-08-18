@@ -177,17 +177,14 @@ export function isPrimarySuperAdmin(
     const clean = userOrEmailOrId.trim().toLowerCase()
     return (
       PRIMARY_SUPER_ADMIN_EMAILS.includes(clean) ||
-      clean === 'usr-01' ||
-      clean === 'pratyush malviya'
+      clean === 'usr-01'
     )
   }
   const email = userOrEmailOrId.email?.trim().toLowerCase() || ''
   const id = userOrEmailOrId.id?.trim().toLowerCase() || ''
-  const name = userOrEmailOrId.name?.trim().toLowerCase() || ''
   return (
     PRIMARY_SUPER_ADMIN_EMAILS.includes(email) ||
-    id === 'usr-01' ||
-    name === 'pratyush malviya'
+    id === 'usr-01'
   )
 }
 
