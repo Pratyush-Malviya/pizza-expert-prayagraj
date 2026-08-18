@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
   Users, Search, Download, ShieldAlert, Award, Phone,
   Calendar, ShoppingBag, Eye, Ban, CheckCircle2, X, MapPin,
-  TrendingUp, ArrowUpRight, ArrowDownRight,
+  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2,
   UserPlus, Edit, Trash2, Activity, History, Key, UserCheck, Mail
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
