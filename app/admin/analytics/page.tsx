@@ -25,6 +25,7 @@ import {
   posthog
 } from '@/lib/posthog'
 import { toast } from 'sonner'
+import { fetchPostHogMetrics, fetchSupabaseMetrics, type PostHogMetrics, type RealMetrics } from '@/app/actions/analytics'
 
 // Default seed data for Financials
 const MOCK_REVENUE_SERIES = [
@@ -106,17 +107,26 @@ export default function AdminAnalyticsPage() {
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
   const [isLiveStreaming, setIsLiveStreaming] = useState(true)
 
+  // Real metrics — start at 0, filled from Supabase + PostHog
   const [metrics, setMetrics] = useState({
-    totalRevenue: 145600,
-    grossProfit: 87360,
-    profitMargin: 60.0,
-    totalOrders: 328,
-    aov: 443.9,
-    couponDiscountSpend: 6850,
-    totalTrackedUsers: 512,
-    activeSessionsToday: 84,
-    conversionRate: 15.2,
+    totalRevenue: 0,
+    grossProfit: 0,
+    profitMargin: 0,
+    totalOrders: 0,
+    aov: 0,
+    couponDiscountSpend: 0,
+    totalTrackedUsers: 0,
+    activeSessionsToday: 0,
+    conversionRate: 0,
   })
+  const [newUsersThisWeek, setNewUsersThisWeek] = useState(0)
+  const [phAvailable, setPhAvailable] = useState(false)
+  const [phFunnel, setPhFunnel] = useState<{
+    pageviews: number | null
+    addToCart: number | null
+    checkout: number | null
+    orders: number | null
+  } | null>(null)
 
   // Load real telemetry events from localStorage & database
   const refreshTelemetry = () => {
@@ -140,13 +150,13 @@ export default function AdminAnalyticsPage() {
     try {
       const supabase = createClient()
 
-      // Fetch profiles
+      // Fetch profiles for user list
       const { data: profiles, error: profileErr } = await supabase
         .from('profiles')
         .select('*')
         .limit(50)
 
-      // Fetch orders
+      // Fetch orders for user list
       const { data: orders, error: orderErr } = await supabase
         .from('orders')
         .select('id, user_id, total, status, created_at, address_json')
@@ -210,6 +220,36 @@ export default function AdminAnalyticsPage() {
         }))
         setRevenueData(formatted)
       }
+
+      // ── Fetch REAL KPI metrics from Supabase + PostHog in parallel ──
+      const [dbMetrics, phMetrics] = await Promise.all([
+        fetchSupabaseMetrics(),
+        fetchPostHogMetrics(),
+      ])
+
+      setNewUsersThisWeek(dbMetrics.newUsersThisWeek)
+      setPhAvailable(phMetrics.phAvailable)
+
+      if (phMetrics.funnelPageviews !== null && phMetrics.funnelOrders !== null) {
+        setPhFunnel({
+          pageviews: phMetrics.funnelPageviews,
+          addToCart: phMetrics.funnelAddToCart,
+          checkout: phMetrics.funnelCheckout,
+          orders: phMetrics.funnelOrders,
+        })
+      }
+
+      setMetrics({
+        totalRevenue: dbMetrics.totalRevenue,
+        grossProfit: Math.round(dbMetrics.totalRevenue * 0.6),
+        profitMargin: dbMetrics.totalRevenue > 0 ? 60.0 : 0,
+        totalOrders: dbMetrics.totalOrders,
+        aov: dbMetrics.aov,
+        couponDiscountSpend: dbMetrics.couponDiscountSpend,
+        totalTrackedUsers: phMetrics.totalTrackedUsers ?? dbMetrics.totalRegisteredUsers,
+        activeSessionsToday: phMetrics.activeSessionsToday ?? 0,
+        conversionRate: phMetrics.conversionRate ?? 0,
+      })
     } catch (err) {
       console.warn('Analytics fetch note:', err)
     } finally {
@@ -355,6 +395,7 @@ export default function AdminAnalyticsPage() {
 
       {/* Top Level Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tracked Users — real: PostHog identified persons (7d), fallback: Supabase profile count */}
         <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Tracked Users</span>
@@ -363,14 +404,20 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.totalTrackedUsers}</span>
+            {loading ? (
+              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
+            ) : (
+              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.totalTrackedUsers.toLocaleString('en-IN')}</span>
+            )}
             <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 font-semibold">
               <ArrowUpRight size={14} />
-              <span>+28 new identified this week</span>
+              <span>+{newUsersThisWeek} new this week</span>
             </div>
+            <p className="text-[10px] text-[#A8A29E] mt-0.5">{phAvailable ? 'Via PostHog' : 'Registered profiles'}</p>
           </div>
         </div>
 
+        {/* Active Sessions — real: PostHog unique sessions today */}
         <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Active Sessions</span>
@@ -379,14 +426,28 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.activeSessionsToday}</span>
+            {loading ? (
+              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
+            ) : phAvailable ? (
+              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.activeSessionsToday}</span>
+            ) : (
+              <a
+                href={`https://us.posthog.com/project/${process.env.NEXT_PUBLIC_POSTHOG_KEY ? '' : ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-blue-600 underline"
+              >
+                View in PostHog →
+              </a>
+            )}
             <div className="flex items-center gap-1.5 mt-1 text-xs text-blue-600 font-medium">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-              <span>Live visitor sessions today</span>
+              <span>{phAvailable ? 'PostHog sessions · today' : 'PostHog API key required'}</span>
             </div>
           </div>
         </div>
 
+        {/* Conversion Rate — real: PostHog pageview → order_completed (7d) */}
         <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">E-Comm Conversion</span>
@@ -395,14 +456,22 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.conversionRate}%</span>
+            {loading ? (
+              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
+            ) : phAvailable ? (
+              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.conversionRate}%</span>
+            ) : (
+              <span className="text-sm font-semibold text-[#A8A29E]">—</span>
+            )}
             <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 font-semibold">
               <ArrowUpRight size={14} />
-              <span>Menu View → Paid Order</span>
+              <span>Pageview → order_completed · 7d</span>
             </div>
+            <p className="text-[10px] text-[#A8A29E] mt-0.5">{phAvailable ? 'Via PostHog HogQL' : 'Needs PostHog API key'}</p>
           </div>
         </div>
 
+        {/* Gross Sales — real: Supabase orders aggregate */}
         <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Gross Sales</span>
@@ -411,10 +480,15 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold font-serif text-[#1C1917]">{formatPrice(metrics.totalRevenue)}</span>
+            {loading ? (
+              <div className="h-8 w-24 bg-[#F5F2EC] rounded animate-pulse" />
+            ) : (
+              <span className="text-2xl font-bold font-serif text-[#1C1917]">{formatPrice(metrics.totalRevenue)}</span>
+            )}
             <div className="flex items-center gap-1 mt-1 text-xs text-[#78716C] font-medium">
-              <span>{metrics.totalOrders} total completed orders</span>
+              <span>{metrics.totalOrders} confirmed orders · avg {formatPrice(metrics.aov)}</span>
             </div>
+            <p className="text-[10px] text-[#A8A29E] mt-0.5">Via Supabase orders table</p>
           </div>
         </div>
       </div>
@@ -587,84 +661,90 @@ export default function AdminAnalyticsPage() {
               <div>
                 <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2">
                   <Layers className="text-[#B91C1C]" size={20} />
-                  Complete E-Commerce Conversion Funnel
+                  E-Commerce Conversion Funnel
                 </h2>
                 <p className="text-xs text-[#78716C]">
-                  Step-by-step visitor progression from landing page to successful payment.
+                  {phAvailable ? 'Live PostHog data · last 7 days' : 'PostHog API key required for live funnel data'}
                 </p>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                15.2% Overall Conversion
-              </span>
+              {metrics.conversionRate > 0 && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  {metrics.conversionRate}% Overall Conversion
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
-              {FUNNEL_STEPS.map((step, idx) => (
-                <div
-                  key={step.step}
-                  className="bg-[#FBF9F5] p-4 rounded-xl border border-[#E7E0D8] relative flex flex-col justify-between"
-                >
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-[#A8A29E] block mb-1">
-                      Step {idx + 1}
-                    </span>
-                    <span className="text-xs font-bold text-[#1C1917] block leading-tight">
-                      {step.step.replace(/^\d+\.\s*/, '')}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D8]/60 flex items-baseline justify-between">
-                    <span className="text-xl font-bold font-serif text-[#1C1917]">
-                      {step.count.toLocaleString()}
-                    </span>
-                    {idx > 0 && (
-                      <span className="text-[11px] font-semibold text-rose-600">
-                        {step.dropPct}
-                      </span>
-                    )}
-                  </div>
+            {phFunnel ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
+                {([
+                  { label: 'Page Views', value: phFunnel.pageviews, prev: null },
+                  { label: 'Add to Cart', value: phFunnel.addToCart, prev: phFunnel.pageviews },
+                  { label: 'Initiate Checkout', value: phFunnel.checkout, prev: phFunnel.addToCart },
+                  { label: 'Order Completed', value: phFunnel.orders, prev: phFunnel.checkout },
+                ] as { label: string; value: number | null; prev: number | null }[]).map((step, idx) => {
+                  const dropPct = step.prev && step.value != null && step.prev > 0
+                    ? `-${Math.round((1 - step.value / step.prev) * 100)}%`
+                    : null
+                  return (
+                    <div key={step.label} className="bg-[#FBF9F5] p-4 rounded-xl border border-[#E7E0D8] flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-[#A8A29E] block mb-1">Step {idx + 1}</span>
+                        <span className="text-xs font-bold text-[#1C1917] block leading-tight">{step.label}</span>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-[#E7E0D8]/60 flex items-baseline justify-between">
+                        <span className="text-xl font-bold font-serif text-[#1C1917]">
+                          {step.value != null ? step.value.toLocaleString('en-IN') : '—'}
+                        </span>
+                        {dropPct && (
+                          <span className="text-[11px] font-semibold text-rose-600">{dropPct} drop</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] text-center gap-3">
+                <Database size={28} className="text-[#A8A29E]" />
+                <div>
+                  <p className="text-sm font-semibold text-[#44403C]">No PostHog funnel data yet</p>
+                  <p className="text-xs text-[#A8A29E] mt-1 max-w-xs">
+                    Funnel events (add_to_cart, initiate_checkout, order_completed) are tracked via PostHog.
+                    Make a few orders to populate this.
+                  </p>
                 </div>
-              ))}
-            </div>
+                <a
+                  href="https://us.posthog.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:bg-rose-800 transition-colors"
+                >
+                  View Full Funnel in PostHog →
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Device distribution */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            {/* Device distribution — from PostHog dashboard */}
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col">
               <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Traffic by Device Type</h3>
-              <p className="text-xs text-[#78716C] mb-4">Breakdown of user hardware & screen sizes</p>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={DEVICE_DISTRIBUTION}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={75}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {DEVICE_DISTRIBUTION.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => `${value}% share`} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="space-y-2 mt-2">
-                {DEVICE_DISTRIBUTION.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-[#57534E] font-medium">{item.name}</span>
-                    </div>
-                    <span className="font-bold text-[#1C1917]">{item.value}%</span>
-                  </div>
-                ))}
+              <p className="text-xs text-[#78716C] mb-4">PostHog breakdown of user hardware & OS</p>
+              <div className="flex-1 flex flex-col items-center justify-center py-6 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] text-center gap-3">
+                <Smartphone size={24} className="text-[#A8A29E]" />
+                <div>
+                  <p className="text-xs font-semibold text-[#44403C]">Device breakdown available in PostHog</p>
+                  <p className="text-[11px] text-[#A8A29E] mt-1">Session Replay → Properties → $os</p>
+                </div>
+                <a
+                  href="https://us.posthog.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold px-3 py-1.5 border border-[#E7E0D8] rounded-lg text-[#44403C] hover:bg-[#F5F2EC] transition-colors flex items-center gap-1"
+                >
+                  <ExternalLink size={11} /> Open PostHog
+                </a>
               </div>
             </div>
 
