@@ -100,8 +100,8 @@ function LoginForm() {
 
       <div className="w-full max-w-5xl bg-[#121216]/80 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
         
-        {/* Left Side: Modern Visual Hero Section */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-[#1A0303] via-[#0F0A0A] to-[#141216] p-8 lg:p-12 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-white/10 overflow-hidden">
+        {/* Left Side: Modern Visual Hero Section (Desktop Only) */}
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-[#1A0303] via-[#0F0A0A] to-[#141216] p-8 lg:p-12 flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-white/10 overflow-hidden">
           {/* Subtle Decorative Pattern */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#E10600_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
           
@@ -172,9 +172,19 @@ function LoginForm() {
         </div>
 
         {/* Right Side: Sleek Modern Auth Card */}
-        <div className="lg:col-span-7 p-8 lg:p-12 flex flex-col justify-center bg-[#121216]">
+        <div className="lg:col-span-7 p-6 sm:p-8 lg:p-12 flex flex-col justify-center bg-[#121216]">
           <div className="max-w-md mx-auto w-full space-y-6">
             
+            {/* Mobile Brand Logo Header */}
+            <div className="lg:hidden flex items-center justify-center gap-2.5 pb-2">
+              <div className="w-9 h-9 bg-gradient-to-br from-[#E10600] to-[#990000] rounded-xl flex items-center justify-center text-white shadow-md shadow-[#E10600]/30">
+                <Pizza size={20} />
+              </div>
+              <span className="font-serif font-black text-lg text-white uppercase tracking-wider">
+                Pizza Expert
+              </span>
+            </div>
+
             {/* Tab Header (Sign In / Register toggle) */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
