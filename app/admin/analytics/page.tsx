@@ -1,72 +1,58 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  DollarSign, TrendingUp, ShoppingBag, Percent,
-  ArrowUpRight, ArrowDownRight, RefreshCw, Calendar,
-  PieChart as PieIcon, Award, Download, Users, Activity,
-  Smartphone, Monitor, Globe, Search, Filter, Eye,
-  Clock, ShieldCheck, CheckCircle2, AlertCircle, Sparkles,
-  ExternalLink, MousePointerClick, Layers, Zap, UserCheck,
-  ChevronRight, X, Send, Play, BarChart3, Database
+  DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight,
+  RefreshCw, Users, Activity, MousePointerClick, Award,
+  Download, Search, Filter, Eye, ShieldCheck, CheckCircle2,
+  AlertCircle, Sparkles, ExternalLink, Layers, Database,
+  Smartphone, Globe, BarChart3, Zap, Star, Package,
+  Clock, TrendingDown, Bell, X, ChevronRight, Send,
+  Play, UserCheck, AlertTriangle, Info
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, PieChart, Pie, Cell
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Legend, PieChart,
+  Pie, Cell, LineChart, Line
 } from 'recharts'
 import {
-  POSTHOG_KEY,
-  POSTHOG_HOST,
-  trackPostHogEvent,
-  getLocalTelemetryEvents,
-  TelemetryEvent,
-  posthog
+  POSTHOG_KEY, POSTHOG_HOST, trackPostHogEvent,
+  getLocalTelemetryEvents, TelemetryEvent, posthog
 } from '@/lib/posthog'
 import { toast } from 'sonner'
-import { fetchPostHogMetrics, fetchSupabaseMetrics, type PostHogMetrics, type RealMetrics } from '@/app/actions/analytics'
+import {
+  fetchPostHogMetrics, fetchSupabaseMetrics,
+  fetchProductPerformance, fetchCategoryDistribution,
+  fetchHourlySalesHeatmap, fetchCustomerSegments,
+  fetchOrderStatusBreakdown, fetchPaymentMethodBreakdown,
+  fetchCouponROI, fetchReviewSentiment,
+  fetchWeekOverWeekRevenue, fetchRevenueSeries,
+  fetchPostHogDevices, fetchPostHogTopPages,
+  fetchPostHogUTMSources, fetchAnomalyAlerts,
+  fetchAIInsights,
+  type PostHogMetrics, type RealMetrics, type ProductStat,
+  type CategoryStat, type HeatmapCell, type CustomerSegments,
+  type OrderStatusStat, type PaymentMethodStat, type CouponStat,
+  type ReviewSentiment, type WeekOverWeekDay, type RevenueSeries,
+  type DeviceStat, type TopPage, type UTMSource,
+  type AnomalyAlert, type AIInsight
+} from '@/app/actions/analytics'
 
-// Default seed data for Financials
-const MOCK_REVENUE_SERIES = [
-  { date: 'Mon', revenue: 12400, cost: 4960, profit: 7440, orders: 28 },
-  { date: 'Tue', revenue: 15800, cost: 6320, profit: 9480, orders: 34 },
-  { date: 'Wed', revenue: 14200, cost: 5680, profit: 8520, orders: 31 },
-  { date: 'Thu', revenue: 18900, cost: 7560, profit: 11340, orders: 42 },
-  { date: 'Fri', revenue: 24500, cost: 9800, profit: 14700, orders: 56 },
-  { date: 'Sat', revenue: 31200, cost: 12480, profit: 18720, orders: 72 },
-  { date: 'Sun', revenue: 28600, cost: 11440, profit: 17160, orders: 65 },
+// ─── Fallback mock series for revenue chart when DB view has no data ───
+const MOCK_REVENUE_SERIES: RevenueSeries[] = [
+  { date: 'Mon', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Tue', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Wed', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Thu', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Fri', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Sat', revenue: 0, cost: 0, profit: 0, orders: 0 },
+  { date: 'Sun', revenue: 0, cost: 0, profit: 0, orders: 0 },
 ]
 
-const MOCK_PRODUCT_PERFORMANCE = [
-  { product_id: '1', product_name: 'Paneer Tikka Fusion', selling_price: 349, cost_price: 110, total_units_sold: 142, total_revenue: 49558, total_estimated_profit: 33938 },
-  { product_id: '2', product_name: 'Farmhouse Special Pizza', selling_price: 399, cost_price: 125, total_units_sold: 118, total_revenue: 47082, total_estimated_profit: 32332 },
-  { product_id: '3', product_name: 'Tandoori Chicken Delight', selling_price: 449, cost_price: 160, total_units_sold: 95, total_revenue: 42655, total_estimated_profit: 27455 },
-  { product_id: '4', product_name: 'Cheese Burst Margherita', selling_price: 299, cost_price: 85, total_units_sold: 130, total_revenue: 38870, total_estimated_profit: 27820 },
-  { product_id: '5', product_name: 'Garlic Breadsticks with Dip', selling_price: 149, cost_price: 35, total_units_sold: 210, total_revenue: 31290, total_estimated_profit: 23940 },
-]
-
-const CATEGORY_DISTRIBUTION = [
-  { name: 'Gourmet Veg Pizzas', value: 45, color: '#16A34A' },
-  { name: 'Non-Veg Pizzas', value: 30, color: '#DC2626' },
-  { name: 'Sides & Garlic Breads', value: 15, color: '#D97706' },
-  { name: 'Beverages & Desserts', value: 10, color: '#2563EB' },
-]
-
-// Conversion Funnel Data
-const FUNNEL_STEPS = [
-  { step: '1. Page View (Home)', count: 2840, dropPct: '0%' },
-  { step: '2. Menu Browsing', count: 2150, dropPct: '-24%' },
-  { step: '3. Add to Cart', count: 1120, dropPct: '-48%' },
-  { step: '4. Initiate Checkout', count: 580, dropPct: '-48%' },
-  { step: '5. Order Completed', count: 432, dropPct: '-25%' },
-]
-
-const DEVICE_DISTRIBUTION = [
-  { name: 'Mobile (Android/iOS)', value: 68, color: '#E11D48' },
-  { name: 'Desktop (Chrome/Mac)', value: 26, color: '#2563EB' },
-  { name: 'Tablet / iPad', value: 6, color: '#059669' },
-]
+const DAYS_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const HOURS_LABEL = Array.from({ length: 24 }, (_, i) => `${i}:00`)
 
 interface UserReport {
   id: string
@@ -78,171 +64,230 @@ interface UserReport {
   totalOrders: number
   totalSpend: number
   lastSeen: string
-  device: string
-  browser: string
-  location: string
   funnelStage: 'Active Buyer' | 'Checkout Dropped' | 'Cart Abandoned' | 'Browsing' | 'VIP Loyalist'
-  activityTimeline: {
-    event: string
-    timestamp: string
-    details: string
-    iconType: 'view' | 'cart' | 'order' | 'auth' | 'coupon'
-  }[]
+  activityTimeline: { event: string; timestamp: string; details: string; iconType: 'view' | 'cart' | 'order' | 'auth' }[]
 }
 
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending:          { label: 'Pending',          color: '#D97706', bg: '#FEF3C7' },
+  confirmed:        { label: 'Confirmed',         color: '#2563EB', bg: '#DBEAFE' },
+  preparing:        { label: 'Preparing',         color: '#7C3AED', bg: '#EDE9FE' },
+  out_for_delivery: { label: 'Out for Delivery',  color: '#0891B2', bg: '#CFFAFE' },
+  delivered:        { label: 'Delivered',         color: '#16A34A', bg: '#DCFCE7' },
+  cancelled:        { label: 'Cancelled',         color: '#DC2626', bg: '#FEE2E2' },
+  refunded:         { label: 'Refunded',          color: '#78716C', bg: '#F5F5F4' },
+}
+
+const GATEWAY_LABEL: Record<string, string> = { razorpay: 'Razorpay', cashfree: 'Cashfree', cod: 'Cash on Delivery' }
+
+// ─── Heatmap Cell Component ───────────────────────────────────
+function HeatmapGrid({ cells }: { cells: HeatmapCell[] }) {
+  const maxOrders = Math.max(...cells.map(c => c.orders), 1)
+  const cellMap: Record<string, HeatmapCell> = {}
+  for (const c of cells) cellMap[`${c.day}-${c.hour}`] = c
+  const [tooltip, setTooltip] = useState<{ day: number; hour: number } | null>(null)
+
+  return (
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: 700 }}>
+        {/* Hour labels */}
+        <div className="flex mb-1 pl-12">
+          {[0, 3, 6, 9, 12, 15, 18, 21].map(h => (
+            <div key={h} style={{ width: `${100 / 8}%` }} className="text-[9px] text-[#A8A29E] text-center">{h}:00</div>
+          ))}
+        </div>
+        {[1, 2, 3, 4, 5, 6, 0].map(day => (
+          <div key={day} className="flex items-center mb-0.5">
+            <span className="w-12 text-[10px] text-[#78716C] font-medium shrink-0">{DAYS_LABEL[day]}</span>
+            <div className="flex flex-1 gap-0.5">
+              {Array.from({ length: 24 }, (_, h) => {
+                const cell = cellMap[`${day}-${h}`]
+                const intensity = cell ? cell.orders / maxOrders : 0
+                const alpha = Math.round(intensity * 100)
+                return (
+                  <div
+                    key={h}
+                    className="relative flex-1 h-5 rounded-sm cursor-pointer transition-transform hover:scale-110"
+                    style={{ backgroundColor: cell ? `rgba(185, 28, 28, ${0.08 + intensity * 0.85})` : '#F5F2EC' }}
+                    onMouseEnter={() => setTooltip({ day, hour: h })}
+                    onMouseLeave={() => setTooltip(null)}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        {tooltip && (() => {
+          const c = cellMap[`${tooltip.day}-${tooltip.hour}`]
+          return (
+            <div className="mt-2 p-2 bg-[#1C1917] text-white text-xs rounded-lg inline-flex gap-3">
+              <span className="font-bold">{DAYS_LABEL[tooltip.day]} {tooltip.hour}:00–{tooltip.hour + 1}:00</span>
+              {c ? <><span>{c.orders} orders</span><span>₹{c.revenue.toLocaleString('en-IN')}</span></> : <span className="text-[#A8A29E]">No orders</span>}
+            </div>
+          )
+        })()}
+        <div className="flex items-center gap-2 mt-3">
+          <span className="text-[10px] text-[#A8A29E]">Low</span>
+          <div className="flex gap-0.5">
+            {[0.08, 0.28, 0.48, 0.68, 0.88].map(v => (
+              <div key={v} className="w-5 h-3 rounded-sm" style={{ backgroundColor: `rgba(185,28,28,${v})` }} />
+            ))}
+          </div>
+          <span className="text-[10px] text-[#A8A29E]">High</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Star Rating Display ──────────────────────────────────────
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(i => (
+        <Star key={i} size={12} className={i <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-[#D6D3D1]'} />
+      ))}
+    </div>
+  )
+}
+
+// ─── Skeleton Loader ──────────────────────────────────────────
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`bg-[#F5F2EC] rounded animate-pulse ${className}`} />
+}
+
+// ─── Main Component ───────────────────────────────────────────
 export default function AdminAnalyticsPage() {
-  const [activeTab, setActiveTab] = useState<'users' | 'funnel' | 'financials' | 'engine_hub'>('users')
-  const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('7d')
-  const [loading, setLoading] = useState<boolean>(true)
-  
-  // Real DB state
-  const [revenueData, setRevenueData] = useState(MOCK_REVENUE_SERIES)
-  const [productStats, setProductStats] = useState(MOCK_PRODUCT_PERFORMANCE)
+  type TabId = 'users' | 'funnel' | 'financials' | 'operations' | 'insights' | 'engine_hub'
+  const [activeTab, setActiveTab] = useState<TabId>('users')
+  const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d')
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // ── KPI metrics ──
+  const [metrics, setMetrics] = useState({ totalRevenue: 0, totalOrders: 0, aov: 0, couponDiscountSpend: 0, totalTrackedUsers: 0, activeSessionsToday: 0, conversionRate: 0 })
+  const [newUsersThisWeek, setNewUsersThisWeek] = useState(0)
+  const [phAvailable, setPhAvailable] = useState(false)
+  const [phFunnel, setPhFunnel] = useState<{ pageviews: number | null; addToCart: number | null; checkout: number | null; orders: number | null } | null>(null)
+
+  // ── Data states ──
   const [usersList, setUsersList] = useState<UserReport[]>([])
   const [selectedUser, setSelectedUser] = useState<UserReport | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [stageFilter, setStageFilter] = useState('ALL')
-  
-  // Telemetry stream state
+  const [revenueData, setRevenueData] = useState<RevenueSeries[]>(MOCK_REVENUE_SERIES)
+  const [productStats, setProductStats] = useState<ProductStat[]>([])
+  const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([])
+  const [heatmapCells, setHeatmapCells] = useState<HeatmapCell[]>([])
+  const [segments, setSegments] = useState<CustomerSegments | null>(null)
+  const [orderStatus, setOrderStatus] = useState<OrderStatusStat[]>([])
+  const [paymentStats, setPaymentStats] = useState<PaymentMethodStat[]>([])
+  const [couponStats, setCouponStats] = useState<CouponStat[]>([])
+  const [reviewSentiment, setReviewSentiment] = useState<ReviewSentiment | null>(null)
+  const [weekOverWeek, setWeekOverWeek] = useState<WeekOverWeekDay[]>([])
+  const [deviceStats, setDeviceStats] = useState<DeviceStat[]>([])
+  const [topPages, setTopPages] = useState<TopPage[]>([])
+  const [utmSources, setUtmSources] = useState<UTMSource[]>([])
+  const [anomalyAlerts, setAnomalyAlerts] = useState<AnomalyAlert[]>([])
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>([])
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
   const [isLiveStreaming, setIsLiveStreaming] = useState(true)
+  const [newOrderCount, setNewOrderCount] = useState(0)
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<number>>(new Set())
 
-  // Real metrics — start at 0, filled from Supabase + PostHog
-  const [metrics, setMetrics] = useState({
-    totalRevenue: 0,
-    grossProfit: 0,
-    profitMargin: 0,
-    totalOrders: 0,
-    aov: 0,
-    couponDiscountSpend: 0,
-    totalTrackedUsers: 0,
-    activeSessionsToday: 0,
-    conversionRate: 0,
-  })
-  const [newUsersThisWeek, setNewUsersThisWeek] = useState(0)
-  const [phAvailable, setPhAvailable] = useState(false)
-  const [phFunnel, setPhFunnel] = useState<{
-    pageviews: number | null
-    addToCart: number | null
-    checkout: number | null
-    orders: number | null
-  } | null>(null)
+  const daysDays = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90
 
-  // Load real telemetry events from localStorage & database
-  const refreshTelemetry = () => {
-    const local = getLocalTelemetryEvents()
-    setTelemetryEvents(local)
-  }
+  // ── Telemetry ──
+  const refreshTelemetry = useCallback(() => setTelemetryEvents(getLocalTelemetryEvents()), [])
 
   useEffect(() => {
     refreshTelemetry()
-    const interval = setInterval(() => {
-      if (isLiveStreaming) {
-        refreshTelemetry()
-      }
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [isLiveStreaming])
+    const iv = setInterval(() => { if (isLiveStreaming) refreshTelemetry() }, 4000)
+    return () => clearInterval(iv)
+  }, [isLiveStreaming, refreshTelemetry])
 
-  // Fetch real users from Supabase and merge with behavioral data
-  const fetchAnalyticsData = async () => {
-    setLoading(true)
+  // ── Supabase realtime new orders ──
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel('analytics-orders')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        setNewOrderCount(n => n + 1)
+        toast.success('🍕 New order received!', { description: 'A customer just placed an order.' })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // ── Main data fetch ──
+  const fetchAllData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true)
     try {
       const supabase = createClient()
 
-      // Fetch profiles for user list
-      const { data: profiles, error: profileErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(50)
+      // User list (client-side Supabase for speed)
+      const [{ data: profiles }, { data: orders }] = await Promise.all([
+        supabase.from('profiles').select('*').limit(50),
+        supabase.from('orders').select('id, user_id, total, status, created_at').order('created_at', { ascending: false }).limit(200),
+      ])
 
-      // Fetch orders for user list
-      const { data: orders, error: orderErr } = await supabase
-        .from('orders')
-        .select('id, user_id, total, status, created_at, address_json')
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (!profileErr && profiles && profiles.length > 0) {
-        const mappedUsers: UserReport[] = profiles.map((prof: any) => {
+      if (profiles && profiles.length > 0) {
+        const mapped: UserReport[] = profiles.map((prof: any) => {
           const userOrders = (orders || []).filter((o: any) => o.user_id === prof.id)
-          const totalSpend = userOrders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0)
-          const totalOrders = userOrders.length
-
+          const totalSpend = userOrders.reduce((s: number, o: any) => s + Number(o.total || 0), 0)
+          const cnt = userOrders.length
           let stage: UserReport['funnelStage'] = 'Browsing'
-          if (totalOrders > 5) stage = 'VIP Loyalist'
-          else if (totalOrders > 0) stage = 'Active Buyer'
-          else stage = 'Browsing'
-
+          if (cnt > 5) stage = 'VIP Loyalist'
+          else if (cnt > 0) stage = 'Active Buyer'
           return {
             id: prof.id,
             distinctId: `usr_${prof.id.slice(0, 8)}`,
             name: prof.full_name || prof.name || 'Registered Customer',
-            email: prof.email || 'customer@pizzaexpert.in',
-            phone: prof.phone || 'Phone on file',
-            role: prof.role || 'Customer',
-            totalOrders,
+            email: prof.email || '—',
+            phone: prof.phone || '—',
+            role: prof.role || 'customer',
+            totalOrders: cnt,
             totalSpend,
             lastSeen: 'Recently',
-            device: 'Mobile Web',
-            browser: 'Chrome / Safari',
-            location: prof.city || 'Prayagraj, UP',
             funnelStage: stage,
             activityTimeline: [
-              {
-                event: '$pageview: /account',
-                timestamp: 'Recent session',
-                details: 'User authenticated profile loaded',
-                iconType: 'auth'
-              },
+              { event: '$pageview: /account', timestamp: 'Recent session', details: 'Authenticated profile loaded', iconType: 'auth' },
               ...userOrders.slice(0, 3).map((o: any) => ({
                 event: `order_completed #${String(o.id).slice(0, 8).toUpperCase()}`,
                 timestamp: new Date(o.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-                details: `Status: ${o.status.toUpperCase()} – Value: ₹${o.total}`,
-                iconType: 'order' as const
-              }))
-            ]
+                details: `Status: ${o.status.toUpperCase()} – ₹${o.total}`,
+                iconType: 'order' as const,
+              })),
+            ],
           }
         })
-
-        setUsersList(mappedUsers)
+        setUsersList(mapped)
       }
 
-      // Fetch financial views if available
-      const { data: dailyView } = await supabase.from('daily_revenue_summary').select('*').limit(30)
-      if (dailyView && dailyView.length > 0) {
-        const formatted = dailyView.map((d: any) => ({
-          date: d.date,
-          revenue: Number(d.gross_revenue) || 0,
-          cost: Math.round((Number(d.gross_revenue) || 0) * 0.4),
-          profit: Math.round((Number(d.gross_revenue) || 0) * 0.6),
-          orders: Number(d.total_orders) || 0,
-        }))
-        setRevenueData(formatted)
-      }
-
-      // ── Fetch REAL KPI metrics from Supabase + PostHog in parallel ──
-      const [dbMetrics, phMetrics] = await Promise.all([
+      // All server actions in parallel
+      const [dbMetrics, phMetrics, prodPerf, catDist, heatmap, segs, ordStatus, payMethods, coupons, reviews, wowRev, revSeries, devices, pages, utm, anomalies] = await Promise.all([
         fetchSupabaseMetrics(),
         fetchPostHogMetrics(),
+        fetchProductPerformance(),
+        fetchCategoryDistribution(),
+        fetchHourlySalesHeatmap(daysDays),
+        fetchCustomerSegments(),
+        fetchOrderStatusBreakdown(),
+        fetchPaymentMethodBreakdown(),
+        fetchCouponROI(),
+        fetchReviewSentiment(),
+        fetchWeekOverWeekRevenue(),
+        fetchRevenueSeries(daysDays),
+        fetchPostHogDevices(),
+        fetchPostHogTopPages(),
+        fetchPostHogUTMSources(),
+        fetchAnomalyAlerts(),
       ])
 
+      // KPI
       setNewUsersThisWeek(dbMetrics.newUsersThisWeek)
       setPhAvailable(phMetrics.phAvailable)
-
-      if (phMetrics.funnelPageviews !== null && phMetrics.funnelOrders !== null) {
-        setPhFunnel({
-          pageviews: phMetrics.funnelPageviews,
-          addToCart: phMetrics.funnelAddToCart,
-          checkout: phMetrics.funnelCheckout,
-          orders: phMetrics.funnelOrders,
-        })
-      }
-
       setMetrics({
         totalRevenue: dbMetrics.totalRevenue,
-        grossProfit: Math.round(dbMetrics.totalRevenue * 0.6),
-        profitMargin: dbMetrics.totalRevenue > 0 ? 60.0 : 0,
         totalOrders: dbMetrics.totalOrders,
         aov: dbMetrics.aov,
         couponDiscountSpend: dbMetrics.couponDiscountSpend,
@@ -250,941 +295,926 @@ export default function AdminAnalyticsPage() {
         activeSessionsToday: phMetrics.activeSessionsToday ?? 0,
         conversionRate: phMetrics.conversionRate ?? 0,
       })
+      if (phMetrics.funnelPageviews !== null) {
+        setPhFunnel({ pageviews: phMetrics.funnelPageviews, addToCart: phMetrics.funnelAddToCart, checkout: phMetrics.funnelCheckout, orders: phMetrics.funnelOrders })
+      }
+
+      // Data
+      setProductStats(prodPerf)
+      setCategoryStats(catDist)
+      setHeatmapCells(heatmap)
+      setSegments(segs)
+      setOrderStatus(ordStatus)
+      setPaymentStats(payMethods)
+      setCouponStats(coupons)
+      setReviewSentiment(reviews)
+      setWeekOverWeek(wowRev)
+      if (revSeries.length > 0) setRevenueData(revSeries)
+      setDeviceStats(devices)
+      setTopPages(pages)
+      setUtmSources(utm)
+      setAnomalyAlerts(anomalies)
+
+      // AI Insights (uses already-fetched data)
+      const insights = await fetchAIInsights({ metrics: { totalRevenue: dbMetrics.totalRevenue, totalOrders: dbMetrics.totalOrders, aov: dbMetrics.aov }, segments: segs, productStats: prodPerf, weekOverWeek: wowRev })
+      setAIInsights(insights)
     } catch (err) {
-      console.warn('Analytics fetch note:', err)
+      console.warn('[Analytics] fetchAllData error:', err)
     } finally {
-      setLoading(false)
+      setLoading(false); setRefreshing(false)
     }
+  }, [daysDays])
+
+  useEffect(() => { fetchAllData() }, [fetchAllData])
+
+  const sendTestTelemetry = (eventName: string) => {
+    trackPostHogEvent(eventName, { triggered_by: 'Admin Diagnostics', timestamp: new Date().toISOString(), sample_value: 499 })
+    refreshTelemetry()
+    toast.success(`⚡ '${eventName}' captured!`, { description: 'Check the live stream below.' })
   }
 
-  useEffect(() => {
-    fetchAnalyticsData()
-  }, [timeframe])
+  const handleExportCSV = (type: string) => {
+    let rows: string[] = []
+    let filename = ''
+    if (type === 'products') {
+      rows = ['Product,Selling Price,Cost Price,Units Sold,Revenue,Profit,Margin%', ...productStats.map(p => `"${p.product_name}",${p.selling_price},${p.cost_price},${p.total_units_sold},${p.total_revenue},${p.total_estimated_profit},${p.total_revenue > 0 ? Math.round((p.total_estimated_profit / p.total_revenue) * 100) : 0}`)]
+      filename = 'product_performance.csv'
+    } else if (type === 'customers') {
+      rows = ['Name,Email,Phone,Role,Orders,Total Spend,Stage', ...usersList.map(u => `"${u.name}","${u.email}","${u.phone}","${u.role}",${u.totalOrders},${u.totalSpend},"${u.funnelStage}"`)]
+      filename = 'customers.csv'
+    } else if (type === 'coupons') {
+      rows = ['Code,Type,Value,Redemptions,Total Discount,Avg Order', ...couponStats.map(c => `"${c.code}","${c.type}",${c.value},${c.redemptions},${c.totalDiscount},${c.avgOrderWithCoupon}`)]
+      filename = 'coupon_roi.csv'
+    }
+    if (rows.length === 0) { toast.error('No data to export'); return }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${filename}`)
+  }
 
-  // Filter users
-  const filteredUsers = usersList.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery) ||
-      user.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.distinctId.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesStage = stageFilter === 'ALL' || user.funnelStage === stageFilter
-
-    return matchesSearch && matchesStage
+  const filteredUsers = usersList.filter(u => {
+    const q = searchQuery.toLowerCase()
+    return (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.phone.includes(q) || u.distinctId.toLowerCase().includes(q)) &&
+      (stageFilter === 'ALL' || u.funnelStage === stageFilter)
   })
 
-  // Send a test telemetry event to verify live pipeline
-  const sendTestTelemetry = (eventName: string) => {
-    trackPostHogEvent(eventName, {
-      triggered_by: 'Admin Panel Test Trigger',
-      source: 'Admin Diagnostics',
-      timestamp: new Date().toISOString(),
-      sample_value: 499,
-      screen_resolution: `${window.innerWidth}x${window.innerHeight}`,
-    })
-    refreshTelemetry()
-    toast.success(`⚡ Event '${eventName}' captured & dispatched!`, {
-      description: 'Check the live telemetry stream below to inspect properties.'
-    })
-  }
+  const totalOrderCount = orderStatus.reduce((s, o) => s + o.count, 0)
+  const cancellationRate = totalOrderCount > 0 ? Math.round(((orderStatus.find(o => o.status === 'cancelled')?.count || 0) / totalOrderCount) * 100) : 0
+
+  const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'users',      label: 'Customers',   icon: <Users size={14} /> },
+    { id: 'funnel',     label: 'Funnel',       icon: <Layers size={14} /> },
+    { id: 'financials', label: 'Financials',   icon: <TrendingUp size={14} /> },
+    { id: 'operations', label: 'Operations',   icon: <Package size={14} /> },
+    { id: 'insights',   label: 'Insights',     icon: <Sparkles size={14} /> },
+    { id: 'engine_hub', label: 'Engine Hub',   icon: <ShieldCheck size={14} /> },
+  ]
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header & Main Navigation Tabs */}
+    <div className="space-y-5 max-w-7xl mx-auto">
+      {/* ── Header ── */}
       <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 flex items-center gap-1">
-                <Zap size={12} className="fill-current" /> Live Telemetry & BI
-              </span>
-              <span className="text-xs text-[#78716C]">
-                {POSTHOG_KEY ? (
-                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={13} /> Analytics Engine Active
-                  </span>
-                ) : (
-                  <span className="text-amber-700 font-medium flex items-center gap-1">
-                    <AlertCircle size={13} /> Ready (Setup in .env)
-                  </span>
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />Live
+                </span>
+                {newOrderCount > 0 && (
+                  <button onClick={() => setNewOrderCount(0)} className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1 hover:bg-emerald-200 transition-colors">
+                    <Bell size={10} /> {newOrderCount} new order{newOrderCount > 1 ? 's' : ''}
+                  </button>
                 )}
-              </span>
-            </div>
-            <h1 className="text-2xl font-serif font-bold text-[#1C1917] mt-1">
-              User Behavioral Intelligence & Analytics
-            </h1>
-            <p className="text-xs sm:text-sm text-[#78716C]">
-              Detailed activity reports, conversion funnels, session telemetry, and user drill-downs.
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchAnalyticsData}
-              disabled={loading}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E7E0D8] bg-white text-xs font-semibold text-[#44403C] hover:bg-[#F5F2EC] transition-all shadow-2xs"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
-            </button>
-
-            <button
-              onClick={() => sendTestTelemetry('admin_ping_test')}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-semibold hover:bg-black transition-all shadow-2xs"
-            >
-              <Send size={13} />
-              <span>Send Test Event</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Selector */}
-        <div className="flex items-center gap-2 border-b border-[#E7E0D8] pt-2 overflow-x-auto text-xs font-bold">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'users'
-                ? 'border-[#B91C1C] text-[#B91C1C]'
-                : 'border-transparent text-[#78716C] hover:text-[#1C1917]'
-            }`}
-          >
-            <Users size={16} />
-            <span>👥 User Reports & Profiles ({usersList.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('funnel')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'funnel'
-                ? 'border-[#B91C1C] text-[#B91C1C]'
-                : 'border-transparent text-[#78716C] hover:text-[#1C1917]'
-            }`}
-          >
-            <Layers size={16} />
-            <span>⚡ Conversion Funnels & Live Events</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('financials')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'financials'
-                ? 'border-[#B91C1C] text-[#B91C1C]'
-                : 'border-transparent text-[#78716C] hover:text-[#1C1917]'
-            }`}
-          >
-            <TrendingUp size={16} />
-            <span>📊 Financial & Revenue BI</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('engine_hub')}
-            className={`pb-3 px-3.5 flex items-center gap-2 border-b-2 transition-all shrink-0 ${
-              activeTab === 'engine_hub'
-                ? 'border-[#B91C1C] text-[#B91C1C]'
-                : 'border-transparent text-[#78716C] hover:text-[#1C1917]'
-            }`}
-          >
-            <ShieldCheck size={16} />
-            <span>⚙️ Analytics Engine Hub</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Top Level Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Tracked Users — real: PostHog identified persons (7d), fallback: Supabase profile count */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Tracked Users</span>
-            <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#B91C1C] flex items-center justify-center">
-              <Users size={18} />
-            </div>
-          </div>
-          <div className="mt-3">
-            {loading ? (
-              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
-            ) : (
-              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.totalTrackedUsers.toLocaleString('en-IN')}</span>
-            )}
-            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 font-semibold">
-              <ArrowUpRight size={14} />
-              <span>+{newUsersThisWeek} new this week</span>
-            </div>
-            <p className="text-[10px] text-[#A8A29E] mt-0.5">{phAvailable ? 'Via PostHog' : 'Registered profiles'}</p>
-          </div>
-        </div>
-
-        {/* Active Sessions — real: PostHog unique sessions today */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Active Sessions</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Activity size={18} />
-            </div>
-          </div>
-          <div className="mt-3">
-            {loading ? (
-              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
-            ) : phAvailable ? (
-              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.activeSessionsToday}</span>
-            ) : (
-              <a
-                href={`https://us.posthog.com/project/${process.env.NEXT_PUBLIC_POSTHOG_KEY ? '' : ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-semibold text-blue-600 underline"
-              >
-                View in PostHog →
-              </a>
-            )}
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-blue-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-              <span>{phAvailable ? 'PostHog sessions · today' : 'PostHog API key required'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Conversion Rate — real: PostHog pageview → order_completed (7d) */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">E-Comm Conversion</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <MousePointerClick size={18} />
-            </div>
-          </div>
-          <div className="mt-3">
-            {loading ? (
-              <div className="h-8 w-16 bg-[#F5F2EC] rounded animate-pulse" />
-            ) : phAvailable ? (
-              <span className="text-2xl font-bold font-serif text-[#1C1917]">{metrics.conversionRate}%</span>
-            ) : (
-              <span className="text-sm font-semibold text-[#A8A29E]">—</span>
-            )}
-            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 font-semibold">
-              <ArrowUpRight size={14} />
-              <span>Pageview → order_completed · 7d</span>
-            </div>
-            <p className="text-[10px] text-[#A8A29E] mt-0.5">{phAvailable ? 'Via PostHog HogQL' : 'Needs PostHog API key'}</p>
-          </div>
-        </div>
-
-        {/* Gross Sales — real: Supabase orders aggregate */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">Gross Sales</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <DollarSign size={18} />
-            </div>
-          </div>
-          <div className="mt-3">
-            {loading ? (
-              <div className="h-8 w-24 bg-[#F5F2EC] rounded animate-pulse" />
-            ) : (
-              <span className="text-2xl font-bold font-serif text-[#1C1917]">{formatPrice(metrics.totalRevenue)}</span>
-            )}
-            <div className="flex items-center gap-1 mt-1 text-xs text-[#78716C] font-medium">
-              <span>{metrics.totalOrders} confirmed orders · avg {formatPrice(metrics.aov)}</span>
-            </div>
-            <p className="text-[10px] text-[#A8A29E] mt-0.5">Via Supabase orders table</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* TAB 1: USERS & DETAILED BEHAVIORAL REPORTS */}
-      {/* ────────────────────────────────────────────────────────── */}
-      {activeTab === 'users' && (
-        <div className="space-y-6">
-          {/* Search & Filter Toolbar */}
-          <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" size={16} />
-              <input
-                type="text"
-                placeholder="Search user by name, email, phone, session ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C]"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto text-xs font-semibold">
-              <span className="text-[#78716C] flex items-center gap-1 shrink-0">
-                <Filter size={13} /> Filter:
-              </span>
-              {['ALL', 'VIP Loyalist', 'Active Buyer', 'Cart Abandoned', 'Browsing'].map((stage) => (
-                <button
-                  key={stage}
-                  onClick={() => setStageFilter(stage)}
-                  className={`px-3 py-1.5 rounded-lg border transition-all shrink-0 ${
-                    stageFilter === stage
-                      ? 'bg-[#1C1917] text-white border-[#1C1917]'
-                      : 'bg-white text-[#78716C] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-                  }`}
-                >
-                  {stage}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Users Table */}
-          <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-2xs overflow-hidden">
-            <div className="p-5 border-b border-[#E7E0D8] flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2">
-                  <UserCheck className="text-[#B91C1C]" size={20} />
-                  Individual User Profiles & Telemetry Dossiers
-                </h2>
-                <p className="text-xs text-[#78716C]">
-                  Click on any user to open their complete timeline, conversion journey, and activity records.
-                </p>
               </div>
-              <span className="text-xs font-bold bg-[#F5F2EC] px-3 py-1 rounded-full text-[#44403C]">
-                Showing {filteredUsers.length} Users
-              </span>
+              <h1 className="text-xl font-serif font-bold text-[#1C1917] mt-1">Analytics & Intelligence</h1>
+              <p className="text-xs text-[#78716C]">Real data from Supabase + PostHog · Last refreshed just now</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['7d', '30d', '90d'] as const).map(tf => (
+              <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${timeframe === tf ? 'bg-[#1C1917] text-white border-[#1C1917]' : 'bg-white text-[#44403C] border-[#E7E0D8] hover:bg-[#F5F2EC]'}`}>{tf}</button>
+            ))}
+            <button onClick={() => fetchAllData(true)} disabled={refreshing} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E7E0D8] bg-white text-[#44403C] hover:bg-[#F5F2EC] flex items-center gap-1.5 transition-all disabled:opacity-50">
+              <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-[#1C1917] text-white' : 'text-[#78716C] hover:bg-[#F5F2EC]'}`}>
+              {tab.icon}{tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Anomaly Alerts Banner ── */}
+      {anomalyAlerts.filter((_,i) => !dismissedAlerts.has(i)).map((alert, i) => (
+        <div key={i} className={`flex items-start justify-between p-3.5 rounded-xl border text-sm ${alert.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' : alert.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+          <div className="flex items-start gap-2.5">
+            <span className="text-base mt-0.5">{alert.icon}</span>
+            <div>
+              <p className="font-bold">{alert.title}</p>
+              <p className="text-xs mt-0.5 opacity-80">{alert.detail}</p>
+            </div>
+          </div>
+          <button onClick={() => setDismissedAlerts(prev => new Set([...prev, i]))} className="ml-3 shrink-0 opacity-60 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Tracked Users', value: loading ? null : metrics.totalTrackedUsers.toLocaleString('en-IN'), sub: `+${newUsersThisWeek} this week`, subIcon: <ArrowUpRight size={12} />, subColor: 'text-emerald-600', source: phAvailable ? 'PostHog' : 'Supabase profiles', icon: <Users size={18} />, iconBg: 'bg-rose-50 text-[#B91C1C]' },
+          { label: 'Active Sessions', value: loading ? null : phAvailable ? metrics.activeSessionsToday.toString() : '—', sub: phAvailable ? 'PostHog sessions · today' : 'PostHog key required', subIcon: <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />, subColor: 'text-blue-600', source: phAvailable ? 'PostHog HogQL' : '', icon: <Activity size={18} />, iconBg: 'bg-blue-50 text-blue-600' },
+          { label: 'Conversion Rate', value: loading ? null : phAvailable ? `${metrics.conversionRate}%` : '—', sub: 'Pageview → order · 7d', subIcon: <ArrowUpRight size={12} />, subColor: 'text-emerald-600', source: phAvailable ? 'PostHog HogQL' : 'PostHog required', icon: <MousePointerClick size={18} />, iconBg: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Gross Sales', value: loading ? null : formatPrice(metrics.totalRevenue), sub: `${metrics.totalOrders} orders · avg ${formatPrice(metrics.aov)}`, subIcon: null, subColor: 'text-[#78716C]', source: 'Supabase orders', icon: <DollarSign size={18} />, iconBg: 'bg-amber-50 text-amber-600' },
+        ].map((card, i) => (
+          <div key={i} className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#78716C] uppercase tracking-wider">{card.label}</span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${card.iconBg}`}>{card.icon}</div>
+            </div>
+            <div className="mt-3">
+              {card.value === null ? <Skeleton className="h-8 w-20" /> : (
+                <span className="text-2xl font-bold font-serif text-[#1C1917]">{card.value}</span>
+              )}
+              <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${card.subColor}`}>
+                {card.subIcon}{card.sub}
+              </div>
+              <p className="text-[10px] text-[#A8A29E] mt-0.5">{card.source}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          TAB 1 — CUSTOMERS & SEGMENTS
+          ══════════════════════════════════════════════════════ */}
+      {activeTab === 'users' && (
+        <div className="space-y-5">
+          {/* Customer Segments */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'VIP Loyalists', value: segments?.vip ?? '—', sub: `Avg LTV ₹${(segments?.avgLTVVip || 0).toLocaleString('en-IN')}`, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { label: 'Regular Buyers', value: segments?.regular ?? '—', sub: `Avg LTV ₹${(segments?.avgLTVRegular || 0).toLocaleString('en-IN')}`, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+              { label: 'One-Time', value: segments?.oneTime ?? '—', sub: 'Need nurturing', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { label: 'Churn Risk', value: segments?.churnRiskCount ?? '—', sub: 'No order in 30d', color: 'bg-rose-50 text-rose-700 border-rose-200' },
+            ].map((seg, i) => (
+              <div key={i} className={`p-4 rounded-2xl border ${seg.color}`}>
+                <p className="text-xs font-bold uppercase tracking-wider opacity-70">{seg.label}</p>
+                <p className="text-3xl font-bold font-serif mt-1">{loading ? <Skeleton className="h-8 w-12 inline-block" /> : seg.value}</p>
+                <p className="text-xs mt-1 opacity-70">{seg.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Segment Donut + Repeat Rate */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Customer Segments</h3>
+              <p className="text-xs text-[#78716C] mb-4">Distribution by purchase behaviour</p>
+              {segments && segments.totalWithOrders + segments.dormant > 0 ? (
+                <>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={[{ name: 'VIP', value: segments.vip }, { name: 'Regular', value: segments.regular }, { name: 'One-time', value: segments.oneTime }, { name: 'Dormant', value: segments.dormant }]} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
+                          {['#7C3AED','#16A34A','#D97706','#DC2626'].map((c, i) => <Cell key={i} fill={c} />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-1.5 mt-2">
+                    {[['VIP (5+ orders)','#7C3AED',segments.vip],['Regular (2–5)','#16A34A',segments.regular],['One-time','#D97706',segments.oneTime],['Dormant (0 orders)','#DC2626',segments.dormant]].map(([label, color, val]) => (
+                      <div key={label as string} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color as string }} /><span className="text-[#57534E]">{label}</span></div>
+                        <span className="font-bold text-[#1C1917]">{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : <Skeleton className="h-48 w-full" />}
             </div>
 
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col justify-between">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-4">Repeat Customer Rate</h3>
+              <div className="flex items-center justify-center flex-1">
+                <div className="text-center">
+                  {loading ? <Skeleton className="h-20 w-20 rounded-full mx-auto" /> : (
+                    <>
+                      <p className="text-5xl font-bold font-serif text-[#1C1917]">{segments?.repeatRate ?? 0}%</p>
+                      <p className="text-xs text-[#78716C] mt-2">of buyers ordered more than once</p>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-[#E7E0D8] grid grid-cols-2 gap-3 text-center">
+                <div><p className="text-lg font-bold font-serif text-[#1C1917]">{segments?.totalWithOrders ?? 0}</p><p className="text-[10px] text-[#78716C]">With orders</p></div>
+                <div><p className="text-lg font-bold font-serif text-[#1C1917]">{segments?.dormant ?? 0}</p><p className="text-[10px] text-[#78716C]">Never ordered</p></div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-serif font-bold text-[#1C1917]">Churn Risk Customers</h3>
+                <span className="text-xs font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">{segments?.churnRiskCount ?? 0} at risk</span>
+              </div>
+              <p className="text-xs text-[#78716C] mb-4">Customers who ordered 30+ days ago with no return visit.</p>
+              <div className="space-y-2">
+                {[['Send WhatsApp Campaign', 'w/ 15% comeback coupon', '💌'], ['Create Re-engagement Email', 'via Resend integration', '📧'], ['Offer Loyalty Bonus', 'double points this week', '⭐']].map(([title, sub, emoji]) => (
+                  <div key={title} className="flex items-center gap-3 p-2.5 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8] text-xs">
+                    <span className="text-base">{emoji}</span>
+                    <div><p className="font-semibold text-[#1C1917]">{title}</p><p className="text-[#78716C]">{sub}</p></div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => handleExportCSV('customers')} className="mt-4 w-full px-3 py-2 bg-[#1C1917] text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-stone-800 transition-colors">
+                <Download size={12} /> Export Customer List CSV
+              </button>
+            </div>
+          </div>
+
+          {/* User List */}
+          <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-2xs overflow-hidden">
+            <div className="p-4 border-b border-[#E7E0D8] flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" size={15} />
+                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search by name, email, phone…" className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C]" />
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto text-xs font-semibold">
+                {['ALL', 'VIP Loyalist', 'Active Buyer', 'Browsing'].map(f => (
+                  <button key={f} onClick={() => setStageFilter(f)} className={`px-3 py-1.5 rounded-lg border whitespace-nowrap transition-all ${stageFilter === f ? 'bg-[#1C1917] text-white border-[#1C1917]' : 'bg-white text-[#44403C] border-[#E7E0D8] hover:bg-[#F5F2EC]'}`}>{f}</button>
+                ))}
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#F5F2EC] text-[#78716C] uppercase text-[11px] font-bold border-b border-[#E7E0D8]">
-                  <tr>
-                    <th className="py-3 px-4">User / Persona</th>
-                    <th className="py-3 px-4">Session Tracking ID</th>
-                    <th className="py-3 px-4 text-center">Status / Stage</th>
-                    <th className="py-3 px-4 text-right">Orders</th>
-                    <th className="py-3 px-4 text-right">LTV Spend</th>
-                    <th className="py-3 px-4">Primary Device & OS</th>
-                    <th className="py-3 px-4">Location</th>
-                    <th className="py-3 px-4 text-right">Action</th>
-                  </tr>
+                <thead className="bg-[#F5F2EC] text-[#78716C] font-semibold uppercase text-[10px] border-b border-[#E7E0D8]">
+                  <tr>{['Customer', 'Session ID', 'Stage', 'Orders', 'Total Spend', 'Action'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}</tr>
                 </thead>
-                <tbody className="divide-y divide-[#E7E0D8] text-[#1C1917]">
-                  {filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      onClick={() => setSelectedUser(user)}
-                      className="hover:bg-[#FDFBF7] cursor-pointer transition-colors group"
-                    >
+                <tbody className="divide-y divide-[#E7E0D8]">
+                  {loading ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}><td className="py-3 px-4" colSpan={6}><Skeleton className="h-6 w-full" /></td></tr>
+                  )) : filteredUsers.length === 0 ? (
+                    <tr><td colSpan={6} className="py-10 text-center text-xs text-[#A8A29E]">No matching customers found.</td></tr>
+                  ) : filteredUsers.map(user => (
+                    <tr key={user.id} onClick={() => setSelectedUser(user)} className="hover:bg-[#FDFBF7] cursor-pointer transition-colors group">
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-rose-100 text-[#B91C1C] flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                            {user.name.slice(0, 2)}
-                          </div>
-                          <div>
-                            <span className="font-bold text-[#1C1917] block group-hover:text-[#B91C1C] transition-colors">
-                              {user.name}
-                            </span>
-                            <span className="text-[11px] text-[#78716C] block">{user.email}</span>
-                          </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-rose-100 text-[#B91C1C] flex items-center justify-center font-bold text-xs">{user.name.slice(0, 2).toUpperCase()}</div>
+                          <div><p className="font-bold text-[#1C1917] group-hover:text-[#B91C1C] transition-colors">{user.name}</p><p className="text-[10px] text-[#78716C]">{user.email}</p></div>
                         </div>
                       </td>
-
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#57534E]">
-                        <span className="bg-[#F5F2EC] px-2 py-0.5 rounded border border-[#E7E0D8]">
-                          {user.distinctId}
-                        </span>
+                      <td className="py-3.5 px-4"><span className="bg-[#F5F2EC] px-2 py-0.5 rounded border border-[#E7E0D8] font-mono">{user.distinctId}</span></td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${user.funnelStage === 'VIP Loyalist' ? 'bg-purple-100 text-purple-800' : user.funnelStage === 'Active Buyer' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>{user.funnelStage}</span>
                       </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            user.funnelStage === 'VIP Loyalist'
-                              ? 'bg-purple-100 text-purple-800'
-                              : user.funnelStage === 'Active Buyer'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : user.funnelStage === 'Cart Abandoned'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {user.funnelStage}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right font-bold">{user.totalOrders}</td>
-
-                      <td className="py-3.5 px-4 text-right font-bold text-emerald-700">
-                        {formatPrice(user.totalSpend)}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-[#78716C]">
-                        <div className="flex items-center gap-1.5">
-                          {user.device.toLowerCase().includes('iphone') || user.device.toLowerCase().includes('samsung') || user.device.toLowerCase().includes('oneplus') || user.device.toLowerCase().includes('mobile') ? (
-                            <Smartphone size={13} className="text-[#A8A29E]" />
-                          ) : (
-                            <Monitor size={13} className="text-[#A8A29E]" />
-                          )}
-                          <span>{user.device}</span>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-[#78716C]">
-                        <div className="flex items-center gap-1">
-                          <Globe size={13} className="text-[#A8A29E]" />
-                          <span>{user.location}</span>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedUser(user)
-                          }}
-                          className="px-3 py-1.5 rounded-lg border border-[#E7E0D8] bg-white text-xs font-semibold text-[#1C1917] hover:bg-[#B91C1C] hover:text-white hover:border-[#B91C1C] transition-all shadow-2xs flex items-center gap-1 ml-auto"
-                        >
-                          <Eye size={12} />
-                          <span>View Report</span>
-                        </button>
-                      </td>
+                      <td className="py-3.5 px-4 font-bold">{user.totalOrders}</td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-700">{user.totalSpend > 0 ? formatPrice(user.totalSpend) : '—'}</td>
+                      <td className="py-3.5 px-4"><button onClick={e => { e.stopPropagation(); setSelectedUser(user) }} className="px-3 py-1.5 rounded-lg border border-[#E7E0D8] text-xs font-semibold hover:bg-[#B91C1C] hover:text-white hover:border-[#B91C1C] transition-all flex items-center gap-1"><Eye size={11} />View</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* User Detail Modal */}
+          {selectedUser && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedUser(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-rose-100 text-[#B91C1C] flex items-center justify-center font-bold text-base">{selectedUser.name.slice(0, 2).toUpperCase()}</div>
+                    <div><h3 className="font-bold text-[#1C1917]">{selectedUser.name}</h3><p className="text-xs text-[#78716C]">{selectedUser.email}</p></div>
+                  </div>
+                  <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-[#F5F2EC] rounded-xl"><X size={16} /></button>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  {[['Orders', selectedUser.totalOrders], ['Spent', formatPrice(selectedUser.totalSpend)], ['Stage', selectedUser.funnelStage]].map(([l, v]) => (
+                    <div key={l as string} className="text-center p-3 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8]">
+                      <p className="text-xs text-[#78716C]">{l}</p>
+                      <p className="text-sm font-bold text-[#1C1917] mt-0.5">{v}</p>
+                    </div>
+                  ))}
+                </div>
+                <h4 className="text-xs font-bold uppercase text-[#78716C] mb-3">Activity Timeline</h4>
+                <div className="space-y-2">
+                  {selectedUser.activityTimeline.map((ev, i) => (
+                    <div key={i} className="p-3 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8] text-xs">
+                      <p className="font-bold text-[#1C1917] font-mono">{ev.event}</p>
+                      <p className="text-[#78716C] mt-0.5">{ev.details}</p>
+                      <p className="text-[#A8A29E] mt-0.5">{ev.timestamp}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* TAB 2: CONVERSION FUNNELS & REALTIME EVENTS */}
-      {/* ────────────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════
+          TAB 2 — FUNNEL & TRACKING
+          ══════════════════════════════════════════════════════ */}
       {activeTab === 'funnel' && (
-        <div className="space-y-6">
-          {/* Funnel Steps Breakdown */}
-          <div className="bg-white p-6 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="space-y-5">
+          {/* PostHog Funnel */}
+          <div className="bg-white p-6 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2">
-                  <Layers className="text-[#B91C1C]" size={20} />
-                  E-Commerce Conversion Funnel
-                </h2>
-                <p className="text-xs text-[#78716C]">
-                  {phAvailable ? 'Live PostHog data · last 7 days' : 'PostHog API key required for live funnel data'}
-                </p>
+                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2"><Layers className="text-[#B91C1C]" size={20} />Conversion Funnel</h2>
+                <p className="text-xs text-[#78716C]">{phAvailable ? 'Live PostHog data · last 7 days' : 'PostHog key required for funnel data'}</p>
               </div>
-              {metrics.conversionRate > 0 && (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  {metrics.conversionRate}% Overall Conversion
-                </span>
-              )}
+              {metrics.conversionRate > 0 && <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">{metrics.conversionRate}% conversion</span>}
             </div>
-
             {phFunnel ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
-                {([
-                  { label: 'Page Views', value: phFunnel.pageviews, prev: null },
-                  { label: 'Add to Cart', value: phFunnel.addToCart, prev: phFunnel.pageviews },
-                  { label: 'Initiate Checkout', value: phFunnel.checkout, prev: phFunnel.addToCart },
-                  { label: 'Order Completed', value: phFunnel.orders, prev: phFunnel.checkout },
-                ] as { label: string; value: number | null; prev: number | null }[]).map((step, idx) => {
-                  const dropPct = step.prev && step.value != null && step.prev > 0
-                    ? `-${Math.round((1 - step.value / step.prev) * 100)}%`
-                    : null
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[{ label: 'Page Views', value: phFunnel.pageviews, prev: null }, { label: 'Add to Cart', value: phFunnel.addToCart, prev: phFunnel.pageviews }, { label: 'Checkout', value: phFunnel.checkout, prev: phFunnel.addToCart }, { label: 'Order Completed', value: phFunnel.orders, prev: phFunnel.checkout }].map((step, idx) => {
+                  const drop = step.prev && step.value != null && step.prev > 0 ? `-${Math.round((1 - step.value / step.prev) * 100)}%` : null
                   return (
-                    <div key={step.label} className="bg-[#FBF9F5] p-4 rounded-xl border border-[#E7E0D8] flex flex-col justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-[#A8A29E] block mb-1">Step {idx + 1}</span>
-                        <span className="text-xs font-bold text-[#1C1917] block leading-tight">{step.label}</span>
-                      </div>
-                      <div className="mt-4 pt-3 border-t border-[#E7E0D8]/60 flex items-baseline justify-between">
-                        <span className="text-xl font-bold font-serif text-[#1C1917]">
-                          {step.value != null ? step.value.toLocaleString('en-IN') : '—'}
-                        </span>
-                        {dropPct && (
-                          <span className="text-[11px] font-semibold text-rose-600">{dropPct} drop</span>
-                        )}
+                    <div key={step.label} className="bg-[#FBF9F5] p-4 rounded-xl border border-[#E7E0D8]">
+                      <span className="text-[10px] font-bold uppercase text-[#A8A29E]">Step {idx + 1}</span>
+                      <p className="text-xs font-bold text-[#1C1917] mt-1">{step.label}</p>
+                      <div className="mt-3 pt-3 border-t border-[#E7E0D8]/60 flex items-baseline justify-between">
+                        <span className="text-xl font-bold font-serif">{step.value?.toLocaleString('en-IN') ?? '—'}</span>
+                        {drop && <span className="text-[11px] text-rose-600 font-semibold">{drop}</span>}
                       </div>
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] text-center gap-3">
+              <div className="flex flex-col items-center py-10 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] gap-3">
                 <Database size={28} className="text-[#A8A29E]" />
-                <div>
-                  <p className="text-sm font-semibold text-[#44403C]">No PostHog funnel data yet</p>
-                  <p className="text-xs text-[#A8A29E] mt-1 max-w-xs">
-                    Funnel events (add_to_cart, initiate_checkout, order_completed) are tracked via PostHog.
-                    Make a few orders to populate this.
-                  </p>
-                </div>
-                <a
-                  href="https://us.posthog.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-bold px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:bg-rose-800 transition-colors"
-                >
-                  View Full Funnel in PostHog →
-                </a>
+                <p className="text-sm font-semibold text-[#44403C]">No PostHog funnel data yet</p>
+                <p className="text-xs text-[#A8A29E]">Fire add_to_cart and order_completed events from the storefront to populate this.</p>
+                <a href="https://us.posthog.com" target="_blank" rel="noopener noreferrer" className="text-xs font-bold px-4 py-2 bg-[#B91C1C] text-white rounded-lg hover:bg-rose-800">View in PostHog →</a>
               </div>
             )}
           </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Device distribution — from PostHog dashboard */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col">
-              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Traffic by Device Type</h3>
-              <p className="text-xs text-[#78716C] mb-4">PostHog breakdown of user hardware & OS</p>
-              <div className="flex-1 flex flex-col items-center justify-center py-6 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] text-center gap-3">
-                <Smartphone size={24} className="text-[#A8A29E]" />
-                <div>
-                  <p className="text-xs font-semibold text-[#44403C]">Device breakdown available in PostHog</p>
-                  <p className="text-[11px] text-[#A8A29E] mt-1">Session Replay → Properties → $os</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Device Breakdown */}
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Device Breakdown</h3>
+              <p className="text-xs text-[#78716C] mb-4">{phAvailable ? 'PostHog · OS distribution · 7d' : 'Requires PostHog API key'}</p>
+              {deviceStats.length > 0 ? (
+                <>
+                  <div className="h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart><Pie data={deviceStats} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="count">{deviceStats.map((_, i) => <Cell key={i} fill={_.color} />)}</Pie><Tooltip formatter={(v: any) => [`${v} events`, 'Count']} /></PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-1.5 mt-2">
+                    {deviceStats.map(d => (
+                      <div key={d.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} /><span className="text-[#57534E]">{d.name}</span></div>
+                        <span className="font-bold text-[#1C1917]">{d.percentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-44 flex flex-col items-center justify-center gap-2 text-center bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8]">
+                  <Smartphone size={24} className="text-[#A8A29E]" />
+                  <p className="text-xs font-semibold text-[#44403C]">No device data yet</p>
+                  <a href="https://us.posthog.com" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 border border-[#E7E0D8] rounded-lg text-[#44403C] hover:bg-[#F5F2EC] flex items-center gap-1"><ExternalLink size={10} />Open PostHog</a>
                 </div>
-                <a
-                  href="https://us.posthog.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold px-3 py-1.5 border border-[#E7E0D8] rounded-lg text-[#44403C] hover:bg-[#F5F2EC] transition-colors flex items-center gap-1"
-                >
-                  <ExternalLink size={11} /> Open PostHog
-                </a>
-              </div>
+              )}
             </div>
 
-            {/* Live Telemetry Stream */}
-            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-serif font-bold text-[#1C1917] flex items-center gap-2">
-                      <Activity className="text-emerald-600" size={16} />
-                      Live Telemetry & Event Stream
-                    </h3>
-                    <p className="text-xs text-[#78716C]">Real-time events captured in this browser session</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsLiveStreaming(!isLiveStreaming)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all ${
-                        isLiveStreaming
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : 'bg-[#F5F2EC] text-[#78716C] border-[#E7E0D8]'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${isLiveStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />
-                      {isLiveStreaming ? 'Live' : 'Paused'}
-                    </button>
-
-                    <button
-                      onClick={refreshTelemetry}
-                      className="p-1.5 rounded-lg border border-[#E7E0D8] hover:bg-[#F5F2EC]"
-                    >
-                      <RefreshCw size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1 text-xs">
-                  {telemetryEvents.length === 0 ? (
-                    <div className="text-center py-10 text-[#A8A29E] bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8]">
-                      <Sparkles size={24} className="mx-auto mb-2 text-[#A8A29E]" />
-                      <p className="font-semibold text-xs">No live telemetry events captured yet in this tab.</p>
-                      <p className="text-[11px] mt-1">Click &quot;Send Test Event&quot; or browse the menu to generate real events!</p>
-                      <button
-                        onClick={() => sendTestTelemetry('sample_page_browse')}
-                        className="mt-3 px-3 py-1.5 rounded-lg bg-[#B91C1C] text-white text-xs font-semibold hover:bg-rose-700"
-                      >
-                        Trigger Sample Event
-                      </button>
-                    </div>
-                  ) : (
-                    telemetryEvents.slice(0, 15).map((evt) => (
-                      <div
-                        key={evt.id}
-                        className="p-2.5 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] flex items-center justify-between hover:bg-[#F5F2EC] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
-                          <div>
-                            <span className="font-mono font-bold text-[#1C1917] block">
-                              {evt.event}
-                            </span>
-                            <span className="text-[11px] text-[#78716C]">
-                              Distinct ID: {evt.distinctId || 'guest'} • {JSON.stringify(evt.properties).slice(0, 50)}...
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-[#A8A29E] font-mono shrink-0">
-                          {new Date(evt.timestamp).toLocaleTimeString()}
-                        </span>
+            {/* UTM Sources */}
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Traffic Source Attribution</h3>
+              <p className="text-xs text-[#78716C] mb-4">UTM sources · orders & pageviews · 30d</p>
+              {utmSources.length > 0 ? (
+                <div className="space-y-2">
+                  {utmSources.map(s => (
+                    <div key={s.source} className="flex items-center justify-between p-2.5 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8] text-xs">
+                      <div className="flex items-center gap-2"><Globe size={12} className="text-[#A8A29E]" /><span className="font-semibold text-[#1C1917] capitalize">{s.source}</span></div>
+                      <div className="flex items-center gap-4 text-[#78716C]">
+                        <span>{s.views} views</span>
+                        <span className="font-bold text-[#1C1917]">{s.conversions} orders</span>
+                        {s.conversionRate > 0 && <span className="text-emerald-600 font-bold">{s.conversionRate}%</span>}
                       </div>
-                    ))
-                  )}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="h-44 flex flex-col items-center justify-center gap-2 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8]">
+                  <Globe size={24} className="text-[#A8A29E]" />
+                  <p className="text-xs text-[#A8A29E]">No UTM data yet. Add utm_source params to your Instagram/Google links.</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* TAB 3: FINANCIAL & REVENUE BI (Original + Enhanced) */}
-      {/* ────────────────────────────────────────────────────────── */}
-      {activeTab === 'financials' && (
-        <div className="space-y-6">
-          {/* Main Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-serif font-bold text-[#1C1917]">Revenue vs. Estimated Margin Trend</h2>
-                  <p className="text-xs text-[#78716C]">Daily breakdown of gross sales and net gross profit</p>
+          {/* Top Pages + Live Telemetry */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Top Pages</h3>
+              <p className="text-xs text-[#78716C] mb-4">Most visited URLs · 7d</p>
+              {topPages.length > 0 ? (
+                <div className="space-y-2">
+                  {topPages.map((p, i) => (
+                    <div key={p.url} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-bold text-[#A8A29E] w-4">{i + 1}</span>
+                        <span className="truncate text-[#44403C] font-medium">{p.url || '/'}</span>
+                      </div>
+                      <span className="font-bold text-[#1C1917] shrink-0 ml-2">{p.views}</span>
+                    </div>
+                  ))}
                 </div>
-                <span className="text-xs font-semibold bg-[#F5F2EC] px-2.5 py-1 rounded-md text-[#44403C] border border-[#E7E0D8]">
-                  Daily Frequency
-                </span>
-              </div>
-
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#16A34A" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#16A34A" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#D97706" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#D97706" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E0D8" />
-                    <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 12, fill: '#78716C' }} />
-                    <YAxis tickLine={false} tick={{ fontSize: 12, fill: '#78716C' }} />
-                    <Tooltip
-                      formatter={(val: any) => formatPrice(Number(val) || 0)}
-                      contentStyle={{ backgroundColor: '#1C1917', borderRadius: '8px', color: '#FFF', border: 'none' }}
-                    />
-                    <Legend />
-                    <Area type="monotone" dataKey="revenue" name="Revenue (₹)" stroke="#16A34A" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRev)" />
-                    <Area type="monotone" dataKey="profit" name="Gross Profit (₹)" stroke="#D97706" strokeWidth={2.5} fillOpacity={1} fill="url(#colorProfit)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              ) : <p className="text-xs text-[#A8A29E]">No pageview data from PostHog yet.</p>}
             </div>
 
-            {/* Category Share */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
-              <h2 className="text-base font-serif font-bold text-[#1C1917] mb-1">Sales by Category</h2>
-              <p className="text-xs text-[#78716C] mb-4">Revenue share by menu category</p>
-              <div className="h-52 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={CATEGORY_DISTRIBUTION}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {CATEGORY_DISTRIBUTION.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => `${value}% Share`} />
-                  </PieChart>
-                </ResponsiveContainer>
+            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-serif font-bold text-[#1C1917] flex items-center gap-2"><Activity className="text-emerald-600" size={15} />Live Telemetry Stream</h3>
+                  <p className="text-xs text-[#78716C]">Real-time events in this browser session</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setIsLiveStreaming(s => !s)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all ${isLiveStreaming ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-[#F5F2EC] text-[#78716C] border-[#E7E0D8]'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isLiveStreaming ? 'bg-emerald-500 animate-pulse' : 'bg-stone-400'}`} />{isLiveStreaming ? 'Live' : 'Paused'}
+                  </button>
+                  <button onClick={refreshTelemetry} className="p-1.5 rounded-lg border border-[#E7E0D8] hover:bg-[#F5F2EC]"><RefreshCw size={13} /></button>
+                </div>
               </div>
-
-              <div className="space-y-2 mt-2">
-                {CATEGORY_DISTRIBUTION.map((cat) => (
-                  <div key={cat.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                      <span className="font-medium text-[#44403C]">{cat.name}</span>
+              <div className="flex-1 space-y-2 max-h-64 overflow-y-auto text-xs">
+                {telemetryEvents.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 gap-3 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8]">
+                    <Sparkles size={22} className="text-[#A8A29E]" />
+                    <p className="text-xs font-semibold text-[#44403C]">No events captured yet</p>
+                    <button onClick={() => sendTestTelemetry('sample_page_browse')} className="px-3 py-1.5 rounded-lg bg-[#B91C1C] text-white text-xs font-semibold">Trigger Test Event</button>
+                  </div>
+                ) : telemetryEvents.slice(0, 15).map(ev => (
+                  <div key={ev.id} className="p-2.5 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-[#B91C1C] shrink-0" />
+                      <div className="min-w-0">
+                        <span className="font-mono font-bold text-[#1C1917] block truncate">{ev.event}</span>
+                        <span className="text-[11px] text-[#78716C]">ID: {ev.distinctId || 'guest'}</span>
+                      </div>
                     </div>
-                    <span className="font-bold text-[#1C1917]">{cat.value}%</span>
+                    <span className="text-[10px] text-[#A8A29E] font-mono shrink-0 ml-2">{new Date(ev.timestamp).toLocaleTimeString()}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Product Performance Table */}
-          <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-2xs overflow-hidden">
-            <div className="p-5 border-b border-[#E7E0D8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ══════════════════════════════════════════════════════
+          TAB 3 — FINANCIALS
+          ══════════════════════════════════════════════════════ */}
+      {activeTab === 'financials' && (
+        <div className="space-y-5">
+          {/* Week-over-Week Comparison */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2">
-                  <Award className="text-[#D97706]" size={20} />
-                  Product Profitability & Contribution Margin
-                </h2>
-                <p className="text-xs text-[#78716C]">
-                  Compare selling price vs ingredient cost to pinpoint highest margin items.
-                </p>
+                <h2 className="text-base font-serif font-bold text-[#1C1917]">Revenue: This Week vs Last Week</h2>
+                <p className="text-xs text-[#78716C]">Day-by-day comparison · real Supabase data</p>
+              </div>
+              {weekOverWeek.length > 0 && (() => {
+                const thisTotal = weekOverWeek.reduce((s, d) => s + d.thisWeek, 0)
+                const lastTotal = weekOverWeek.reduce((s, d) => s + d.lastWeek, 0)
+                const pct = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : 0
+                return (
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${pct >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                    {pct >= 0 ? '+' : ''}{pct}% WoW
+                  </span>
+                )
+              })()}
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekOverWeek.length > 0 ? weekOverWeek : []} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E0D8" />
+                  <XAxis dataKey="label" tickLine={false} tick={{ fontSize: 11, fill: '#78716C' }} />
+                  <YAxis tickLine={false} tick={{ fontSize: 11, fill: '#78716C' }} />
+                  <Tooltip formatter={(v: any) => formatPrice(Number(v))} contentStyle={{ backgroundColor: '#1C1917', borderRadius: 8, color: '#FFF', border: 'none', fontSize: 12 }} />
+                  <Legend />
+                  <Bar dataKey="thisWeek" name="This Week" fill="#16A34A" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="lastWeek" name="Last Week" fill="#D1D5DB" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {weekOverWeek.length === 0 && !loading && <p className="text-center text-xs text-[#A8A29E] mt-2">No orders found to compare weeks.</p>}
+          </div>
+
+          {/* Revenue Trend */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h2 className="text-base font-serif font-bold text-[#1C1917] mb-1">Daily Revenue Trend</h2>
+              <p className="text-xs text-[#78716C] mb-4">From daily_revenue_summary DB view</p>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#16A34A" stopOpacity={0.3} /><stop offset="95%" stopColor="#16A34A" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#D97706" stopOpacity={0.3} /><stop offset="95%" stopColor="#D97706" stopOpacity={0} /></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E0D8" />
+                    <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 11, fill: '#78716C' }} />
+                    <YAxis tickLine={false} tick={{ fontSize: 11, fill: '#78716C' }} />
+                    <Tooltip formatter={(v: any) => formatPrice(Number(v))} contentStyle={{ backgroundColor: '#1C1917', borderRadius: 8, color: '#FFF', border: 'none', fontSize: 12 }} />
+                    <Legend />
+                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#16A34A" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRev)" />
+                    <Area type="monotone" dataKey="profit" name="Gross Profit" stroke="#D97706" strokeWidth={2.5} fillOpacity={1} fill="url(#colorProfit)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead className="bg-[#F5F2EC] text-[#78716C] font-semibold uppercase text-[11px] border-b border-[#E7E0D8]">
-                  <tr>
-                    <th className="py-3 px-4">Product Name</th>
-                    <th className="py-3 px-4 text-right">Selling Price</th>
-                    <th className="py-3 px-4 text-right">Ingredient Cost</th>
-                    <th className="py-3 px-4 text-right">Units Sold</th>
-                    <th className="py-3 px-4 text-right">Gross Revenue</th>
-                    <th className="py-3 px-4 text-right">Estimated Profit</th>
-                    <th className="py-3 px-4 text-right">Margin %</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E7E0D8] text-[#1C1917]">
-                  {productStats.map((prod) => {
-                    const marginPercent = prod.total_revenue > 0
-                      ? Math.round((prod.total_estimated_profit / prod.total_revenue) * 100)
-                      : 0
+            {/* Category Distribution */}
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h2 className="text-base font-serif font-bold text-[#1C1917] mb-1">Sales by Category</h2>
+              <p className="text-xs text-[#78716C] mb-4">Real revenue share from order_items</p>
+              {categoryStats.length > 0 ? (
+                <>
+                  <div className="h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart><Pie data={categoryStats.map(c => ({ ...c, value: c.revenue }))} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">{categoryStats.map((_, i) => <Cell key={i} fill={_.color} />)}</Pie><Tooltip formatter={(v: any) => formatPrice(Number(v))} /></PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-1.5 mt-2">
+                    {categoryStats.map(c => (
+                      <div key={c.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} /><span className="text-[#57534E] truncate">{c.name}</span></div>
+                        <span className="font-bold text-[#1C1917] shrink-0">{formatPrice(c.revenue)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : <div className="h-44 flex items-center justify-center text-xs text-[#A8A29E]">No category data — place some orders first.</div>}
+            </div>
+          </div>
 
-                    return (
-                      <tr key={prod.product_id} className="hover:bg-[#FDFBF7] transition-colors">
-                        <td className="py-3 px-4 font-semibold text-[#1C1917] flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
-                          {prod.product_name}
-                        </td>
-                        <td className="py-3 px-4 text-right font-medium">{formatPrice(prod.selling_price)}</td>
-                        <td className="py-3 px-4 text-right text-[#78716C]">{formatPrice(prod.cost_price)}</td>
-                        <td className="py-3 px-4 text-right font-bold">{prod.total_units_sold}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-[#16A34A]">
-                          {formatPrice(prod.total_revenue)}
-                        </td>
-                        <td className="py-3 px-4 text-right font-bold text-[#D97706]">
-                          {formatPrice(prod.total_estimated_profit)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                            marginPercent >= 65
-                              ? 'bg-[#DCFCE7] text-[#16A34A]'
-                              : marginPercent >= 50
-                              ? 'bg-[#FEF3C7] text-[#D97706]'
-                              : 'bg-[#FEE2E2] text-[#DC2626]'
-                          }`}>
-                            {marginPercent}%
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
+          {/* Hourly Heatmap */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <h2 className="text-base font-serif font-bold text-[#1C1917] mb-1">Order Volume Heatmap</h2>
+            <p className="text-xs text-[#78716C] mb-5">When do customers order? Last {daysDays} days · darker = more orders</p>
+            {heatmapCells.length > 0 ? <HeatmapGrid cells={heatmapCells} /> : <div className="py-10 text-center text-xs text-[#A8A29E]">No order data for heatmap yet.</div>}
+          </div>
+
+          {/* Product Performance */}
+          <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-2xs overflow-hidden">
+            <div className="p-5 border-b border-[#E7E0D8] flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2"><Award className="text-[#D97706]" size={20} />Product Profitability</h2>
+                <p className="text-xs text-[#78716C]">From product_performance_summary DB view · real order_items data</p>
+              </div>
+              <button onClick={() => handleExportCSV('products')} className="px-3 py-1.5 border border-[#E7E0D8] rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-[#F5F2EC]"><Download size={12} />Export CSV</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F5F2EC] text-[#78716C] font-semibold uppercase text-[10px] border-b border-[#E7E0D8]">
+                  <tr>{['Product', 'Price', 'Cost', 'Units', 'Revenue', 'Profit', 'Margin'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}</tr>
+                </thead>
+                <tbody className="divide-y divide-[#E7E0D8]">
+                  {loading ? Array.from({ length: 5 }).map((_, i) => <tr key={i}><td colSpan={7} className="py-3 px-4"><Skeleton className="h-5 w-full" /></td></tr>) :
+                    productStats.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-xs text-[#A8A29E]">No product data found. Ensure products have been sold and cost_price is set.</td></tr> :
+                    productStats.map(prod => {
+                      const margin = prod.total_revenue > 0 ? Math.round((prod.total_estimated_profit / prod.total_revenue) * 100) : 0
+                      return (
+                        <tr key={prod.product_id} className="hover:bg-[#FDFBF7] transition-colors">
+                          <td className="py-3 px-4 font-semibold text-[#1C1917]"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#16A34A]" />{prod.product_name}</div></td>
+                          <td className="py-3 px-4">{formatPrice(prod.selling_price)}</td>
+                          <td className="py-3 px-4 text-[#78716C]">{formatPrice(prod.cost_price)}</td>
+                          <td className="py-3 px-4 font-bold">{prod.total_units_sold}</td>
+                          <td className="py-3 px-4 font-semibold text-[#16A34A]">{formatPrice(prod.total_revenue)}</td>
+                          <td className="py-3 px-4 font-bold text-[#D97706]">{formatPrice(prod.total_estimated_profit)}</td>
+                          <td className="py-3 px-4"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${margin >= 65 ? 'bg-emerald-100 text-emerald-800' : margin >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}`}>{margin}%</span></td>
+                        </tr>
+                      )
+                    })
+                  }
                 </tbody>
               </table>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* TAB 4: TELEMETRY & ANALYTICS ENGINE HUB */}
-      {/* ────────────────────────────────────────────────────────── */}
-      {activeTab === 'engine_hub' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-6">
-            <div>
-              <h2 className="text-lg font-serif font-bold text-[#1C1917] flex items-center gap-2">
-                <ShieldCheck className="text-[#B91C1C]" size={22} />
-                Analytics Engine Configuration & Pipeline Health
-              </h2>
-              <p className="text-xs text-[#78716C] mt-1">
-                Monitors live customer sessions, event ingestion streams, and conversion funnels.
-              </p>
+          {/* Payment Methods + Coupon ROI */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Payment Methods</h3>
+              <p className="text-xs text-[#78716C] mb-4">From payments table · gateway breakdown</p>
+              {paymentStats.length > 0 ? (
+                <div className="space-y-3">
+                  {paymentStats.map(p => {
+                    const successRate = p.count > 0 ? Math.round((p.successCount / p.count) * 100) : 0
+                    return (
+                      <div key={p.gateway} className="p-3 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8]">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-bold text-[#1C1917]">{GATEWAY_LABEL[p.gateway] || p.gateway}</p>
+                          <span className="text-xs text-[#78716C]">{p.count} payments</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-emerald-600 font-semibold">✓ {p.successCount} paid</span>
+                          {p.failCount > 0 && <span className="text-rose-600 font-semibold">✗ {p.failCount} failed</span>}
+                          <span className="ml-auto font-bold text-[#1C1917]">{formatPrice(p.total)}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 bg-[#E7E0D8] rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${successRate}%` }} />
+                        </div>
+                        <p className="text-[10px] text-[#78716C] mt-1">{successRate}% success rate</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : <p className="text-xs text-[#A8A29E] py-8 text-center">No payment data found.</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
-                <span className="text-[11px] font-bold uppercase text-[#78716C] block">
-                  Public Ingestion Key
-                </span>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-[#1C1917]">
-                    {POSTHOG_KEY ? `${POSTHOG_KEY.slice(0, 10)}...${POSTHOG_KEY.slice(-4)}` : 'Not configured yet'}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                    POSTHOG_KEY ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {POSTHOG_KEY ? 'Active' : 'Missing in .env.local'}
-                  </span>
-                </div>
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <div className="flex items-center justify-between mb-4">
+                <div><h3 className="text-sm font-serif font-bold text-[#1C1917]">Coupon ROI</h3><p className="text-xs text-[#78716C]">Discount spend vs order value driven</p></div>
+                <button onClick={() => handleExportCSV('coupons')} className="px-2.5 py-1 border border-[#E7E0D8] rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-[#F5F2EC]"><Download size={10} />CSV</button>
               </div>
-
-              <div className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
-                <span className="text-[11px] font-bold uppercase text-[#78716C] block">
-                  Ingestion Server Host
-                </span>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-[#1C1917]">
-                    {POSTHOG_HOST}
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800">
-                    Cloud Ingestion Active
-                  </span>
+              {couponStats.length > 0 ? (
+                <div className="space-y-2">
+                  {couponStats.map(c => (
+                    <div key={c.code} className="p-3 bg-[#FBF9F5] rounded-xl border border-[#E7E0D8]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-[#1C1917] text-xs">{c.code}</span>
+                        <span className="text-[10px] bg-white border border-[#E7E0D8] px-1.5 py-0.5 rounded font-semibold">{c.type === 'percentage' ? `${c.value}%` : formatPrice(c.value)} off</span>
+                      </div>
+                      <div className="flex gap-4 mt-1.5 text-[10px] text-[#78716C]">
+                        <span>{c.redemptions}x used</span>
+                        <span>₹{c.totalDiscount.toLocaleString('en-IN')} discount given</span>
+                        <span className="font-bold text-[#1C1917]">Avg order: {formatPrice(c.avgOrderWithCoupon)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Quick action buttons */}
-            <div className="pt-4 border-t border-[#E7E0D8] flex flex-wrap items-center gap-3">
-              <a
-                href="https://us.posthog.com/insights"
-                target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-black transition-all flex items-center gap-1.5"
-              >
-                <ExternalLink size={13} />
-                <span>Open Cloud Insights Console</span>
-              </a>
-
-              <a
-                href="https://us.posthog.com/replay"
-                target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2 rounded-xl border border-[#E7E0D8] bg-white text-[#1C1917] text-xs font-bold hover:bg-[#F5F2EC] transition-all flex items-center gap-1.5"
-              >
-                <Play size={13} />
-                <span>View User Session Replays</span>
-              </a>
-
-              <button
-                onClick={() => sendTestTelemetry('admin_live_diagnostic_ping')}
-                className="px-4 py-2 rounded-xl border border-[#B91C1C] text-[#B91C1C] bg-rose-50 text-xs font-bold hover:bg-rose-100 transition-all flex items-center gap-1.5 ml-auto"
-              >
-                <Zap size={13} />
-                <span>Send Live Diagnostic Event</span>
-              </button>
+              ) : <p className="text-xs text-[#A8A29E] py-8 text-center">No coupon usage found.</p>}
             </div>
           </div>
         </div>
       )}
 
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* INDIVIDUAL USER REPORT MODAL / DRAWER */}
-      {/* ────────────────────────────────────────────────────────── */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-end">
-          <div className="bg-white w-full max-w-2xl h-full flex flex-col shadow-2xl border-l border-[#E7E0D8] overflow-y-auto animate-in slide-in-from-right duration-300">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-[#E7E0D8] flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-xs z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-[#B91C1C] flex items-center justify-center font-bold text-lg uppercase font-serif">
-                  {selectedUser.name.slice(0, 2)}
-                </div>
-                <div>
-                  <h3 className="font-serif font-bold text-lg text-[#1C1917] leading-tight">
-                    {selectedUser.name}
-                  </h3>
-                  <span className="text-xs text-[#78716C] font-mono">{selectedUser.distinctId}</span>
-                </div>
+      {/* ══════════════════════════════════════════════════════
+          TAB 4 — OPERATIONS
+          ══════════════════════════════════════════════════════ */}
+      {activeTab === 'operations' && (
+        <div className="space-y-5">
+          {/* Order Status + Cancellation */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <div className="flex items-center justify-between mb-4">
+                <div><h3 className="text-sm font-serif font-bold text-[#1C1917]">Order Status Breakdown</h3><p className="text-xs text-[#78716C]">Current pipeline · all-time from orders table</p></div>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${cancellationRate > 10 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>{cancellationRate}% cancellation rate</span>
               </div>
-
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="p-2 rounded-xl text-[#78716C] hover:bg-[#F5F2EC] hover:text-[#1C1917] transition-colors"
-              >
-                <X size={20} />
-              </button>
+              {loading ? <Skeleton className="h-48 w-full" /> : (
+                <div className="space-y-2">
+                  {orderStatus.map(s => {
+                    const cfg = STATUS_CONFIG[s.status] || { label: s.status, color: '#78716C', bg: '#F5F5F4' }
+                    const pct = totalOrderCount > 0 ? Math.round((s.count / totalOrderCount) * 100) : 0
+                    return (
+                      <div key={s.status} className="flex items-center gap-3">
+                        <span className="w-28 text-xs font-semibold shrink-0" style={{ color: cfg.color }}>{cfg.label}</span>
+                        <div className="flex-1 h-6 bg-[#F5F2EC] rounded-lg overflow-hidden">
+                          <div className="h-full rounded-lg flex items-center px-2 text-[10px] font-bold text-white transition-all" style={{ width: `${Math.max(pct, 5)}%`, backgroundColor: cfg.color }}>
+                            {pct > 8 ? `${s.count}` : ''}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 w-20">
+                          <p className="text-xs font-bold text-[#1C1917]">{s.count} <span className="text-[#A8A29E] font-normal">({pct}%)</span></p>
+                          <p className="text-[10px] text-[#78716C]">{formatPrice(s.revenue)}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Modal Content */}
-            <div className="p-6 space-y-6 flex-1">
-              {/* User KPI Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
-                  <span className="text-[10px] font-bold text-[#A8A29E] uppercase block">Lifetime Value</span>
-                  <span className="text-base font-bold font-serif text-[#1C1917] block mt-1">
-                    {formatPrice(selectedUser.totalSpend)}
-                  </span>
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Order Pipeline</h3>
+              <p className="text-xs text-[#78716C] mb-4">Status distribution donut</p>
+              {orderStatus.length > 0 ? (
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={orderStatus.map(s => ({ name: STATUS_CONFIG[s.status]?.label || s.status, value: s.count }))} cx="50%" cy="50%" innerRadius={40} outerRadius={75} paddingAngle={2} dataKey="value">
+                        {orderStatus.map((s, i) => <Cell key={i} fill={STATUS_CONFIG[s.status]?.color || '#78716C'} />)}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
+              ) : <Skeleton className="h-52 w-full" />}
+            </div>
+          </div>
 
-                <div className="bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
-                  <span className="text-[10px] font-bold text-[#A8A29E] uppercase block">Total Orders</span>
-                  <span className="text-base font-bold font-serif text-[#1C1917] block mt-1">
-                    {selectedUser.totalOrders} Orders
-                  </span>
-                </div>
+          {/* Peak Hours Bar + Review Sentiment */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Peak Ordering Hours</h3>
+              <p className="text-xs text-[#78716C] mb-4">Hourly order volume · last {daysDays} days</p>
+              {heatmapCells.length > 0 ? (() => {
+                const hourMap: Record<number, number> = {}
+                for (const c of heatmapCells) { hourMap[c.hour] = (hourMap[c.hour] || 0) + c.orders }
+                const chartData = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, orders: hourMap[h] || 0 }))
+                return (
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E0D8" />
+                        <XAxis dataKey="hour" tickLine={false} tick={{ fontSize: 9, fill: '#A8A29E' }} interval={3} />
+                        <YAxis tickLine={false} tick={{ fontSize: 10, fill: '#78716C' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1C1917', borderRadius: 6, color: '#FFF', border: 'none', fontSize: 11 }} />
+                        <Bar dataKey="orders" name="Orders" fill="#B91C1C" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )
+              })() : <p className="text-xs text-[#A8A29E] py-10 text-center">No order data yet.</p>}
+            </div>
 
-                <div className="bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
-                  <span className="text-[10px] font-bold text-[#A8A29E] uppercase block">Funnel Stage</span>
-                  <span className="text-xs font-bold text-emerald-700 block mt-1.5">
-                    {selectedUser.funnelStage}
-                  </span>
-                </div>
-
-                <div className="bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
-                  <span className="text-[10px] font-bold text-[#A8A29E] uppercase block">Last Active</span>
-                  <span className="text-xs font-bold text-[#1C1917] block mt-1.5">
-                    {selectedUser.lastSeen}
-                  </span>
-                </div>
-              </div>
-
-              {/* User Info Details */}
-              <div className="bg-white p-4 rounded-xl border border-[#E7E0D8] space-y-2 text-xs">
-                <h4 className="font-bold text-[#1C1917] uppercase text-[11px] tracking-wider mb-2">
-                  Identity & Session Context
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-[#57534E]">
-                  <div><span className="text-[#A8A29E]">Email:</span> {selectedUser.email}</div>
-                  <div><span className="text-[#A8A29E]">Phone:</span> {selectedUser.phone}</div>
-                  <div><span className="text-[#A8A29E]">Hardware:</span> {selectedUser.device}</div>
-                  <div><span className="text-[#A8A29E]">Browser:</span> {selectedUser.browser}</div>
-                  <div className="col-span-2"><span className="text-[#A8A29E]">Location:</span> {selectedUser.location}</div>
-                </div>
-              </div>
-
-              {/* Chronological Event Journey Timeline */}
-              <div className="space-y-3">
-                <h4 className="font-serif font-bold text-sm text-[#1C1917] flex items-center gap-2">
-                  <Clock size={16} className="text-[#B91C1C]" />
-                  User Activity & Journey Stream
-                </h4>
-
-                <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E7E0D8]">
-                  {selectedUser.activityTimeline.map((item, idx) => (
-                    <div key={idx} className="relative">
-                      {/* Timeline dot */}
-                      <span className="absolute -left-6 top-1 w-4 h-4 rounded-full bg-white border-2 border-[#B91C1C] flex items-center justify-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
-                      </span>
-
-                      <div className="bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-xs text-[#1C1917]">
-                            {item.event}
-                          </span>
-                          <span className="text-[10px] text-[#A8A29E] font-medium">
-                            {item.timestamp}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#57534E] mt-1">{item.details}</p>
-                      </div>
+            <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-1">Customer Review Sentiment</h3>
+              <p className="text-xs text-[#78716C] mb-4">From reviews table · approved ratings</p>
+              {reviewSentiment ? (
+                <>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-center"><p className="text-4xl font-bold font-serif text-[#1C1917]">{reviewSentiment.avgRating}</p><StarRating rating={reviewSentiment.avgRating} /></div>
+                    <div className="text-xs text-[#78716C] space-y-0.5">
+                      <p><span className="font-bold text-[#1C1917]">{reviewSentiment.totalApproved}</span> approved reviews</p>
+                      <p><span className="font-bold text-[#1C1917]">{reviewSentiment.approvalRate}%</span> approval rate</p>
+                      <p><span className="font-bold text-[#1C1917]">{reviewSentiment.totalReviews}</span> total submitted</p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {reviewSentiment.ratingDistribution.slice().reverse().map(d => (
+                      <div key={d.rating} className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5 w-16 shrink-0">{Array.from({length:5},(_, i)=><Star key={i} size={9} className={i < d.rating ? 'text-amber-400 fill-amber-400' : 'text-[#D6D3D1]'} />)}</div>
+                        <div className="flex-1 h-2 bg-[#F5F2EC] rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-400 rounded-full" style={{ width: reviewSentiment.totalReviews > 0 ? `${(d.count / reviewSentiment.totalReviews) * 100}%` : '0%' }} />
+                        </div>
+                        <span className="text-[10px] text-[#78716C] w-4 shrink-0">{d.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {reviewSentiment.topRatedProducts.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-[#E7E0D8]">
+                      <p className="text-[10px] font-bold uppercase text-[#78716C] mb-2">Top Rated Products</p>
+                      {reviewSentiment.topRatedProducts.slice(0, 3).map(p => (
+                        <div key={p.name} className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="text-[#44403C] truncate">{p.name}</span>
+                          <div className="flex items-center gap-1 shrink-0"><StarRating rating={p.avgRating} /><span className="font-bold">{p.avgRating}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : <div className="py-10 text-center text-xs text-[#A8A29E]">No approved reviews yet.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          TAB 5 — AI INSIGHTS
+          ══════════════════════════════════════════════════════ */}
+      {activeTab === 'insights' && (
+        <div className="space-y-5">
+          {/* AI Insight Cards */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2 mb-1"><Sparkles className="text-[#B91C1C]" size={20} />Business Intelligence Insights</h2>
+            <p className="text-xs text-[#78716C] mb-5">Rule-based insights computed from your real Supabase data · refreshes every reload</p>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{Array.from({length:4}).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}</div>
+            ) : aiInsights.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {aiInsights.map((ins, i) => (
+                  <div key={i} className={`p-4 rounded-xl border flex items-start gap-3 ${ins.type === 'positive' ? 'bg-emerald-50 border-emerald-200' : ins.type === 'action' ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+                    <span className="text-2xl leading-none mt-0.5">{ins.emoji}</span>
+                    <div>
+                      <p className={`text-sm font-bold ${ins.type === 'positive' ? 'text-emerald-800' : ins.type === 'action' ? 'text-amber-800' : 'text-blue-800'}`}>{ins.title}</p>
+                      <p className={`text-xs mt-1 ${ins.type === 'positive' ? 'text-emerald-700' : ins.type === 'action' ? 'text-amber-700' : 'text-blue-700'}`}>{ins.detail}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="py-10 text-center text-xs text-[#A8A29E]">
+                <Sparkles size={24} className="mx-auto mb-2 text-[#A8A29E]" />
+                Not enough data yet to generate insights. Place a few orders first!
+              </div>
+            )}
+          </div>
 
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between">
-                <a
-                  href={`https://us.posthog.com/person/${selectedUser.distinctId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-black transition-all flex items-center gap-2"
-                >
-                  <ExternalLink size={13} />
-                  <span>View Extended Cloud Profile</span>
-                </a>
+          {/* All Anomaly Alerts */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2 mb-1"><AlertTriangle className="text-amber-500" size={20} />Anomaly Detection</h2>
+            <p className="text-xs text-[#78716C] mb-5">Rule-based alerts computed from real-time Supabase data</p>
+            <div className="space-y-3">
+              {anomalyAlerts.map((a, i) => (
+                <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${a.type === 'error' ? 'bg-rose-50 border-rose-200' : a.type === 'warning' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                  <span className="text-xl">{a.icon}</span>
+                  <div><p className={`text-sm font-bold ${a.type === 'error' ? 'text-rose-800' : a.type === 'warning' ? 'text-amber-800' : 'text-emerald-800'}`}>{a.title}</p><p className="text-xs mt-0.5 opacity-80">{a.detail}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                <button
-                  onClick={() => setSelectedUser(null)}
-                  className="px-4 py-2.5 rounded-xl border border-[#E7E0D8] bg-white text-xs font-semibold text-[#57534E] hover:bg-[#F5F2EC]"
-                >
-                  Close Dossier
-                </button>
+          {/* Realtime Order Feed */}
+          <div className="bg-white p-5 rounded-2xl border border-[#E7E0D8] shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-serif font-bold text-[#1C1917] flex items-center gap-2"><Bell className="text-[#B91C1C]" size={20} />Real-time Order Feed</h2>
+                <p className="text-xs text-[#78716C]">Supabase realtime subscription · new order alerts</p>
+              </div>
+              {newOrderCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">{newOrderCount} new since load</span>
+                  <button onClick={() => setNewOrderCount(0)} className="text-xs text-[#78716C] hover:text-[#1C1917]"><X size={12} /></button>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center justify-center py-8 bg-[#FBF9F5] rounded-xl border border-dashed border-[#E7E0D8] gap-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Bell size={22} className="text-emerald-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-[#44403C]">Order subscription active</p>
+                <p className="text-xs text-[#A8A29E] mt-1">You'll get a toast notification here whenever a new order is placed — even while you're reviewing analytics.</p>
+              </div>
+              {newOrderCount === 0 && <span className="text-xs text-[#A8A29E]">No new orders since page load</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          TAB 6 — ENGINE HUB
+          ══════════════════════════════════════════════════════ */}
+      {activeTab === 'engine_hub' && (
+        <div className="space-y-5">
+          <div className="bg-white p-6 rounded-2xl border border-[#E7E0D8] shadow-2xs space-y-5">
+            <div>
+              <h2 className="text-lg font-serif font-bold text-[#1C1917] flex items-center gap-2"><ShieldCheck className="text-[#B91C1C]" size={22} />Analytics Engine Configuration</h2>
+              <p className="text-xs text-[#78716C] mt-1">Pipeline health, API keys, and live event testing.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: 'PostHog Public Key', value: POSTHOG_KEY ? `${POSTHOG_KEY.slice(0, 12)}…${POSTHOG_KEY.slice(-4)}` : 'Not configured', active: !!POSTHOG_KEY },
+                { label: 'Ingestion Host', value: POSTHOG_HOST, active: true },
+                { label: 'Personal API Key (server)', value: process.env.POSTHOG_PERSONAL_API_KEY ? 'Configured ✓' : 'Missing in .env.local', active: !!process.env.POSTHOG_PERSONAL_API_KEY },
+                { label: 'Project ID', value: process.env.POSTHOG_PROJECT_ID || 'Not set', active: !!process.env.POSTHOG_PROJECT_ID },
+              ].map(item => (
+                <div key={item.label} className="p-4 rounded-xl border border-[#E7E0D8] bg-[#FBF9F5] space-y-2">
+                  <span className="text-[10px] font-bold uppercase text-[#78716C]">{item.label}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-[#1C1917]">{item.value}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.active ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{item.active ? 'Active' : 'Missing'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-3">Test Event Dispatch</h3>
+              <div className="flex flex-wrap gap-2">
+                {['$pageview', 'add_to_cart', 'initiate_checkout', 'order_completed', 'coupon_applied'].map(ev => (
+                  <button key={ev} onClick={() => sendTestTelemetry(ev)} className="px-3 py-2 rounded-lg bg-[#1C1917] text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-stone-800 transition-colors">
+                    <Send size={11} />{ev}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2.5">
+              <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Pipeline Verified</p>
+                <p>Events dispatched above will appear in the Live Telemetry Stream (Funnel tab) within 4 seconds, and in your PostHog project dashboard within ~30 seconds.</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-serif font-bold text-[#1C1917] mb-3">PostHog Dashboard Links</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[['Insights', 'insights'], ['Funnels', 'funnels'], ['Session Replay', 'replay'], ['Persons', 'persons']].map(([label, path]) => (
+                  <a key={label} href={`https://us.posthog.com`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 p-3 rounded-xl border border-[#E7E0D8] bg-white text-xs font-semibold text-[#44403C] hover:bg-[#F5F2EC] transition-colors">
+                    <ExternalLink size={11} />{label}
+                  </a>
+                ))}
               </div>
             </div>
           </div>
