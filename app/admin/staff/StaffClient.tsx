@@ -174,7 +174,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
                 type="text" 
                 name="name" 
                 required
-                className="w-full pl-9 pr-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+                className="w-full pl-9 pr-4 py-2 border border-[#E7E0D8] bg-white text-[#1C1917] placeholder-[#A8A29E] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
                 placeholder="e.g. Rahul Sharma"
               />
             </div>
@@ -186,7 +186,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
               type="email" 
               name="email" 
               required
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+              className="w-full px-4 py-2 border border-[#E7E0D8] bg-white text-[#1C1917] placeholder-[#A8A29E] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
               placeholder="rahul@pizzaexpert.in"
             />
           </div>
@@ -196,7 +196,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
             <input 
               type="text" 
               name="department" 
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
+              className="w-full px-4 py-2 border border-[#E7E0D8] bg-white text-[#1C1917] placeholder-[#A8A29E] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C]"
               placeholder="Kitchen / Dispatch / Inventory"
             />
           </div>
@@ -207,7 +207,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
               name="role" 
               required
               defaultValue="staff"
-              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] bg-white"
+              className="w-full px-4 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:outline-none focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] bg-white text-[#1C1917]"
             >
               <option value="manager">Manager (Full Ops)</option>
               <option value="staff">Staff (Kitchen / Orders)</option>

@@ -253,14 +253,14 @@ export default function UsersManagementClient({
         {/* Search & Filter */}
         {activeTab !== 'matrix' && (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-60">
+            <div className="relative flex-1 sm:w-64">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#78716C]" />
               <input
                 type="text"
                 placeholder="Search name, email, phone, plate..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-9 pr-3 py-1.5 text-xs bg-[#FBF9F5]"
+                className="admin-input pl-9 pr-3 py-2 text-xs bg-white text-[#1C1917]"
               />
             </div>
 
@@ -268,7 +268,7 @@ export default function UsersManagementClient({
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="input-field py-1.5 px-3 text-xs bg-[#FBF9F5] w-auto font-semibold"
+                className="admin-input py-2 px-3 text-xs bg-white text-[#1C1917] w-auto font-bold"
               >
                 <option value="all">All Roles</option>
                 <option value="super_admin">Super Admin</option>
@@ -485,7 +485,7 @@ export default function UsersManagementClient({
                     required
                     value={selectedUser.name}
                     onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
-                    className="input-field text-xs"
+                    className="admin-input text-xs bg-white text-[#1C1917]"
                   />
                 </div>
 
@@ -495,7 +495,7 @@ export default function UsersManagementClient({
                     type="tel"
                     value={selectedUser.phone || ''}
                     onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
-                    className="input-field text-xs font-mono"
+                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                   />
                 </div>
 
@@ -506,7 +506,7 @@ export default function UsersManagementClient({
                     required
                     value={selectedUser.email}
                     onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                    className="input-field text-xs"
+                    className="admin-input text-xs bg-white text-[#1C1917]"
                   />
                 </div>
               </div>
@@ -519,7 +519,7 @@ export default function UsersManagementClient({
                 <select
                   value={selectedUser.role}
                   onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value as UserRole })}
-                  className="input-field text-xs bg-white font-bold"
+                  className="admin-input text-xs bg-white text-[#1C1917] font-bold"
                 >
                   <option value="super_admin">👑 Super Admin (Full Business Control)</option>
                   <option value="manager">👔 Store Manager (Orders & Staff Shift)</option>
@@ -548,7 +548,7 @@ export default function UsersManagementClient({
                         placeholder="e.g. Kitchen (Allapur)"
                         value={selectedUser.department || ''}
                         onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
-                        className="input-field text-xs bg-white"
+                        className="admin-input text-xs bg-white text-[#1C1917]"
                       />
                     </div>
                     <div>
@@ -558,7 +558,7 @@ export default function UsersManagementClient({
                         placeholder="EMP-012"
                         value={selectedUser.employee_code || ''}
                         onChange={(e) => setSelectedUser({ ...selectedUser, employee_code: e.target.value })}
-                        className="input-field text-xs font-mono bg-white"
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
                   </div>
@@ -577,7 +577,7 @@ export default function UsersManagementClient({
                       <select
                         value={selectedUser.vehicle_type || 'bike'}
                         onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_type: e.target.value })}
-                        className="input-field text-xs bg-white"
+                        className="admin-input text-xs bg-white text-[#1C1917]"
                       >
                         <option value="bike">Motorcycle (Hero/Bajaj)</option>
                         <option value="scooter">Scooter (Activa/Jupiter)</option>
@@ -593,7 +593,7 @@ export default function UsersManagementClient({
                         placeholder="UP 70 AB 1234"
                         value={selectedUser.vehicle_number || ''}
                         onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_number: e.target.value })}
-                        className="input-field text-xs font-mono bg-white"
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
 
@@ -604,7 +604,7 @@ export default function UsersManagementClient({
                         placeholder="UP-70-2024-001234"
                         value={selectedUser.license_number || ''}
                         onChange={(e) => setSelectedUser({ ...selectedUser, license_number: e.target.value })}
-                        className="input-field text-xs font-mono bg-white"
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
 
@@ -613,7 +613,7 @@ export default function UsersManagementClient({
                       <select
                         value={selectedUser.verification_status || 'verified'}
                         onChange={(e) => setSelectedUser({ ...selectedUser, verification_status: e.target.value as any })}
-                        className="input-field text-xs bg-white font-bold"
+                        className="admin-input text-xs bg-white text-[#1C1917] font-bold"
                       >
                         <option value="verified">Verified (Approved)</option>
                         <option value="pending">Pending Document Review</option>
@@ -698,7 +698,7 @@ export default function UsersManagementClient({
                     placeholder="e.g. Ramesh Singh"
                     value={newUserData.name}
                     onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
-                    className="input-field text-xs"
+                    className="admin-input text-xs bg-white text-[#1C1917]"
                   />
                 </div>
 
@@ -710,7 +710,7 @@ export default function UsersManagementClient({
                     placeholder="+91 98765 43210"
                     value={newUserData.phone}
                     onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
-                    className="input-field text-xs font-mono"
+                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                   />
                 </div>
 
@@ -722,7 +722,7 @@ export default function UsersManagementClient({
                     placeholder="ramesh@pizzaexpert.in"
                     value={newUserData.email}
                     onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
-                    className="input-field text-xs"
+                    className="admin-input text-xs bg-white text-[#1C1917]"
                   />
                 </div>
               </div>
@@ -735,7 +735,7 @@ export default function UsersManagementClient({
                 <select
                   value={newUserData.role}
                   onChange={(e) => setNewUserData({ ...newUserData, role: e.target.value as UserRole })}
-                  className="input-field text-xs bg-white font-bold"
+                  className="admin-input text-xs bg-white text-[#1C1917] font-bold"
                 >
                   <option value="super_admin">👑 Super Admin (Full Business Control)</option>
                   <option value="manager">👔 Store Manager (Orders, Inventory & Staff Shift)</option>
@@ -758,7 +758,7 @@ export default function UsersManagementClient({
                       placeholder="Kitchen Operations"
                       value={newUserData.department}
                       onChange={(e) => setNewUserData({ ...newUserData, department: e.target.value })}
-                      className="input-field text-xs bg-white"
+                      className="admin-input text-xs bg-white text-[#1C1917]"
                     />
                   </div>
                   <div>
@@ -768,7 +768,7 @@ export default function UsersManagementClient({
                       placeholder="EMP-025"
                       value={newUserData.employee_code}
                       onChange={(e) => setNewUserData({ ...newUserData, employee_code: e.target.value })}
-                      className="input-field text-xs font-mono bg-white"
+                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                     />
                   </div>
                 </div>
@@ -786,7 +786,7 @@ export default function UsersManagementClient({
                       <select
                         value={newUserData.vehicle_type}
                         onChange={(e) => setNewUserData({ ...newUserData, vehicle_type: e.target.value })}
-                        className="input-field text-xs bg-white"
+                        className="admin-input text-xs bg-white text-[#1C1917]"
                       >
                         <option value="bike">Motorcycle</option>
                         <option value="scooter">Scooter</option>
@@ -802,7 +802,7 @@ export default function UsersManagementClient({
                         placeholder="UP 70 AB 1234"
                         value={newUserData.vehicle_number}
                         onChange={(e) => setNewUserData({ ...newUserData, vehicle_number: e.target.value.toUpperCase() })}
-                        className="input-field text-xs font-mono bg-white"
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
 
@@ -813,7 +813,7 @@ export default function UsersManagementClient({
                         placeholder="UP-70-2024-0012"
                         value={newUserData.license_number}
                         onChange={(e) => setNewUserData({ ...newUserData, license_number: e.target.value.toUpperCase() })}
-                        className="input-field text-xs font-mono bg-white"
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
                   </div>

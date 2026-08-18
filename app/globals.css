@@ -259,6 +259,30 @@
     color: #FFFFFF;
   }
 
+  /* Admin Portal Form Field styling (High contrast light mode) */
+  .admin-input {
+    width: 100%;
+    background-color: #FFFFFF;
+    border: 1px solid #E7E0D8;
+    color: #1C1917;
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    outline: none;
+    font-size: 0.8125rem;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .admin-input::placeholder {
+    color: #A8A29E;
+  }
+  .admin-input:focus {
+    border-color: #B91C1C;
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+  }
+  .admin-input option {
+    background-color: #FFFFFF;
+    color: #1C1917;
+  }
+
   /* Dietary Indicators (FSSAI Standard Dot Indicators) */
   .food-dot-veg {
     width: 16px;
