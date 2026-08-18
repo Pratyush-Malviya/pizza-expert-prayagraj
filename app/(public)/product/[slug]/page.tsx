@@ -251,17 +251,32 @@ export default function ProductDetailPage() {
                 {product.name}
               </h1>
 
-              <p className="text-[#57534E] text-xs sm:text-sm leading-relaxed mb-6">
+              <p className="text-[#57534E] text-sm leading-relaxed mb-5 font-normal break-words">
                 {product.description}
               </p>
 
               {/* Ingredients */}
               {product.ingredients && (
-                <div className="bg-[#FBF9F5] rounded-md p-3.5 border border-[#E7E0D8] mb-6 text-xs text-[#57534E] space-y-1">
-                  <p className="font-semibold text-[#1C1917] flex items-center gap-1.5">
-                    <Flame size={14} className="text-[#B91C1C]" /> Ingredients:
-                    <span className="font-normal">{product.ingredients}</span>
+                <div className="bg-[#FBF9F5] rounded-xl p-4 border border-[#E7E0D8] mb-5 text-xs text-[#57534E]">
+                  <div className="flex items-center gap-1.5 font-bold text-[#1C1917] mb-1.5">
+                    <Flame size={14} className="text-[#B91C1C]" />
+                    <span>Ingredients:</span>
+                  </div>
+                  <p className="leading-relaxed break-words font-normal text-[#57534E]">
+                    {product.ingredients}
                   </p>
+                </div>
+              )}
+
+              {/* Nutrition Facts */}
+              {product.nutrition && Object.keys(product.nutrition).length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+                  {Object.entries(product.nutrition).map(([k, v]) => (
+                    <div key={k} className="bg-[#FBF9F5] p-2.5 rounded-xl border border-[#E7E0D8] text-center">
+                      <span className="text-[10px] text-[#78716C] uppercase font-bold block">{k}</span>
+                      <span className="text-xs font-bold text-[#1C1917]">{v}</span>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -270,7 +285,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-4 pt-4 border-t border-[#E7E0D8]">
                   {product.options.map((opt: ProductOption) => (
                     <div key={opt.id}>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#A8A29E] mb-2">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-[#1C1917] mb-2">
                         Select {opt.name}
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -279,11 +294,12 @@ export default function ProductDetailPage() {
                           return (
                             <button
                               key={choice.label}
+                              type="button"
                               onClick={() => handleOptionSelect(opt.name, choice.label, choice.price_delta)}
-                              className={`px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
+                              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                 isSelected
-                                  ? 'bg-[#B91C1C] text-white border-[#B91C1C]'
-                                  : 'bg-[#FBF9F5] text-[#57534E] border-[#E7E0D8] hover:bg-[#F4EFEA]'
+                                  ? 'bg-[#B91C1C] text-white border-[#B91C1C] shadow-xs'
+                                  : 'bg-[#FBF9F5] text-[#57534E] border-[#E7E0D8] hover:border-[#B91C1C]'
                               }`}
                             >
                               {choice.label}
@@ -301,27 +317,29 @@ export default function ProductDetailPage() {
             {/* Bottom Actions */}
             <div className="pt-6 border-t border-[#E7E0D8] space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-[#F4EFEA] rounded-md px-2 py-1">
+                <div className="flex items-center gap-2 bg-[#F4EFEA] rounded-xl px-2 py-1.5 border border-[#E7E0D8]">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-[#1C1917] hover:bg-[#E7E0D8] transition-colors font-bold text-xs"
+                    className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#1C1917] hover:bg-[#E7E0D8] transition-colors font-bold text-xs cursor-pointer shadow-2xs"
+                    aria-label="Decrease quantity"
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="font-bold text-sm text-[#1C1917] w-6 text-center">
+                  <span className="font-bold text-sm text-[#1C1917] w-6 text-center select-none font-mono">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-8 h-8 rounded-md bg-white flex items-center justify-center text-[#1C1917] hover:bg-[#E7E0D8] transition-colors font-bold text-xs"
+                    className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#1C1917] hover:bg-[#E7E0D8] transition-colors font-bold text-xs cursor-pointer shadow-2xs"
+                    aria-label="Increase quantity"
                   >
                     <Plus size={14} />
                   </button>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-[#A8A29E] font-bold uppercase block text-right">Total Price</span>
-                  <span className="font-bold text-2xl text-[#B91C1C]">
+                  <span className="text-[10px] text-[#78716C] font-bold uppercase block text-right">Total Price</span>
+                  <span className="font-mono font-black text-2xl text-[#B91C1C]">
                     {formatPrice(totalPrice)}
                   </span>
                 </div>
@@ -329,14 +347,14 @@ export default function ProductDetailPage() {
 
               <button
                 onClick={handleAddToCart}
-                className="btn btn-primary btn-lg w-full flex items-center justify-center gap-2"
+                className="btn btn-primary w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md hover:shadow-lg transition-all"
               >
                 <ShoppingCart size={18} /> Add to Cart — {formatPrice(totalPrice)}
               </button>
 
-              <div className="flex items-center justify-around text-xs text-[#57534E] pt-2 border-t border-[#E7E0D8]/60">
-                <span className="flex items-center gap-1"><Truck size={14} className="text-[#15803D]" /> 30-Min Express Delivery</span>
-                <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-[#1C1917]" /> Fresh Mozzarella Guarantee</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#57534E] pt-3 border-t border-[#E7E0D8]">
+                <span className="flex items-center gap-1.5"><Truck size={14} className="text-[#15803D] shrink-0" /> 30-Min Express Delivery</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#1C1917] shrink-0" /> Fresh Mozzarella Guarantee</span>
               </div>
             </div>
           </div>

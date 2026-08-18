@@ -84,19 +84,20 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-xl max-w-xl w-full overflow-hidden border border-[#E7E0D8] shadow-2xl relative"
+          className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-[#E7E0D8] shadow-2xl relative"
         >
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/80 backdrop-blur-xs text-[#1C1917] rounded-full flex items-center justify-center border border-[#E7E0D8] hover:bg-white"
+            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 bg-white/90 backdrop-blur-xs text-[#1C1917] rounded-full flex items-center justify-center border border-[#E7E0D8] hover:bg-[#F5F2EC] transition-colors cursor-pointer shadow-xs"
+            aria-label="Close dialog"
           >
             <X size={18} />
           </button>
 
           <div className="grid sm:grid-cols-2">
             {/* Image */}
-            <div className="relative h-48 sm:h-auto bg-[#F4EFEA]">
+            <div className="relative h-52 sm:h-auto min-h-[200px] bg-[#F4EFEA]">
               <img
                 src={imageUrl}
                 alt={product.name}
@@ -114,24 +115,24 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
                   {product.is_spicy && <span className="badge badge-spicy">Spicy</span>}
                 </div>
 
-                <h3 className="font-serif font-bold text-xl text-[#1C1917]">
+                <h3 className="font-serif font-bold text-xl text-[#1C1917] leading-snug">
                   {product.name}
                 </h3>
-                <p className="text-[#57534E] text-xs mt-1 leading-relaxed line-clamp-2">
+                <p className="text-[#57534E] text-xs sm:text-sm mt-1.5 leading-relaxed font-normal break-words">
                   {product.description}
                 </p>
 
-                <div className="mt-3 text-lg font-bold font-mono text-[#B91C1C]">
+                <div className="mt-3 text-xl font-black font-mono text-[#B91C1C]">
                   {formatPrice(unitPrice)}
                 </div>
               </div>
 
               {/* Dynamic Options Picker */}
               {product.options && product.options.length > 0 && (
-                <div className="space-y-3 pt-2 border-t border-[#E7E0D8]">
+                <div className="space-y-3 pt-3 border-t border-[#E7E0D8]">
                   {product.options.map((opt) => (
                     <div key={opt.name}>
-                      <label className="block text-[11px] font-bold text-[#1C1917] uppercase tracking-wider mb-1">
+                      <label className="block text-[11px] font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
                         Select {opt.name}
                       </label>
                       <div className="flex flex-wrap gap-1.5">
@@ -147,9 +148,9 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
                                   [opt.name]: { choice: choice.label, priceDelta: choice.price_delta },
                                 })
                               }
-                              className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all ${
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'bg-[#B91C1C] text-white border-[#B91C1C]'
+                                  ? 'bg-[#B91C1C] text-white border-[#B91C1C] shadow-xs'
                                   : 'bg-[#FBF9F5] text-[#57534E] border-[#E7E0D8] hover:border-[#B91C1C]'
                               }`}
                             >
@@ -165,17 +166,19 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
 
               {/* Quantity & Add button */}
               <div className="pt-3 border-t border-[#E7E0D8] flex items-center justify-between gap-3">
-                <div className="flex items-center border border-[#E7E0D8] rounded-md bg-[#FBF9F5]">
+                <div className="flex items-center border border-[#E7E0D8] rounded-xl bg-[#FBF9F5] p-0.5">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-1.5 text-[#57534E] hover:text-[#1C1917]"
+                    className="w-7 h-7 flex items-center justify-center text-[#57534E] hover:text-[#1C1917] hover:bg-white rounded-lg transition-colors cursor-pointer"
+                    aria-label="Decrease quantity"
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="px-3 text-xs font-mono font-bold text-[#1C1917]">{quantity}</span>
+                  <span className="px-2 text-xs font-mono font-bold text-[#1C1917] select-none">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="p-1.5 text-[#57534E] hover:text-[#1C1917]"
+                    className="w-7 h-7 flex items-center justify-center text-[#57534E] hover:text-[#1C1917] hover:bg-white rounded-lg transition-colors cursor-pointer"
+                    aria-label="Increase quantity"
                   >
                     <Plus size={14} />
                   </button>
@@ -183,7 +186,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
 
                 <button
                   onClick={handleAddToCart}
-                  className="btn btn-primary flex-1 py-2 text-xs flex items-center justify-center gap-1.5"
+                  className="btn btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg transition-all"
                 >
                   <ShoppingCart size={14} /> Add {formatPrice(totalPrice)}
                 </button>
