@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag, Flame,
@@ -115,18 +115,30 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const [activeQueryTab, setActiveQueryTab] = useState<string>('users')
   const [role, setRole] = useState<string | null>(null)
   
   // Track open state of collapsible groups
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ operations: true, analytics: true })
 
+  const syncActiveTabFromUrl = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      setActiveQueryTab(params.get('tab') || 'users')
+    }
+  }, [])
+
+  useEffect(() => {
+    syncActiveTabFromUrl()
+    window.addEventListener('popstate', syncActiveTabFromUrl)
+    return () => window.removeEventListener('popstate', syncActiveTabFromUrl)
+  }, [pathname, syncActiveTabFromUrl])
+
   // Check if a link is active considering query params for tabs
   const checkIsActive = (href: string) => {
     if (href.includes('?tab=')) {
       const targetTab = href.split('?tab=')[1]
-      const currentTab = searchParams?.get('tab') || 'users'
-      return pathname === '/admin/analytics' && currentTab === targetTab
+      return pathname === '/admin/analytics' && activeQueryTab === targetTab
     }
     return pathname === href
   }
@@ -146,7 +158,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
         setOpenGroups((prev) => ({ ...prev, [group.id]: true }))
       }
     })
-  }, [pathname, searchParams])
+  }, [pathname, activeQueryTab])
 
   // Save expanded states
   const toggleGroup = (groupId: string) => {

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight,
   RefreshCw, Users, Activity, MousePointerClick, Award,
@@ -157,12 +156,28 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`bg-[#F5F2EC] rounded animate-pulse ${className}`} />
 }
 
-// ─── Main Component Content ───────────────────────────────────
-function AnalyticsDashboardContent() {
+// ─── Main Component ───────────────────────────────────────────
+export default function AdminAnalyticsPage() {
   type TabId = 'users' | 'funnel' | 'financials' | 'operations' | 'insights' | 'engine_hub'
-  const searchParams = useSearchParams()
-  const tabParam = searchParams?.get('tab') as TabId | null
-  const activeTab: TabId = (tabParam && ['users', 'funnel', 'financials', 'operations', 'insights', 'engine_hub'].includes(tabParam)) ? tabParam : 'users'
+  const [activeTab, setActiveTab] = useState<TabId>('users')
+
+  const syncActiveTab = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab') as TabId
+      if (tab && ['users', 'funnel', 'financials', 'operations', 'insights', 'engine_hub'].includes(tab)) {
+        setActiveTab(tab)
+      } else {
+        setActiveTab('users')
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    syncActiveTab()
+    window.addEventListener('popstate', syncActiveTab)
+    return () => window.removeEventListener('popstate', syncActiveTab)
+  }, [syncActiveTab])
 
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d')
   const [loading, setLoading] = useState(true)
@@ -1217,21 +1232,6 @@ function AnalyticsDashboardContent() {
         </div>
       )}
     </div>
-  )
-}
-
-export default function AdminAnalyticsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="p-10 text-center text-xs text-[#78716C] flex items-center justify-center gap-2">
-          <RefreshCw size={14} className="animate-spin text-[#B91C1C]" />
-          <span>Loading analytics section...</span>
-        </div>
-      }
-    >
-      <AnalyticsDashboardContent />
-    </Suspense>
   )
 }
 
