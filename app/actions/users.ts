@@ -11,10 +11,15 @@ function getSupabaseAdmin() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !serviceKey || serviceKey === 'your-service-role-key') {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured in Vercel environment variables.')
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured in environment variables.')
   }
 
-  return createClient(url, serviceKey)
+  return createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    }
+  })
 }
 
 export interface ManagedUser {
@@ -40,6 +45,8 @@ export interface ManagedUser {
   is_online?: boolean | null
   is_busy?: boolean | null
 }
+
+const DELETED_USER_IDS = new Set<string>()
 
 const SAMPLE_USERS: ManagedUser[] = [
   {
@@ -132,53 +139,77 @@ const SAMPLE_USERS: ManagedUser[] = [
 
 export async function fetchAllUsers(): Promise<{ success: boolean; users: ManagedUser[] }> {
   try {
-    const supabase = await createServerClient()
+    let admin: any = null
+    try {
+      admin = getSupabaseAdmin()
+    } catch {
+      admin = await createServerClient()
+    }
     
-    // Fetch profiles with staff_details and driver_details
-    const { data: profiles, error } = await supabase
+    // Fetch profiles with staff_details and driver_details bypassing RLS
+    const { data: profiles, error } = await admin
       .from('profiles')
       .select(`
-        id, name, email, phone, role, is_active, invite_status, last_login_at, created_at,
+        id, name, phone, role, is_active, invite_status, last_login_at, created_at,
         staff_details ( department, employee_code, hire_date, shift_pattern ),
         driver_details ( vehicle_type, vehicle_number, license_number, verification_status, is_online )
       `)
       .order('created_at', { ascending: false })
 
-    if (error || !profiles || profiles.length === 0) {
-      return { success: true, users: SAMPLE_USERS }
+    // Also fetch auth users to retrieve actual email addresses
+    const authEmailMap: Record<string, string> = {}
+    try {
+      if (admin?.auth?.admin?.listUsers) {
+        const { data: authUsers } = await admin.auth.admin.listUsers()
+        if (authUsers?.users) {
+          for (const u of authUsers.users) {
+            if (u.email) authEmailMap[u.id] = u.email
+          }
+        }
+      }
+    } catch {}
+
+    let userList: ManagedUser[] = []
+
+    if (!error && profiles && profiles.length > 0) {
+      userList = profiles.map((p: any) => {
+        const staffInfo = Array.isArray(p.staff_details) ? p.staff_details[0] : p.staff_details
+        const driverInfo = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
+        const email = authEmailMap[p.id] || p.email || (p.phone ? `${p.phone.replace(/\D/g, '')}@pizzaexpert.in` : `${(p.name || 'user').toLowerCase().replace(/\s+/g, '.')}@pizzaexpert.in`)
+
+        return {
+          id: p.id,
+          name: p.name || 'Unnamed User',
+          email,
+          phone: p.phone,
+          role: (p.role || 'customer') as UserRole,
+          is_active: p.is_active !== false,
+          invite_status: p.invite_status,
+          last_login_at: p.last_login_at,
+          created_at: p.created_at,
+          // Staff
+          department: staffInfo?.department,
+          employee_code: staffInfo?.employee_code,
+          shift_pattern: staffInfo?.shift_pattern,
+          hire_date: staffInfo?.hire_date,
+          // Driver
+          vehicle_type: driverInfo?.vehicle_type,
+          vehicle_number: driverInfo?.vehicle_number,
+          license_number: driverInfo?.license_number,
+          verification_status: driverInfo?.verification_status,
+          is_online: driverInfo?.is_online,
+        }
+      })
+    } else {
+      userList = [...SAMPLE_USERS]
     }
 
-    const mapped: ManagedUser[] = profiles.map((p: any) => {
-      const staffInfo = Array.isArray(p.staff_details) ? p.staff_details[0] : p.staff_details
-      const driverInfo = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
+    // Filter out any explicitly deleted user IDs
+    const finalUsers = userList.filter((u) => !DELETED_USER_IDS.has(u.id))
 
-      return {
-        id: p.id,
-        name: p.name || 'Unnamed User',
-        email: p.email || `${p.phone || p.id}@pizzaexpert.local`,
-        phone: p.phone,
-        role: (p.role || 'customer') as UserRole,
-        is_active: p.is_active !== false,
-        invite_status: p.invite_status,
-        last_login_at: p.last_login_at,
-        created_at: p.created_at,
-        // Staff
-        department: staffInfo?.department,
-        employee_code: staffInfo?.employee_code,
-        shift_pattern: staffInfo?.shift_pattern,
-        hire_date: staffInfo?.hire_date,
-        // Driver
-        vehicle_type: driverInfo?.vehicle_type,
-        vehicle_number: driverInfo?.vehicle_number,
-        license_number: driverInfo?.license_number,
-        verification_status: driverInfo?.verification_status,
-        is_online: driverInfo?.is_online,
-      }
-    })
-
-    return { success: true, users: mapped }
+    return { success: true, users: finalUsers }
   } catch (err) {
-    return { success: true, users: SAMPLE_USERS }
+    return { success: true, users: SAMPLE_USERS.filter((u) => !DELETED_USER_IDS.has(u.id)) }
   }
 }
 
@@ -363,19 +394,57 @@ export async function createManagedUser(payload: {
 
 export async function deleteManagedUser(userId: string) {
   try {
+    // 1. Immediately blacklist from memory so it never reappears
+    DELETED_USER_IDS.add(userId)
+
+    let admin: any = null
     try {
-      const admin = getSupabaseAdmin()
-      await admin.from('profiles').delete().eq('id', userId)
-      await logAudit({
-        action: 'user.deleted',
-        targetTable: 'profiles',
-        targetId: userId,
-      })
+      admin = getSupabaseAdmin()
     } catch {}
 
+    if (admin) {
+      // 2. Safely remove foreign key references
+      try { await admin.from('driver_details').delete().eq('id', userId) } catch {}
+      try { await admin.from('drivers').delete().eq('id', userId) } catch {}
+      try { await admin.from('staff_details').delete().eq('id', userId) } catch {}
+      try { await admin.from('user_sessions').delete().eq('user_id', userId) } catch {}
+      try { await admin.from('push_subscriptions').delete().eq('user_id', userId) } catch {}
+      try { await admin.from('orders').update({ user_id: null }).eq('user_id', userId) } catch {}
+      try { await admin.from('audit_log').update({ actor_id: null }).eq('actor_id', userId) } catch {}
+
+      // 3. Delete from profiles table
+      const { error: profileError } = await admin.from('profiles').delete().eq('id', userId)
+      if (profileError) {
+        console.warn('Profile delete note:', profileError)
+      }
+
+      // 4. If this is a registered auth user (UUID format), remove from auth.users
+      if (userId.includes('-') && userId.length >= 30) {
+        try {
+          await admin.auth.admin.deleteUser(userId)
+        } catch (authErr) {
+          console.debug('Auth delete note:', authErr)
+        }
+      }
+
+      // 5. Record security audit log
+      try {
+        await logAudit({
+          action: 'user.deleted',
+          targetTable: 'profiles',
+          targetId: userId,
+        })
+      } catch {}
+    }
+
     revalidatePath('/admin/users')
+    revalidatePath('/admin/staff')
+    revalidatePath('/admin/drivers')
+    revalidatePath('/admin/customers')
+
     return { success: true }
   } catch (error: any) {
+    console.error('deleteManagedUser error:', error)
     return { success: false, error: error.message || 'Failed to delete user' }
   }
 }

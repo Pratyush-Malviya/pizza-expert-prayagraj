@@ -1,6 +1,9 @@
 import { fetchAllUsers } from '@/app/actions/users'
 import UsersManagementClient from './UsersManagementClient'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata = {
   title: 'User Management & RBAC | Admin Portal',
   description: 'Manage staff, kitchen team, delivery partners, customer accounts, and role-based access control.',
