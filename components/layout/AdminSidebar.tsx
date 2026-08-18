@@ -327,14 +327,24 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                         <Link
                           key={item.href}
                           href={item.href}
+                          onClick={() => {
+                            if (item.href.includes('?tab=')) {
+                              const targetTab = item.href.split('?tab=')[1]
+                              setActiveQueryTab(targetTab)
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('analytics-tab-change', { detail: targetTab }))
+                              }
+                            }
+                            setMobileOpen?.(false)
+                          }}
                           className={cn(
-                            'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all',
                             isActive
-                              ? 'bg-[#B91C1C] text-white font-bold shadow-2xs'
-                              : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
+                              ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
+                              : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium'
                           )}
                         >
-                          <ItemIcon size={14} />
+                          <ItemIcon size={14} className={isActive ? 'text-white' : 'text-[#A8A29E]'} />
                           <span>{item.label}</span>
                         </Link>
                       )

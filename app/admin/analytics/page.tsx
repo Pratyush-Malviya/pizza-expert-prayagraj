@@ -175,8 +175,18 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     syncActiveTab()
+    const handleCustomTab = (e: any) => {
+      const tab = e?.detail as TabId
+      if (tab && ['users', 'funnel', 'financials', 'operations', 'insights', 'engine_hub'].includes(tab)) {
+        setActiveTab(tab)
+      }
+    }
     window.addEventListener('popstate', syncActiveTab)
-    return () => window.removeEventListener('popstate', syncActiveTab)
+    window.addEventListener('analytics-tab-change', handleCustomTab)
+    return () => {
+      window.removeEventListener('popstate', syncActiveTab)
+      window.removeEventListener('analytics-tab-change', handleCustomTab)
+    }
   }, [syncActiveTab])
 
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d')
