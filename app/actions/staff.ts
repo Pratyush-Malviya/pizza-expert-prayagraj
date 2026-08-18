@@ -5,6 +5,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { logAudit } from '@/lib/audit'
 
+import { isPrimarySuperAdmin } from '@/lib/auth/rbac'
+
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -87,8 +89,22 @@ export async function inviteStaffMember(formData: FormData) {
 
 export async function updateStaffRole(userId: string, newRole: string) {
   try {
+    if (isPrimarySuperAdmin(userId) && newRole !== 'super_admin') {
+      return {
+        success: false,
+        error: '👑 The Primary Super Admin cannot be demoted from the Super Admin role.',
+      }
+    }
+
     const admin = getSupabaseAdmin()
     const { data: beforeProfile } = await admin.from('profiles').select('role, name').eq('id', userId).single()
+
+    if (beforeProfile && isPrimarySuperAdmin(beforeProfile) && newRole !== 'super_admin') {
+      return {
+        success: false,
+        error: '👑 The Primary Super Admin cannot be demoted from the Super Admin role.',
+      }
+    }
 
     const { error } = await admin
       .from('profiles')
@@ -116,8 +132,22 @@ export async function updateStaffRole(userId: string, newRole: string) {
 
 export async function deactivateStaffMember(userId: string) {
   try {
+    if (isPrimarySuperAdmin(userId)) {
+      return {
+        success: false,
+        error: '👑 The Primary Super Admin is permanently protected and cannot be deactivated.',
+      }
+    }
+
     const admin = getSupabaseAdmin()
     const { data: beforeProfile } = await admin.from('profiles').select('is_active, role, name').eq('id', userId).single()
+
+    if (beforeProfile && isPrimarySuperAdmin(beforeProfile)) {
+      return {
+        success: false,
+        error: '👑 The Primary Super Admin is permanently protected and cannot be deactivated.',
+      }
+    }
 
     const { error } = await admin
       .from('profiles')

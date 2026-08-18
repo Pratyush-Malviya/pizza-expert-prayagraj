@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { logAudit } from '@/lib/audit'
-import type { UserRole } from '@/lib/auth/rbac'
+import { isPrimarySuperAdmin, type UserRole } from '@/lib/auth/rbac'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -234,6 +234,23 @@ export async function updateUserRoleAndDetails(
   }
 ) {
   try {
+    // 👑 Primary Super Admin Protection: Cannot be demoted or deactivated
+    const isTargetPrimaryAdmin = isPrimarySuperAdmin(userId) || isPrimarySuperAdmin({ email: payload.email, id: userId, name: payload.name })
+    if (isTargetPrimaryAdmin) {
+      if (payload.role !== 'super_admin') {
+        return {
+          success: false,
+          error: '👑 The Primary Super Admin (Root / Founder) cannot be demoted from the Super Admin role.',
+        }
+      }
+      if (payload.is_active === false) {
+        return {
+          success: false,
+          error: '👑 The Primary Super Admin cannot be suspended or deactivated.',
+        }
+      }
+    }
+
     try {
       const admin = getSupabaseAdmin()
       
@@ -394,13 +411,34 @@ export async function createManagedUser(payload: {
 
 export async function deleteManagedUser(userId: string) {
   try {
-    // 1. Immediately blacklist from memory so it never reappears
-    DELETED_USER_IDS.add(userId)
+    // 👑 Primary Super Admin Protection: Permanent immunity from deletion
+    if (isPrimarySuperAdmin(userId)) {
+      return {
+        success: false,
+        error: '👑 The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted by anyone.',
+      }
+    }
 
     let admin: any = null
     try {
       admin = getSupabaseAdmin()
     } catch {}
+
+    if (admin) {
+      // Check if target profile email/name is Primary Super Admin
+      try {
+        const { data: targetProf } = await admin.from('profiles').select('id, name, role').eq('id', userId).single()
+        if (targetProf && isPrimarySuperAdmin(targetProf)) {
+          return {
+            success: false,
+            error: '👑 The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted.',
+          }
+        }
+      } catch {}
+    }
+
+    // 1. Blacklist from memory so it never reappears
+    DELETED_USER_IDS.add(userId)
 
     if (admin) {
       // 2. Safely remove foreign key references

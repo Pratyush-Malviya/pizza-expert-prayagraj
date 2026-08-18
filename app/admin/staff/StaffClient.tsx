@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { inviteStaffMember, updateStaffRole, deactivateStaffMember, reactivateStaffMember, updateStaffDetails } from '@/app/actions/staff'
 import { toast } from 'sonner'
-import { UserPlus, Shield, User, Loader2, Ban, CheckCircle2, Clock, Building2 } from 'lucide-react'
+import { UserPlus, Shield, User, Loader2, Ban, CheckCircle2, Clock, Building2, Crown, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isPrimarySuperAdmin } from '@/lib/auth/rbac'
 
 interface Profile {
   id: string
@@ -83,20 +84,25 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
             ) : (
               staff.map((member) => {
                 const isActive = member.is_active !== false
+                const isPrimary = isPrimarySuperAdmin(member)
                 return (
-                  <div key={member.id} className={cn("p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors", !isActive ? "bg-[#F5F5F4]/60 opacity-80" : "hover:bg-[#FBF9F5]/50")}>
+                  <div key={member.id} className={cn("p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors", isPrimary ? "bg-amber-50/40 border-l-4 border-amber-500" : !isActive ? "bg-[#F5F5F4]/60 opacity-80" : "hover:bg-[#FBF9F5]/50")}>
                     <div className="flex items-start sm:items-center gap-3">
-                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold font-serif uppercase shrink-0 text-white", isActive ? "bg-[#18181B]" : "bg-[#71717A]")}>
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold font-serif uppercase shrink-0 text-white", isPrimary ? "bg-gradient-to-br from-amber-600 to-amber-800 ring-2 ring-amber-400/50" : isActive ? "bg-[#18181B]" : "bg-[#71717A]")}>
                         {(member.name || 'S').slice(0, 2)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-[#1C1917]">{member.name || 'Unnamed'}</span>
-                          {/* Active / Inactive Badge */}
-                          <span className={cn("px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full uppercase", isActive ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE2E2] text-[#991B1B]")}>
-                            {isActive ? 'Active' : 'Inactive'}
-                          </span>
-                          {/* Invite Status Badge */}
+                          {isPrimary ? (
+                            <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-gradient-to-r from-amber-200 via-rose-200 to-amber-200 text-[#78350F] rounded-full border border-amber-400 inline-flex items-center gap-1">
+                              <Crown size={10} className="fill-amber-600 text-amber-700" /> Primary Super Admin (Root)
+                            </span>
+                          ) : (
+                            <span className={cn("px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full uppercase", isActive ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE2E2] text-[#991B1B]")}>
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          )}
                           {member.invite_status === 'pending' && (
                             <span className="px-2 py-0.5 text-[10px] font-semibold bg-[#FEF3C7] text-[#92400E] rounded-full">
                               Pending Invite
@@ -117,36 +123,52 @@ export default function StaffClient({ initialStaff }: { initialStaff: Profile[] 
                     </div>
                     
                     <div className="flex items-center gap-3 self-end sm:self-center">
-                      <select
-                        className="text-xs font-medium border border-[#E7E0D8] rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20"
-                        value={member.role}
-                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                      >
-                        <option value="super_admin">Super Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="staff">Staff (Kitchen)</option>
-                        <option value="viewer">Viewer</option>
-                      </select>
+                      {isPrimary ? (
+                        <div className="text-xs font-bold px-3 py-1.5 bg-stone-100 text-stone-700 rounded-lg border border-amber-300 flex items-center gap-1.5">
+                          <Lock size={12} className="text-amber-600" />
+                          <span>Super Admin (Root)</span>
+                        </div>
+                      ) : (
+                        <select
+                          className="text-xs font-medium border border-[#E7E0D8] rounded-lg px-2.5 py-1.5 bg-white text-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20"
+                          value={member.role}
+                          onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                        >
+                          <option value="super_admin">Super Admin</option>
+                          <option value="manager">Manager</option>
+                          <option value="staff">Staff (Kitchen)</option>
+                          <option value="viewer">Viewer</option>
+                        </select>
+                      )}
 
-                      <button
-                        onClick={() => handleToggleActive(member)}
-                        disabled={loadingActionId === member.id}
-                        title={isActive ? "Deactivate Account" : "Reactivate Account"}
-                        className={cn(
-                          "px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border",
-                          isActive 
-                            ? "border-[#FCA5A5] text-[#B91C1C] hover:bg-[#FEF2F2]" 
-                            : "border-[#86EFAC] text-[#15803D] hover:bg-[#F0FDF4]"
-                        )}
-                      >
-                        {loadingActionId === member.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : isActive ? (
-                          <><Ban size={14} /> Deactivate</>
-                        ) : (
-                          <><CheckCircle2 size={14} /> Reactivate</>
-                        )}
-                      </button>
+                      {isPrimary ? (
+                        <span
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-stone-400 bg-stone-100 border border-stone-200 flex items-center gap-1 cursor-not-allowed"
+                          title="Primary Super Admin cannot be deactivated"
+                        >
+                          <Lock size={12} /> Protected
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleActive(member)}
+                          disabled={loadingActionId === member.id}
+                          title={isActive ? "Deactivate Account" : "Reactivate Account"}
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border",
+                            isActive 
+                              ? "border-[#FCA5A5] text-[#B91C1C] hover:bg-[#FEF2F2]" 
+                              : "border-[#86EFAC] text-[#15803D] hover:bg-[#F0FDF4]"
+                          )}
+                        >
+                          {loadingActionId === member.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : isActive ? (
+                            <><Ban size={14} /> Deactivate</>
+                          ) : (
+                            <><CheckCircle2 size={14} /> Reactivate</>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )

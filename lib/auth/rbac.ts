@@ -164,9 +164,90 @@ export function hasPermission(role: UserRole | string, permission: PermissionKey
   return def.permissions.includes(permission)
 }
 
-export function canManageRole(actorRole: UserRole | string, targetRole: UserRole | string): boolean {
-  const actorDef = ROLE_DEFINITIONS[actorRole as UserRole]
-  const targetDef = ROLE_DEFINITIONS[targetRole as UserRole]
-  if (!actorDef || !targetDef) return false
-  return actorDef.level > targetDef.level || actorRole === 'super_admin'
+export const PRIMARY_SUPER_ADMIN_EMAILS = [
+  'malviya.pratyush26@gmail.com',
+  'admin@demo.com',
+]
+
+export function isPrimarySuperAdmin(
+  userOrEmailOrId?: string | { email?: string; id?: string; name?: string; role?: string } | null
+): boolean {
+  if (!userOrEmailOrId) return false
+  if (typeof userOrEmailOrId === 'string') {
+    const clean = userOrEmailOrId.trim().toLowerCase()
+    return (
+      PRIMARY_SUPER_ADMIN_EMAILS.includes(clean) ||
+      clean === 'usr-01' ||
+      clean === 'pratyush malviya'
+    )
+  }
+  const email = userOrEmailOrId.email?.trim().toLowerCase() || ''
+  const id = userOrEmailOrId.id?.trim().toLowerCase() || ''
+  const name = userOrEmailOrId.name?.trim().toLowerCase() || ''
+  return (
+    PRIMARY_SUPER_ADMIN_EMAILS.includes(email) ||
+    id === 'usr-01' ||
+    name === 'pratyush malviya'
+  )
+}
+
+export function canDeleteTargetUser(
+  actorEmailOrRole: string,
+  target: { email?: string; id?: string; name?: string; role?: string }
+): { allowed: boolean; reason?: string } {
+  // 1. Primary super admin cannot be deleted by anyone under any circumstances
+  if (isPrimarySuperAdmin(target)) {
+    return {
+      allowed: false,
+      reason: 'The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted.',
+    }
+  }
+
+  // 2. If actor is Primary Super Admin, they can delete anyone
+  if (isPrimarySuperAdmin(actorEmailOrRole)) {
+    return { allowed: true }
+  }
+
+  // 3. Secondary Super Admins cannot delete other Super Admins
+  if (target.role === 'super_admin') {
+    return {
+      allowed: false,
+      reason: 'Only the Primary Super Admin can manage or remove Super Admin accounts.',
+    }
+  }
+
+  return { allowed: true }
+}
+
+export function canModifyTargetUser(
+  actorEmailOrRole: string,
+  target: { email?: string; id?: string; name?: string; role?: string },
+  newRole?: string,
+  newActiveStatus?: boolean
+): { allowed: boolean; reason?: string } {
+  // 1. Primary super admin cannot be demoted or deactivated
+  if (isPrimarySuperAdmin(target)) {
+    if (newRole && newRole !== 'super_admin') {
+      return {
+        allowed: false,
+        reason: 'The Primary Super Admin cannot be demoted from the Super Admin role.',
+      }
+    }
+    if (newActiveStatus === false) {
+      return {
+        allowed: false,
+        reason: 'The Primary Super Admin cannot be suspended or deactivated.',
+      }
+    }
+  }
+
+  // 2. Secondary Super Admins cannot modify or demote other Super Admins
+  if (target.role === 'super_admin' && !isPrimarySuperAdmin(actorEmailOrRole)) {
+    return {
+      allowed: false,
+      reason: 'Only the Primary Super Admin can modify Super Admin accounts.',
+    }
+  }
+
+  return { allowed: true }
 }
