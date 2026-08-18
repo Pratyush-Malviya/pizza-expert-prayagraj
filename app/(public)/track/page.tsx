@@ -2,32 +2,58 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search, Clock, MapPin, ChefHat, CheckCircle2, Flame,
   Truck, Home, Bell, BellRing, XCircle, AlertCircle,
-  CreditCard, MessageCircle, RefreshCw
+  CreditCard, MessageCircle, RefreshCw, Compass, ShieldCheck
 } from 'lucide-react'
 import { requestNotificationPermission, notifyOrderStatusChange, playNotificationSound } from '@/lib/utils/notifications'
 import LoyaltyBadge from '@/components/profile/LoyaltyBadge'
 import QuickReorderButton from '@/components/orders/QuickReorderButton'
+import DriverInfoCard from '@/components/tracking/DriverInfoCard'
+import DeliverySimulatorControl from '@/components/tracking/DeliverySimulatorControl'
+import type { GPSLocation, DeliveryPartner } from '@/lib/tracking/types'
+import { DEFAULT_SAMPLE_DRIVER, STORE_LOCATION } from '@/lib/tracking/types'
+
+// Dynamic Map Import to prevent SSR issues with Leaflet
+const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[360px] sm:h-[440px] rounded-2xl bg-[#FBF9F5] border border-[#E7E0D8] flex flex-col items-center justify-center gap-2 text-xs font-mono text-[#78716C]">
+      <Compass size={28} className="text-[#B91C1C] animate-spin" />
+      <span>Loading Live GPS Telemetry Map...</span>
+    </div>
+  ),
+})
 
 function TrackOrderContent() {
   const searchParams = useSearchParams()
   const initialOrderId = searchParams.get('orderId') || ''
 
   const [inputQuery, setInputQuery] = useState(initialOrderId)
-  const [currentStatus, setCurrentStatus] = useState<string>('preparing')
+  const [currentStatus, setCurrentStatus] = useState<string>('heading_to_customer')
   const [addressStr, setAddressStr] = useState<string>('House 42, Civil Lines, Prayagraj')
   const [orderTotal, setOrderTotal] = useState<number>(499)
   const [paymentMethod, setPaymentMethod] = useState<string>('Razorpay UPI')
   const [orderId, setOrderId] = useState<string>(initialOrderId || 'ORD-982143')
   const [notiGranted, setNotiGranted] = useState<boolean>(false)
-  const [isLiveSyncing, setIsLiveSyncing] = useState<boolean>(true)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date())
+  const [driverLocation, setDriverLocation] = useState<GPSLocation | null>({
+    lat: 25.4410,
+    lng: 81.8590,
+    heading: 120,
+    speed: 24,
+    updatedAt: Date.now(),
+  })
+  const [driver] = useState<DeliveryPartner>(DEFAULT_SAMPLE_DRIVER)
+  const [otpCode] = useState<string>('4821')
+  const [etaMinutes, setEtaMinutes] = useState<number>(12)
+  const [distanceKm, setDistanceKm] = useState<number>(2.4)
   const supabase = createClient()
 
-  // Fetch initial status, background auto-polling every 3.5s & setup Supabase Realtime subscription
+  // Fetch initial status, background auto-polling every 3.5s & setup Supabase Realtime subscriptions
   useEffect(() => {
     if (!orderId) return
 
@@ -83,9 +109,9 @@ function TrackOrderContent() {
       fetchStatus()
     }, 3500)
 
-    // ── Realtime WebSocket Subscription ──
+    // ── Realtime WebSocket Subscription & GPS Broadcast Listener ──
     const channel = supabase
-      .channel(`order-track-${orderId}`)
+      .channel(`tracking-${orderId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
@@ -106,6 +132,21 @@ function TrackOrderContent() {
           }
         }
       )
+      .on('broadcast', { event: 'location' }, (payload: any) => {
+        if (payload?.payload?.lat && payload?.payload?.lng) {
+          setDriverLocation({
+            lat: payload.payload.lat,
+            lng: payload.payload.lng,
+            heading: payload.payload.heading,
+            speed: payload.payload.speed,
+            updatedAt: Date.now(),
+          })
+          if (payload.payload.status) {
+            setCurrentStatus(payload.payload.status)
+          }
+          setLastSyncedAt(new Date())
+        }
+      })
       .subscribe()
 
     // Custom Event Listener for local status changes
@@ -138,9 +179,13 @@ function TrackOrderContent() {
     switch (status) {
       case 'pending':
       case 'confirmed':
+      case 'assigned':
         return 1
       case 'preparing':
+      case 'baking':
         return 2
+      case 'picked_up':
+      case 'heading_to_customer':
       case 'out_for_delivery':
         return 3
       case 'delivered':
@@ -148,7 +193,7 @@ function TrackOrderContent() {
       case 'cancelled':
         return -1
       default:
-        return 2
+        return 3
     }
   }
 
@@ -156,44 +201,73 @@ function TrackOrderContent() {
   const isCancelled = currentStatus === 'cancelled'
 
   return (
-    <div className="bg-[#FBF9F5] min-h-screen py-12">
-      <div className="container-custom max-w-xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1C1917] mb-2">
+    <div className="bg-[#FBF9F5] min-h-screen py-10 sm:py-14">
+      <div className="container-custom max-w-3xl space-y-6">
+        {/* Page Header */}
+        <div className="text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FEF2F2] border border-[#FCA5A5] text-[#B91C1C] text-xs font-bold font-mono uppercase mb-3">
+            <span className="w-2 h-2 rounded-full bg-[#B91C1C] animate-pulse"></span>
+            Real-Time GPS Order Tracking
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-serif font-black text-[#1C1917] tracking-tight mb-2">
             Live Order Tracking
           </h1>
-          <p className="text-[#57534E] text-xs sm:text-sm">
-            Watch your order progress live from our wood-fired oven in Allapur straight to your doorstep.
+          <p className="text-[#57534E] text-xs sm:text-sm max-w-lg mx-auto">
+            Watch your pizza make its journey live from our wood-fired oven in Allapur straight to your doorstep in Prayagraj.
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="bg-white rounded-xl p-3 shadow-xs border border-[#E7E0D8] mb-8 flex gap-2">
+        {/* Order ID Search Bar */}
+        <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-[#E7E0D8] flex gap-2">
           <div className="relative flex-1">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#78716C]" />
             <input
               type="text"
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
-              placeholder="Enter Order ID..."
+              placeholder="Search by Order ID (e.g. ORD-982143)..."
               className="input-field pl-10 pr-3 py-2.5 text-xs sm:text-sm border-none bg-[#FBF9F5]"
             />
           </div>
           <button
             onClick={() => handleSearch(inputQuery)}
-            className="btn btn-primary px-5 rounded-md text-xs sm:text-sm"
+            className="btn btn-primary px-5 rounded-xl text-xs sm:text-sm shadow-xs"
           >
-            Track Order
+            Track
           </button>
         </div>
 
-        {/* Live Tracking Card */}
+        {/* Live GPS Simulator Test Bar (For Demo & Testing) */}
+        <DeliverySimulatorControl
+          orderId={orderId}
+          onLocationUpdate={(loc, idx) => {
+            setDriverLocation(loc)
+            const remainingSteps = 9 - idx
+            setEtaMinutes(Math.max(Math.round(remainingSteps * 1.5), 1))
+            setDistanceKm(Number((remainingSteps * 0.35).toFixed(1)))
+          }}
+          onStatusChange={(st) => setCurrentStatus(st)}
+        />
+
+        {/* Live Interactive Map Canvas */}
+        <LiveDeliveryMap
+          driverLocation={driverLocation}
+          destinationLocation={{ lat: 25.4528, lng: 81.8346 }}
+          destinationAddress={addressStr}
+          status={currentStatus}
+          driverName={driver.name}
+          etaMinutes={etaMinutes}
+          distanceKm={distanceKm}
+        />
+
+        {/* Main Tracking Details Card */}
         {orderId && (
-          <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E7E0D8] shadow-xs space-y-6">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#E7E0D8] shadow-sm space-y-6">
+            {/* Top Bar with Order ID & Notifications */}
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-4 flex-wrap gap-2">
               <div>
-                <span className="text-[10px] text-[#A8A29E] uppercase font-bold tracking-wider block">Tracking Order</span>
-                <span className="font-mono font-bold text-[#1C1917] text-lg">{orderId}</span>
+                <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Tracking Order</span>
+                <span className="font-mono font-black text-[#1C1917] text-lg sm:text-xl">{orderId}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -205,7 +279,7 @@ function TrackOrderContent() {
                     }
                   }}
                   title={notiGranted ? "Notifications Enabled" : "Enable Live Status Notifications"}
-                  className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                     notiGranted 
                       ? 'bg-[#E6F4EA] border-[#137333] text-[#137333]' 
                       : 'bg-white border-[#E7E0D8] text-[#57534E] hover:border-[#e10600]'
@@ -215,7 +289,7 @@ function TrackOrderContent() {
                   <span className="hidden sm:inline">{notiGranted ? 'Alerts Active' : 'Enable Alerts'}</span>
                 </button>
 
-                <div className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border uppercase font-mono ${
+                <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border uppercase font-mono ${
                   isCancelled
                     ? 'bg-[#FEE2E2] text-[#DC2626] border-[#DC2626]/30'
                     : 'bg-[#FFFBEB] text-[#D97706] border-[#D97706]/30'
@@ -234,17 +308,25 @@ function TrackOrderContent() {
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
                 <span className="font-bold text-[#1C1917]">Live Auto-Sync Active</span>
-                <span className="text-[11px] text-[#78716C] hidden sm:inline">• Auto-updating in background</span>
+                <span className="text-[11px] text-[#78716C] hidden sm:inline">• Streamed via Supabase Realtime</span>
               </div>
               <span className="text-[11px] font-mono text-[#78716C]">
                 Updated: {lastSyncedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
 
-            {/* ORDER CANCELLED & REFUND STATE */}
+            {/* Rider Information Card (Zomato-Style) */}
+            <DriverInfoCard
+              driver={driver}
+              otpCode={otpCode}
+              orderId={orderId}
+              orderTotal={orderTotal}
+              status={currentStatus}
+            />
+
+            {/* ORDER CANCELLED STATE */}
             {isCancelled ? (
               <div className="space-y-6">
-                {/* Cancellation Alert Header */}
                 <div className="bg-[#FEF2F2] rounded-xl p-5 border border-[#FCA5A5] space-y-3">
                   <div className="flex items-center gap-3 text-[#B91C1C]">
                     <XCircle size={26} className="flex-shrink-0" />
@@ -257,7 +339,6 @@ function TrackOrderContent() {
                   </div>
                 </div>
 
-                {/* Refund Status Breakdown */}
                 <div className="bg-[#FDFBF7] rounded-xl p-5 border border-[#E7E0D8] space-y-4">
                   <h4 className="font-serif font-bold text-sm text-[#1C1917] flex items-center gap-2">
                     <CreditCard size={18} className="text-[#16A34A]" />
@@ -287,44 +368,12 @@ function TrackOrderContent() {
                       <span className="font-mono text-[#78716C]">RFND-{orderId.slice(0, 8).toUpperCase()}</span>
                     </div>
                   </div>
-
-                  <div className="bg-[#F5F2EC] p-3 rounded-lg text-xs text-[#57534E] flex items-start gap-2">
-                    <AlertCircle size={16} className="text-[#D97706] flex-shrink-0 mt-0.5" />
-                    <span>
-                      Online payments (UPI/Card) are credited back to your original source account within <strong>3 to 5 business days</strong> according to bank guidelines.
-                    </span>
-                  </div>
-
-                  <a
-                    href={`https://wa.me/919876543210?text=Hi%20Pizza%20Expert,%20my%20order%20%23${orderId}%20was%20cancelled.%20Need%20assistance.`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors"
-                  >
-                    <MessageCircle size={16} />
-                    Chat with Store Support on WhatsApp
-                  </a>
                 </div>
               </div>
             ) : (
               <>
-                {/* ETA Box */}
-                <div className="bg-[#FEF2F2] rounded-lg p-4 border border-[#B91C1C]/20 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-[#B91C1C] text-white rounded-md flex items-center justify-center">
-                      <Clock size={18} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[#57534E] uppercase font-bold tracking-wider block">Estimated Delivery</span>
-                      <span className="font-bold text-[#1C1917] text-sm sm:text-base font-mono">
-                        {stepIndex === 4 ? 'Delivered!' : '20–25 Minutes'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Live Status Timeline */}
-                <div className="py-4">
+                {/* Live Status Progress Stepper */}
+                <div className="py-2">
                   <div className="space-y-6 relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E7E0D8]">
                     {/* Step 1: Placed */}
                     <div className={`flex items-start gap-4 relative ${stepIndex >= 1 ? 'opacity-100' : 'opacity-40'}`}>
@@ -333,33 +382,33 @@ function TrackOrderContent() {
                       </div>
                       <div>
                         <h4 className="font-serif font-bold text-[#1C1917] text-sm">Order Confirmed</h4>
-                        <p className="text-xs text-[#57534E]">Received by restaurant & sent to kitchen.</p>
+                        <p className="text-xs text-[#57534E]">Received by restaurant & sent to Allapur kitchen.</p>
                       </div>
                     </div>
 
                     {/* Step 2: Preparing / Baking */}
                     <div className={`flex items-start gap-4 relative ${stepIndex >= 2 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 2 ? 'bg-[#B91C1C] text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 2 ? 'bg-[#B91C1C] text-white ring-4 ring-[#B91C1C]/20' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
                         <Flame size={16} />
                       </div>
                       <div>
                         <h4 className={`font-serif font-bold text-sm ${stepIndex === 2 ? 'text-[#B91C1C]' : 'text-[#1C1917]'}`}>
-                          Baking in Oven {stepIndex === 2 && '(Live Step)'}
+                          Baking in Wood-Fired Oven {stepIndex === 2 && '(Current Step)'}
                         </h4>
-                        <p className="text-xs text-[#57534E]">Hand-tossed dough baking with premium mozzarella.</p>
+                        <p className="text-xs text-[#57534E]">Handcrafted dough baking at 450°C with fresh mozzarella.</p>
                       </div>
                     </div>
 
                     {/* Step 3: Out for Delivery */}
                     <div className={`flex items-start gap-4 relative ${stepIndex >= 3 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 3 ? 'bg-purple-600 text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 3 ? 'bg-amber-500 text-black ring-4 ring-amber-500/20' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
                         <Truck size={16} />
                       </div>
                       <div>
-                        <h4 className={`font-serif font-bold text-sm ${stepIndex === 3 ? 'text-purple-600' : 'text-[#1C1917]'}`}>
-                          Out for Delivery {stepIndex === 3 && '(Rider En Route)'}
+                        <h4 className={`font-serif font-bold text-sm ${stepIndex === 3 ? 'text-amber-600' : 'text-[#1C1917]'}`}>
+                          Out for Delivery {stepIndex === 3 && '(Rider En Route on Live Map)'}
                         </h4>
-                        <p className="text-xs text-[#57534E]">Delivery partner has picked up your fresh hot order.</p>
+                        <p className="text-xs text-[#57534E]">Rahul is riding with your insulated hot bag.</p>
                       </div>
                     </div>
 
@@ -369,8 +418,8 @@ function TrackOrderContent() {
                         <Home size={16} />
                       </div>
                       <div>
-                        <h4 className="font-serif font-bold text-[#1C1917] text-sm">Delivered</h4>
-                        <p className="text-xs text-[#57534E]">Enjoy your delicious meal!</p>
+                        <h4 className="font-serif font-bold text-[#1C1917] text-sm">Delivered at Doorstep</h4>
+                        <p className="text-xs text-[#57534E]">Enjoy your fresh hot meal!</p>
                       </div>
                     </div>
                   </div>
@@ -402,7 +451,7 @@ function TrackOrderContent() {
 
 export default function TrackOrderPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 font-serif">Loading tracking details...</div>}>
+    <Suspense fallback={<div className="text-center py-20 font-serif">Loading live GPS tracking...</div>}>
       <TrackOrderContent />
     </Suspense>
   )
