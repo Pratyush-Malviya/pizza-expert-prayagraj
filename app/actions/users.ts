@@ -233,20 +233,32 @@ export async function updateUserRoleAndDetails(
     is_online?: boolean
   }
 ) {
-  try {
-    // 👑 Primary Super Admin Protection: Cannot be demoted or deactivated
-    const isTargetPrimaryAdmin = isPrimarySuperAdmin(userId) || isPrimarySuperAdmin({ email: payload.email, id: userId, name: payload.name })
-    if (isTargetPrimaryAdmin) {
+    // 👑 Super Admin Protection: Cannot be demoted or deactivated
+    let currentRole: string | undefined = undefined
+    try {
+      const adminCheck = getSupabaseAdmin()
+      const { data: prof } = await adminCheck.from('profiles').select('role').eq('id', userId).single()
+      currentRole = prof?.role
+    } catch {}
+
+    if (!currentRole) {
+      const sample = SAMPLE_USERS.find(u => u.id === userId)
+      currentRole = sample?.role
+    }
+
+    const isTargetSuperAdmin = currentRole === 'super_admin' || isPrimarySuperAdmin(userId) || userId.toLowerCase() === 'usr-01'
+
+    if (isTargetSuperAdmin) {
       if (payload.role !== 'super_admin') {
         return {
           success: false,
-          error: '👑 The Primary Super Admin (Root / Founder) cannot be demoted from the Super Admin role.',
+          error: '👑 Super Admin accounts are permanently locked and cannot be demoted from the Super Admin role.',
         }
       }
       if (payload.is_active === false) {
         return {
           success: false,
-          error: '👑 The Primary Super Admin cannot be suspended or deactivated.',
+          error: '👑 Super Admin accounts are permanently locked and cannot be suspended or deactivated.',
         }
       }
     }
@@ -411,11 +423,11 @@ export async function createManagedUser(payload: {
 
 export async function deleteManagedUser(userId: string) {
   try {
-    // 👑 Primary Super Admin Protection: Permanent immunity from deletion
-    if (isPrimarySuperAdmin(userId)) {
+    // 👑 Super Admin Protection: Permanent immunity from deletion
+    if (userId.toLowerCase() === 'usr-01' || isPrimarySuperAdmin(userId)) {
       return {
         success: false,
-        error: '👑 The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted by anyone.',
+        error: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
       }
     }
 
@@ -425,16 +437,24 @@ export async function deleteManagedUser(userId: string) {
     } catch {}
 
     if (admin) {
-      // Check if target profile email/name is Primary Super Admin
+      // Check if target profile is a Super Admin
       try {
         const { data: targetProf } = await admin.from('profiles').select('id, name, role').eq('id', userId).single()
-        if (targetProf && isPrimarySuperAdmin(targetProf)) {
+        if (targetProf && (targetProf.role === 'super_admin' || isPrimarySuperAdmin(targetProf))) {
           return {
             success: false,
-            error: '👑 The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted.',
+            error: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
           }
         }
       } catch {}
+    } else {
+      const sample = SAMPLE_USERS.find(u => u.id === userId)
+      if (sample && (sample.role === 'super_admin' || isPrimarySuperAdmin(sample))) {
+        return {
+          success: false,
+          error: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
+        }
+      }
     }
 
     // 1. Blacklist from memory so it never reappears

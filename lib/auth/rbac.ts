@@ -206,24 +206,11 @@ export function canDeleteTargetUser(
   actorEmailOrRole: string,
   target: { email?: string; id?: string; name?: string; role?: string }
 ): { allowed: boolean; reason?: string } {
-  // 1. Primary super admin cannot be deleted by anyone under any circumstances
-  if (isPrimarySuperAdmin(target)) {
+  // Super Admin profiles are permanently locked and cannot be deleted by anyone (not even super admins)
+  if (target.role === 'super_admin' || isPrimarySuperAdmin(target)) {
     return {
       allowed: false,
-      reason: 'The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted.',
-    }
-  }
-
-  // 2. If actor is Primary Super Admin, they can delete anyone
-  if (isPrimarySuperAdmin(actorEmailOrRole)) {
-    return { allowed: true }
-  }
-
-  // 3. Secondary Super Admins cannot delete other Super Admins
-  if (target.role === 'super_admin') {
-    return {
-      allowed: false,
-      reason: 'Only the Primary Super Admin can manage or remove Super Admin accounts.',
+      reason: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
     }
   }
 
@@ -236,27 +223,19 @@ export function canModifyTargetUser(
   newRole?: string,
   newActiveStatus?: boolean
 ): { allowed: boolean; reason?: string } {
-  // 1. Primary super admin cannot be demoted or deactivated
-  if (isPrimarySuperAdmin(target)) {
+  // Super Admin profiles cannot be demoted or deactivated by anyone
+  if (target.role === 'super_admin' || isPrimarySuperAdmin(target)) {
     if (newRole && newRole !== 'super_admin') {
       return {
         allowed: false,
-        reason: 'The Primary Super Admin cannot be demoted from the Super Admin role.',
+        reason: '👑 Super Admin accounts are permanently locked and cannot be demoted from the Super Admin role.',
       }
     }
     if (newActiveStatus === false) {
       return {
         allowed: false,
-        reason: 'The Primary Super Admin cannot be suspended or deactivated.',
+        reason: '👑 Super Admin accounts cannot be suspended or deactivated.',
       }
-    }
-  }
-
-  // 2. Secondary Super Admins cannot modify or demote other Super Admins
-  if (target.role === 'super_admin' && !isPrimarySuperAdmin(actorEmailOrRole)) {
-    return {
-      allowed: false,
-      reason: 'Only the Primary Super Admin can modify Super Admin accounts.',
     }
   }
 

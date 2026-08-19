@@ -156,8 +156,8 @@ export default function UsersManagementClient({
 
   // Handle Delete
   const handleDelete = async (user: ManagedUser) => {
-    if (isPrimarySuperAdmin(user)) {
-      toast.error('👑 The Primary Super Admin (Root / Founder) is permanently protected and cannot be deleted.')
+    if (user.role === 'super_admin' || isPrimarySuperAdmin(user)) {
+      toast.error('👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.')
       return
     }
 
@@ -372,24 +372,29 @@ export default function UsersManagementClient({
                   filteredUsers.map((user) => {
                     const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.customer
                     const isPrimary = isPrimarySuperAdmin(user)
+                    const isSuperAdmin = user.role === 'super_admin' || isPrimary
                     return (
-                      <tr key={user.id} className={`transition-colors ${isPrimary ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-[#FDFBF7]'}`}>
+                      <tr key={user.id} className={`transition-colors ${isSuperAdmin ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-[#FDFBF7]'}`}>
                         {/* Name & Contact */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs font-serif uppercase shrink-0 shadow-2xs ${
-                              isPrimary ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white ring-2 ring-amber-400/50' : 'bg-[#1C1917] text-white'
+                              isSuperAdmin ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white ring-2 ring-amber-400/50' : 'bg-[#1C1917] text-white'
                             }`}>
                               {user.name.slice(0, 2)}
                             </div>
                             <div>
                               <div className="font-bold text-[#1C1917] text-sm flex items-center gap-1.5">
                                 <span>{user.name}</span>
-                                {isPrimary && (
+                                {isPrimary ? (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 inline-flex items-center gap-0.5">
                                     <Crown size={10} className="fill-amber-600 text-amber-700" /> Root
                                   </span>
-                                )}
+                                ) : user.role === 'super_admin' ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-900 border border-red-300 inline-flex items-center gap-0.5">
+                                    <Crown size={10} className="fill-red-600 text-red-700" /> Super Admin
+                                  </span>
+                                ) : null}
                               </div>
                               <div className="text-[11px] text-[#78716C] flex items-center gap-1.5">
                                 <span>{user.email}</span>
@@ -401,9 +406,9 @@ export default function UsersManagementClient({
 
                         {/* RBAC Role */}
                         <td className="px-5 py-4">
-                          {isPrimary ? (
+                          {isSuperAdmin ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-gradient-to-r from-amber-100 via-rose-100 to-amber-100 text-[#78350F] border border-amber-300 flex items-center gap-1 shadow-2xs w-fit">
-                              <Crown size={12} className="text-amber-600 fill-amber-500" /> Primary Super Admin
+                              <Crown size={12} className="text-amber-600 fill-amber-500" /> {isPrimary ? 'Primary Super Admin' : 'Super Admin (Locked)'}
                             </span>
                           ) : (
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${roleDef.badgeColor} ${roleDef.textColor} border ${roleDef.borderColor}`}>
@@ -414,9 +419,9 @@ export default function UsersManagementClient({
 
                         {/* Specific details */}
                         <td className="px-5 py-4">
-                          {isPrimary ? (
+                          {isSuperAdmin ? (
                             <div className="text-[11px]">
-                              <span className="font-bold text-amber-900">👑 Root Founder Account</span>
+                              <span className="font-bold text-amber-900">👑 {isPrimary ? 'Root Founder Account' : 'Super Admin Account'}</span>
                               <span className="block text-[10px] font-mono text-emerald-700 font-bold">Immutable Authority</span>
                             </div>
                           ) : user.role === 'driver' ? (
@@ -463,10 +468,10 @@ export default function UsersManagementClient({
                               <span>Manage / RBAC</span>
                             </button>
 
-                            {isPrimary ? (
+                            {isSuperAdmin ? (
                               <span
                                 className="p-1.5 text-stone-400 bg-stone-100 rounded-lg inline-flex items-center cursor-not-allowed"
-                                title="👑 Primary Super Admin is permanently protected and cannot be deleted by anyone."
+                                title="👑 Super Admin profiles are permanently locked and cannot be deleted by anyone."
                               >
                                 <Lock size={14} className="text-amber-600" />
                               </span>
@@ -553,17 +558,22 @@ export default function UsersManagementClient({
                   <label className="block font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
                     Role Assignment (RBAC)
                   </label>
-                  {isPrimarySuperAdmin(selectedUser) && (
+                  {(selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)) && (
                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 inline-flex items-center gap-1">
-                      <Lock size={10} /> Root Authority Protected
+                      <Lock size={10} /> Protected Authority
                     </span>
                   )}
                 </div>
 
-                {isPrimarySuperAdmin(selectedUser) ? (
+                {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser) ? (
                   <div className="admin-input text-xs bg-stone-100 text-stone-700 font-bold flex items-center justify-between border-amber-300">
-                    <span>👑 Primary Super Admin (Root / Founder)</span>
-                    <span className="text-[10px] text-amber-800 font-mono">Immutable</span>
+                    <span className="flex items-center gap-1.5">
+                      <Crown size={14} className="text-amber-600 fill-amber-500" />
+                      {isPrimarySuperAdmin(selectedUser) ? 'Primary Super Admin (Root / Founder)' : 'Super Admin (Full Business Control)'}
+                    </span>
+                    <span className="text-[10px] text-amber-800 font-mono flex items-center gap-1">
+                      <Lock size={10} /> Immutable Role
+                    </span>
                   </div>
                 ) : (
                   <select
@@ -581,8 +591,8 @@ export default function UsersManagementClient({
                 )}
 
                 <p className="text-[11px] text-[#57534E] italic">
-                  {isPrimarySuperAdmin(selectedUser)
-                    ? 'The Primary Super Admin (Root / Founder) has permanent, complete authority and cannot be demoted or removed by any other user.'
+                  {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)
+                    ? 'Super Admin profiles have full unrestricted control over the business and cannot be demoted or removed by any user.'
                     : ROLE_DEFINITIONS[selectedUser.role]?.description}
                 </p>
               </div>
@@ -682,16 +692,16 @@ export default function UsersManagementClient({
                 <div>
                   <span className="font-bold text-[#1C1917] block">Account Access Status</span>
                   <span className="text-[11px] text-[#78716C]">
-                    {isPrimarySuperAdmin(selectedUser)
-                      ? 'Primary Super Admin account is permanently active and protected.'
+                    {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)
+                      ? 'Super Admin account is permanently active and locked against deactivation.'
                       : selectedUser.is_active
                       ? 'User can log in and perform assigned role tasks'
                       : 'Account is suspended'}
                   </span>
                 </div>
-                {isPrimarySuperAdmin(selectedUser) ? (
+                {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser) ? (
                   <span className="px-3 py-1 rounded-lg text-xs font-bold font-mono bg-emerald-600 text-white flex items-center gap-1">
-                    <Lock size={12} /> ACTIVE (ROOT)
+                    <Lock size={12} /> ACTIVE (LOCKED)
                   </span>
                 ) : (
                   <button
@@ -708,7 +718,7 @@ export default function UsersManagementClient({
 
               {/* Action Buttons */}
               <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#E7E0D8]">
-                {!isPrimarySuperAdmin(selectedUser) ? (
+                {!(selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)) ? (
                   <button
                     type="button"
                     onClick={() => handleDelete(selectedUser)}
@@ -718,7 +728,9 @@ export default function UsersManagementClient({
                     <span>Delete User</span>
                   </button>
                 ) : (
-                  <div />
+                  <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 inline-flex items-center gap-1.5">
+                    <Lock size={12} className="text-amber-600" /> Super Admin Profile Locked
+                  </span>
                 )}
 
                 <div className="flex items-center justify-end gap-3">

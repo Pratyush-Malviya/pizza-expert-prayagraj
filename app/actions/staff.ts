@@ -89,20 +89,20 @@ export async function inviteStaffMember(formData: FormData) {
 
 export async function updateStaffRole(userId: string, newRole: string) {
   try {
-    if (isPrimarySuperAdmin(userId) && newRole !== 'super_admin') {
+    if ((isPrimarySuperAdmin(userId) || userId.toLowerCase() === 'usr-01') && newRole !== 'super_admin') {
       return {
         success: false,
-        error: '👑 The Primary Super Admin cannot be demoted from the Super Admin role.',
+        error: '👑 Super Admin accounts are permanently locked and cannot be demoted from the Super Admin role.',
       }
     }
 
     const admin = getSupabaseAdmin()
     const { data: beforeProfile } = await admin.from('profiles').select('role, name').eq('id', userId).single()
 
-    if (beforeProfile && isPrimarySuperAdmin(beforeProfile) && newRole !== 'super_admin') {
+    if (beforeProfile?.role === 'super_admin' && newRole !== 'super_admin') {
       return {
         success: false,
-        error: '👑 The Primary Super Admin cannot be demoted from the Super Admin role.',
+        error: '👑 Super Admin accounts are permanently locked and cannot be demoted from the Super Admin role.',
       }
     }
 
@@ -132,20 +132,20 @@ export async function updateStaffRole(userId: string, newRole: string) {
 
 export async function deactivateStaffMember(userId: string) {
   try {
-    if (isPrimarySuperAdmin(userId)) {
+    if (isPrimarySuperAdmin(userId) || userId.toLowerCase() === 'usr-01') {
       return {
         success: false,
-        error: '👑 The Primary Super Admin is permanently protected and cannot be deactivated.',
+        error: '👑 Super Admin accounts are permanently protected and cannot be deactivated.',
       }
     }
 
     const admin = getSupabaseAdmin()
     const { data: beforeProfile } = await admin.from('profiles').select('is_active, role, name').eq('id', userId).single()
 
-    if (beforeProfile && isPrimarySuperAdmin(beforeProfile)) {
+    if (beforeProfile?.role === 'super_admin') {
       return {
         success: false,
-        error: '👑 The Primary Super Admin is permanently protected and cannot be deactivated.',
+        error: '👑 Super Admin accounts are permanently protected and cannot be deactivated.',
       }
     }
 
