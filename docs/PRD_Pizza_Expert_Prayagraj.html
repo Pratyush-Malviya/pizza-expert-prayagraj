@@ -490,6 +490,16 @@
   <li><strong>Audio Context Chimes:</strong> Plays a wood-fired kitchen chime on new incoming orders and alert sound on urgent notifications.</li>
 </ul>
 
+<h2>4.4 Enterprise-Grade Security & Audit Logging</h2>
+<p>
+  To protect the system from unauthorized manipulation, all sensitive administrative operations (e.g., closing shifts, voiding orders, adjusting inventory) are protected by a strict, multi-layered defense system:
+</p>
+<ol>
+  <li><strong>Centralized Authentication & RBAC:</strong> Every Server Action intercepts the request and verifies the caller's role (e.g., <code>cashier</code>, <code>manager</code>, <code>super_admin</code>) before executing any logic.</li>
+  <li><strong>Strict Zod Payload Validation:</strong> All incoming data is parsed against strict schema definitions. Malformed data (e.g., negative cash amounts) triggers an immediate rejection, preventing database corruption.</li>
+  <li><strong>Immutable Audit Ledger:</strong> Critical actions are permanently recorded in an <code>admin_action_log</code> table with Row-Level Security (RLS) policies that prohibit modifications or deletions, ensuring a tamper-proof trail of <em>who</em> performed <em>what</em> action.</li>
+</ol>
+
 <!-- ════════════════════════ SECTION 5: FLEET DISPATCH & DRIVER APP ════════════════════════ -->
 <div class="page-break"></div>
 <h1>5. Fleet Management, Auto-Dispatch & Driver Partner App</h1>
