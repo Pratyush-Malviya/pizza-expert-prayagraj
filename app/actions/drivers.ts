@@ -190,12 +190,11 @@ export async function onboardDriverDirect(formData: FormData) {
       console.warn('Auth user create notice:', authErr)
     }
 
-    // 2. Upsert into profiles
+    // 2. Upsert into profiles (note: email lives on auth.users)
     const { error: profileError } = await admin.from('profiles').upsert({
       id: driverId,
       name,
       phone,
-      email,
       role: 'driver',
       is_active: true,
       invite_status: 'accepted',
@@ -289,7 +288,6 @@ export async function submitDriverApplication(data: {
       id: applicationId,
       name: data.name,
       phone: data.phone,
-      email: data.email || `${data.phone.replace(/\D/g, '')}@applicant.pizzaexpert.local`,
       role: 'driver',
       is_active: false,
       invite_status: 'pending',

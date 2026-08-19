@@ -361,11 +361,10 @@ export async function createManagedUser(payload: {
       console.warn('Auth user creation notice:', authError)
     }
 
-    // 2. Upsert into profiles
+    // 2. Upsert into profiles (note: email is stored in auth.users, not in profiles table)
     const { error: profileError } = await admin.from('profiles').upsert({
       id: userId,
       name: payload.name,
-      email: payload.email,
       phone: payload.phone || null,
       role: payload.role,
       is_active: true,
