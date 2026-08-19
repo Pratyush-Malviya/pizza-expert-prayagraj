@@ -361,20 +361,27 @@ export async function createManagedUser(payload: {
       console.warn('Auth user creation notice:', authError)
     }
 
-    // 2. Upsert into profiles (note: email is stored in auth.users, not in profiles table)
-    const { error: profileError } = await admin.from('profiles').upsert({
+    // 2. Upsert into profiles with defensive column fallback
+    let { error: profileError } = await admin.from('profiles').upsert({
       id: userId,
       name: payload.name,
       phone: payload.phone || null,
       role: payload.role,
       is_active: true,
       invite_status: 'accepted',
-      updated_at: new Date().toISOString(),
     })
 
     if (profileError) {
-      console.error('Profile upsert failed:', profileError.message)
-      return { success: false, error: `Database error: ${profileError.message}` }
+      const { error: coreProfileError } = await admin.from('profiles').upsert({
+        id: userId,
+        name: payload.name,
+        phone: payload.phone || null,
+        role: payload.role,
+      })
+      if (coreProfileError) {
+        console.error('Profile upsert failed:', coreProfileError.message)
+        return { success: false, error: `Database error: ${coreProfileError.message}` }
+      }
     }
 
     // 3. Upsert staff details

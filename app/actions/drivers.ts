@@ -191,19 +191,26 @@ export async function onboardDriverDirect(formData: FormData) {
     }
 
     // 2. Upsert into profiles (note: email lives on auth.users)
-    const { error: profileError } = await admin.from('profiles').upsert({
+    let { error: profileError } = await admin.from('profiles').upsert({
       id: driverId,
       name,
       phone,
       role: 'driver',
       is_active: true,
       invite_status: 'accepted',
-      updated_at: new Date().toISOString(),
     })
 
     if (profileError) {
-      console.error('Profile upsert failed:', profileError.message)
-      return { success: false, error: `Database profile error: ${profileError.message}` }
+      const { error: coreErr } = await admin.from('profiles').upsert({
+        id: driverId,
+        name,
+        phone,
+        role: 'driver',
+      })
+      if (coreErr) {
+        console.error('Profile upsert failed:', coreErr.message)
+        return { success: false, error: `Database profile error: ${coreErr.message}` }
+      }
     }
 
     // 3. Upsert into driver_details
