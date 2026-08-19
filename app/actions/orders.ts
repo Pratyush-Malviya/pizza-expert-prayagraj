@@ -158,6 +158,8 @@ export async function createOrder(payload: {
       ? 'cod_pending'
       : 'pending'
 
+    const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString()
+
     // 4. Insert order using adminClient
     const { data: order, error: orderErr } = await adminClient
       .from('orders')
@@ -169,7 +171,11 @@ export async function createOrder(payload: {
         delivery_fee: deliveryFee,
         discount,
         total,
-        address_json: { ...payload.address, paymentMethod: payload.paymentMethod || 'razorpay' },
+        address_json: {
+          ...payload.address,
+          paymentMethod: payload.paymentMethod || 'razorpay',
+          deliveryOtp,
+        },
         notes: payload.notes || null,
       })
       .select()
@@ -214,7 +220,22 @@ export async function createOrder(payload: {
         : 'Order placed by customer',
     })
 
-    // 7. For COD orders below threshold, also insert confirmed payment record
+    // 7. Initialize deliveries table record with OTP
+    try {
+      await adminClient.from('deliveries').upsert(
+        {
+          order_id: order.id,
+          status: 'unassigned',
+          otp_code: deliveryOtp,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'order_id' }
+      )
+    } catch (delivErr) {
+      console.warn('Initial deliveries insert note:', delivErr)
+    }
+
+    // 8. For COD orders below threshold, also insert confirmed payment record & auto-assign
     if (isCod && total <= COD_VERIFICATION_THRESHOLD) {
       try {
         await adminClient.from('payments').insert({
@@ -224,9 +245,17 @@ export async function createOrder(payload: {
           status: 'pending_collection',
         })
       } catch {}
+
+      // Trigger Smart Auto-Dispatch immediately
+      try {
+        const { autoAssignNearestAvailableDriver } = await import('@/app/actions/deliveries')
+        await autoAssignNearestAvailableDriver(order.id)
+      } catch (autoErr) {
+        console.warn('Auto dispatch notice on order create:', autoErr)
+      }
     }
 
-    // 8. Trigger Email Notifications (Customer & Admin Store Owner)
+    // 9. Trigger Email Notifications (Customer & Admin Store Owner)
     const itemsListForEmail = payload.cartItems.map((i) => ({
       name: i.name,
       quantity: i.quantity,
@@ -261,6 +290,7 @@ export async function createOrder(payload: {
       orderId: order.id,
       total: order.total,
       status: initialStatus,
+      deliveryOtp,
       requiresVerification: initialStatus === 'cod_pending',
     }
   } catch (err: any) {

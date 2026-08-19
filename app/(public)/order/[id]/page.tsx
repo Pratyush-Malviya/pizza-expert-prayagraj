@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { CheckCircle2, Clock, Truck, MessageCircle, ChefHat, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clock, Truck, MessageCircle, ChefHat, Sparkles, Bike, KeyRound, Phone, ShieldCheck, Copy, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { playNotificationSound } from '@/lib/utils/notifications'
+import { toast } from 'sonner'
 
 export default function OrderConfirmationPage() {
   const params = useParams()
@@ -13,6 +14,14 @@ export default function OrderConfirmationPage() {
 
   const [currentStatus, setCurrentStatus] = useState<string>('confirmed')
   const [orderTotal, setOrderTotal] = useState<number>(499)
+  const [deliveryOtp, setDeliveryOtp] = useState<string>('')
+  const [driverInfo, setDriverInfo] = useState<{
+    name: string
+    phone?: string
+    vehicle?: string
+    plate?: string
+  } | null>(null)
+  const [copiedOtp, setCopiedOtp] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date())
   const supabase = createClient()
 
@@ -35,11 +44,12 @@ export default function OrderConfirmationPage() {
       try {
         const { data } = await supabase
           .from('orders')
-          .select('status, total, created_at')
+          .select('status, total, address_json, created_at')
           .eq('id', orderId)
           .single()
 
         if (data) {
+          const addr = data.address_json || {}
           setCurrentStatus((prev) => {
             if (prev !== data.status) {
               playNotificationSound('status_change')
@@ -47,7 +57,35 @@ export default function OrderConfirmationPage() {
             return data.status
           })
           if (data.total) setOrderTotal(Number(data.total))
+          if (addr.deliveryOtp) setDeliveryOtp(String(addr.deliveryOtp))
+          if (addr.driverName) {
+            setDriverInfo({
+              name: addr.driverName,
+              phone: addr.driverPhone,
+              vehicle: addr.driverVehicle || 'Bike',
+              plate: addr.driverPlate || 'UP 70',
+            })
+          }
           setLastSyncedAt(new Date())
+        }
+
+        // Check deliveries table for driver join
+        const { data: deliv } = await supabase
+          .from('deliveries')
+          .select('*, driver:drivers(*)')
+          .eq('order_id', orderId)
+          .maybeSingle()
+
+        if (deliv) {
+          if (deliv.otp_code) setDeliveryOtp(deliv.otp_code)
+          if (deliv.driver) {
+            setDriverInfo({
+              name: deliv.driver.name,
+              phone: deliv.driver.phone,
+              vehicle: deliv.driver.vehicle_type || 'Bike',
+              plate: deliv.driver.vehicle_number || 'UP 70',
+            })
+          }
         }
       } catch {}
     }
@@ -76,24 +114,42 @@ export default function OrderConfirmationPage() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries', filter: `order_id=eq.${orderId}` },
+        () => {
+          fetchStatus()
+        }
+      )
       .subscribe()
 
     return () => {
       clearInterval(interval)
       supabase.removeChannel(channel)
     }
-  }, [orderId])
+  }, [orderId, supabase])
+
+  const handleCopyOtp = () => {
+    if (!deliveryOtp) return
+    navigator.clipboard.writeText(deliveryOtp)
+    setCopiedOtp(true)
+    toast.success('Delivery OTP copied to clipboard!')
+    setTimeout(() => setCopiedOtp(false), 2500)
+  }
 
   const getStatusStepIndex = (status: string) => {
     switch (status) {
       case 'pending':
       case 'confirmed':
+      case 'assigned':
         return 1
       case 'preparing':
       case 'baking':
         return 2
       case 'out_for_delivery':
-      case 'on_the_way':
+      case 'picked_up':
+      case 'heading_to_customer':
+      case 'arrived':
         return 3
       case 'delivered':
         return 4
@@ -115,13 +171,13 @@ export default function OrderConfirmationPage() {
 
           <div>
             <span className="text-xs font-bold tracking-widest text-[#B91C1C] uppercase font-mono">
-              Order Confirmed
+              Order Confirmed & In Kitchen
             </span>
             <h1 className="text-3xl sm:text-4xl font-serif font-black text-[#1C1917] mt-1 mb-2">
               Thank You For Your Order!
             </h1>
             <p className="text-[#57534E] text-xs sm:text-sm">
-              We&apos;ve received your order and our kitchen in Allapur is preparing it fresh.
+              We&apos;ve received your order and our wood-fired kitchen in Allapur is preparing it fresh.
             </p>
           </div>
 
@@ -144,26 +200,28 @@ export default function OrderConfirmationPage() {
           <div className="bg-[#FBF9F5] rounded-2xl p-4 flex flex-wrap items-center justify-around gap-4 text-left border border-[#E7E0D8]">
             <div>
               <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Order ID</span>
-              <span className="font-mono font-bold text-[#1C1917] text-base">{orderId}</span>
+              <span className="font-mono font-bold text-[#1C1917] text-base">
+                #{orderId.slice(-6).toUpperCase()}
+              </span>
             </div>
 
             <div>
-              <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Current Status</span>
+              <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Status</span>
               <span className="font-mono font-bold text-[#B91C1C] text-base capitalize">
                 {currentStatus.replace(/_/g, ' ')}
               </span>
             </div>
 
             <div>
-              <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Payment</span>
-              <span className="font-bold text-[#15803D] text-base">Confirmed (₹{orderTotal})</span>
+              <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Amount</span>
+              <span className="font-bold text-[#15803D] text-base font-mono">₹{orderTotal}</span>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="py-4">
+          <div className="py-2">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#78716C] mb-6">
-              Live Preparation Progress
+              Live Preparation & Dispatch Milestones
             </h3>
             <div className="grid grid-cols-4 gap-2 relative">
               <div className="absolute top-3.5 left-0 right-0 h-0.5 bg-[#E7E0D8] -z-0" />
@@ -212,10 +270,63 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
 
+          {/* Delivery OTP & Rider Card */}
+          {deliveryOtp && (
+            <div className="bg-[#FBF9F5] rounded-2xl p-4 border border-[#E7E0D8] flex items-center justify-between flex-wrap gap-3 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#B91C1C] flex items-center justify-center flex-shrink-0">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-[#78716C] tracking-wider">
+                    Delivery Verification OTP
+                  </div>
+                  <div className="text-xs text-[#57534E]">
+                    Share this 4-digit code with the rider upon doorstep delivery
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleCopyOtp}
+                className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-[#F3EFEA] border border-[#E7E0D8] rounded-xl font-mono text-base font-black text-[#B91C1C] shadow-xs transition-colors"
+              >
+                <span>{deliveryOtp}</span>
+                {copiedOtp ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} className="text-[#78716C]" />}
+              </button>
+            </div>
+          )}
+
+          {driverInfo && (
+            <div className="bg-white rounded-2xl p-4 border border-[#E7E0D8] flex items-center justify-between text-left gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] flex items-center justify-center text-lg">
+                  🛵
+                </div>
+                <div>
+                  <span className="font-bold text-xs text-[#1C1917] block">{driverInfo.name}</span>
+                  <span className="text-[11px] text-[#78716C] font-mono">
+                    {driverInfo.vehicle} • {driverInfo.plate}
+                  </span>
+                </div>
+              </div>
+
+              {driverInfo.phone && (
+                <a
+                  href={`tel:${driverInfo.phone}`}
+                  className="px-3 py-1.5 bg-[#15803D] hover:bg-[#166534] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
+                >
+                  <Phone size={12} />
+                  <span>Call Rider</span>
+                </a>
+              )}
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href={`/track?orderId=${orderId}`} className="btn btn-primary btn-lg rounded-xl flex items-center justify-center gap-2 shadow-md">
-              <Truck size={17} /> Track Live GPS & Timeline
+              <Truck size={17} /> Track Live GPS & Telemetry
             </Link>
             <a
               href={`https://wa.me/919999999999?text=${encodeURIComponent('Hi! I need help with my order ' + orderId)}`}

@@ -169,6 +169,14 @@ export async function verifyRazorpayPayment(payload: {
       }).catch(err => console.warn('Admin email alert dispatch:', err))
     }
 
+    // 5. Smart Auto-Dispatch to nearest available delivery partner
+    try {
+      const { autoAssignNearestAvailableDriver } = await import('@/app/actions/deliveries')
+      await autoAssignNearestAvailableDriver(payload.orderId)
+    } catch (autoErr) {
+      console.warn('Auto dispatch notice after Razorpay payment:', autoErr)
+    }
+
     return { success: true }
   } catch (err: any) {
     console.error('Razorpay verification error:', err)

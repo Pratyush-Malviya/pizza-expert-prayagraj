@@ -7,6 +7,8 @@ import { notifyOrderStatusChange } from '@/lib/utils/notifications'
  */
 export async function syncOrderStatus(orderId: string, newStatus: string, notesReason?: string) {
   const isCancel = newStatus === 'cancelled'
+  const isDelivered = newStatus === 'delivered'
+  const isOutForDelivery = newStatus === 'out_for_delivery'
 
   // 1. Sync local storage if present
   try {
@@ -27,9 +29,19 @@ export async function syncOrderStatus(orderId: string, newStatus: string, notesR
     notifyOrderStatusChange(orderId, newStatus)
   }
 
-  // 3. Sync to Supabase Database
+  // 3. Sync to Supabase Database & Realtime Channels
   try {
     const supabase = createClient()
+
+    // Broadcast on tracking channel
+    try {
+      supabase.channel(`tracking-${orderId}`).send({
+        type: 'broadcast',
+        event: 'status_update',
+        payload: { orderId, status: newStatus, updatedAt: Date.now() },
+      })
+    } catch {}
+
     const { error } = await supabase
       .from('orders')
       .update({ status: newStatus })
@@ -42,6 +54,39 @@ export async function syncOrderStatus(orderId: string, newStatus: string, notesR
         status: newStatus,
         notes: notesReason || (isCancel ? 'Order cancelled by admin. Refund initiated.' : `Status updated to ${newStatus}`),
       })
+
+      // Sync Deliveries table
+      if (isDelivered) {
+        await supabase
+          .from('deliveries')
+          .update({
+            status: 'delivered',
+            delivered_time: new Date().toISOString(),
+          })
+          .eq('order_id', orderId)
+
+        // Find driver to free up
+        const { data: deliv } = await supabase
+          .from('deliveries')
+          .select('driver_id')
+          .eq('order_id', orderId)
+          .maybeSingle()
+
+        if (deliv?.driver_id) {
+          await supabase
+            .from('drivers')
+            .update({ is_busy: false })
+            .eq('id', deliv.driver_id)
+        }
+      } else if (isOutForDelivery) {
+        await supabase
+          .from('deliveries')
+          .update({
+            status: 'picked_up',
+            pickup_time: new Date().toISOString(),
+          })
+          .eq('order_id', orderId)
+      }
 
       // If cancelled, update payments table if record exists
       if (isCancel) {

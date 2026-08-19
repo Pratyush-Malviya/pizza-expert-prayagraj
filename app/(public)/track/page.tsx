@@ -1,20 +1,20 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search, Clock, MapPin, ChefHat, CheckCircle2, Flame,
   Truck, Home, Bell, BellRing, XCircle, AlertCircle,
-  CreditCard, MessageCircle, RefreshCw, Compass, ShieldCheck
+  CreditCard, MessageCircle, RefreshCw, Compass, ShieldCheck, KeyRound
 } from 'lucide-react'
 import { requestNotificationPermission, notifyOrderStatusChange, playNotificationSound } from '@/lib/utils/notifications'
 import LoyaltyBadge from '@/components/profile/LoyaltyBadge'
 import QuickReorderButton from '@/components/orders/QuickReorderButton'
 import DriverInfoCard from '@/components/tracking/DriverInfoCard'
 import type { GPSLocation, DeliveryPartner } from '@/lib/tracking/types'
-import { DEFAULT_SAMPLE_DRIVER, STORE_LOCATION } from '@/lib/tracking/types'
+import { STORE_LOCATION, DEFAULT_SAMPLE_DRIVER } from '@/lib/tracking/types'
 
 // Dynamic Map Import to prevent SSR issues with Leaflet
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
@@ -32,7 +32,7 @@ function TrackOrderContent() {
   const initialOrderId = searchParams.get('orderId') || ''
 
   const [inputQuery, setInputQuery] = useState(initialOrderId)
-  const [currentStatus, setCurrentStatus] = useState<string>('heading_to_customer')
+  const [currentStatus, setCurrentStatus] = useState<string>('confirmed')
   const [addressStr, setAddressStr] = useState<string>('House 42, Civil Lines, Prayagraj')
   const [orderTotal, setOrderTotal] = useState<number>(499)
   const [paymentMethod, setPaymentMethod] = useState<string>('Razorpay UPI')
@@ -40,95 +40,152 @@ function TrackOrderContent() {
   const [notiGranted, setNotiGranted] = useState<boolean>(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date())
   const [driverLocation, setDriverLocation] = useState<GPSLocation | null>({
-    lat: 25.4410,
-    lng: 81.8590,
-    heading: 120,
-    speed: 24,
+    lat: STORE_LOCATION.lat,
+    lng: STORE_LOCATION.lng,
+    heading: 90,
+    speed: 0,
     updatedAt: Date.now(),
   })
-  const [driver] = useState<DeliveryPartner>(DEFAULT_SAMPLE_DRIVER)
-  const [otpCode] = useState<string>('4821')
-  const [etaMinutes, setEtaMinutes] = useState<number>(12)
+  const [driver, setDriver] = useState<DeliveryPartner>(DEFAULT_SAMPLE_DRIVER)
+  const [otpCode, setOtpCode] = useState<string>('1234')
+  const [etaMinutes, setEtaMinutes] = useState<number>(18)
   const [distanceKm, setDistanceKm] = useState<number>(2.4)
   const supabase = createClient()
 
-  // Fetch initial status, background auto-polling every 3.5s & setup Supabase Realtime subscriptions
-  useEffect(() => {
+  // Fetch real order and delivery details
+  const fetchStatus = useCallback(async () => {
     if (!orderId) return
 
-    const fetchStatus = async () => {
-      // Check local storage fallback first for instant update
-      try {
-        const savedStatus = localStorage.getItem(`order_status_${orderId}`)
-        if (savedStatus) {
-          setCurrentStatus(savedStatus)
-        }
-        const localOrders = JSON.parse(localStorage.getItem('pizza_orders') || '[]')
-        const match = localOrders.find((o: any) => o.id === orderId || o.order_id === orderId)
-        if (match) {
-          if (match.status) setCurrentStatus(match.status)
-          if (match.total) setOrderTotal(Number(match.total))
-          if (match.paymentMethod) setPaymentMethod(match.paymentMethod)
-        }
-      } catch {}
+    // 1. Check local storage fallback first
+    try {
+      const savedStatus = localStorage.getItem(`order_status_${orderId}`)
+      if (savedStatus) {
+        setCurrentStatus(savedStatus)
+      }
+      const localOrders = JSON.parse(localStorage.getItem('pizza_orders') || '[]')
+      const match = localOrders.find((o: any) => o.id === orderId || o.order_id === orderId)
+      if (match) {
+        if (match.status) setCurrentStatus(match.status)
+        if (match.total) setOrderTotal(Number(match.total))
+        if (match.paymentMethod) setPaymentMethod(match.paymentMethod)
+      }
+    } catch {}
 
-      // Fetch from Supabase directly
-      try {
-        const { data } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single()
+    // 2. Fetch from Supabase Orders table
+    try {
+      const { data: orderData } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
 
-        if (data) {
-          setCurrentStatus((prev) => {
-            if (prev !== data.status) {
-              if (data.status === 'cancelled') {
-                playNotificationSound('alert')
-              } else {
-                playNotificationSound('status_change')
-              }
+      if (orderData) {
+        const addr = orderData.address_json || {}
+        setCurrentStatus((prev) => {
+          if (prev !== orderData.status) {
+            if (orderData.status === 'cancelled') {
+              playNotificationSound('alert')
+            } else {
+              playNotificationSound('status_change')
             }
-            return data.status
-          })
-          if (data.total) setOrderTotal(Number(data.total))
-          if (data.address_json?.paymentMethod) setPaymentMethod(data.address_json.paymentMethod)
-          if (data.address_json?.line1) {
-            setAddressStr(`${data.address_json.line1}, ${data.address_json.city || 'Prayagraj'}`)
           }
-          setLastSyncedAt(new Date())
-        }
-      } catch {}
-    }
+          return orderData.status
+        })
 
+        if (orderData.total) setOrderTotal(Number(orderData.total))
+        if (addr.paymentMethod) setPaymentMethod(addr.paymentMethod)
+        if (addr.line1) {
+          setAddressStr([addr.line1, addr.line2, addr.city].filter(Boolean).join(', ') || 'Prayagraj')
+        }
+        if (addr.deliveryOtp) {
+          setOtpCode(String(addr.deliveryOtp))
+        }
+
+        // Check if driver is assigned directly in address_json
+        if (addr.driverName) {
+          setDriver((prev) => ({
+            ...prev,
+            name: addr.driverName,
+            phone: addr.driverPhone || prev.phone,
+            vehicle_type: addr.driverVehicle || prev.vehicle_type,
+            vehicle_number: addr.driverPlate || prev.vehicle_number || 'UP 70',
+            is_online: true,
+            is_busy: true,
+          }))
+        }
+        setLastSyncedAt(new Date())
+      }
+
+      // 3. Fetch from Deliveries table (for real driver & live OTP)
+      const { data: deliveryData } = await supabase
+        .from('deliveries')
+        .select('*, driver:drivers(*)')
+        .eq('order_id', orderId)
+        .maybeSingle()
+
+      if (deliveryData) {
+        if (deliveryData.otp_code) {
+          setOtpCode(deliveryData.otp_code)
+        }
+
+        if (deliveryData.driver) {
+          const d = deliveryData.driver
+          setDriver({
+            id: d.id,
+            name: d.name || 'Delivery Partner',
+            phone: d.phone || '',
+            vehicle_type: d.vehicle_type || 'Bike',
+            vehicle_number: d.vehicle_number || 'UP 70 AB 1234',
+            rating: 5.0,
+            total_deliveries: 120,
+            is_online: d.is_online !== false,
+            is_busy: true,
+            current_lat: Number(d.current_lat || STORE_LOCATION.lat),
+            current_lng: Number(d.current_lng || STORE_LOCATION.lng),
+          })
+
+          if (d.current_lat && d.current_lng) {
+            setDriverLocation({
+              lat: Number(d.current_lat),
+              lng: Number(d.current_lng),
+              speed: 28,
+              heading: 90,
+              updatedAt: Date.now(),
+            })
+          }
+        }
+      }
+    } catch {}
+  }, [orderId, supabase])
+
+  useEffect(() => {
     fetchStatus()
 
-    // ── Continuous Background Auto-Polling (No Page Reload Needed) ──
+    // ── Continuous Background Auto-Polling (3.5s) ──
     const pollInterval = setInterval(() => {
       fetchStatus()
     }, 3500)
 
-    // ── Realtime WebSocket Subscription & GPS Broadcast Listener ──
+    // ── Realtime WebSocket Subscription ──
     const channel = supabase
       .channel(`tracking-${orderId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
+        { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
         (payload: any) => {
-          if (payload.new && (payload.new.id === orderId || payload.new.order_id === orderId) && payload.new.status) {
-            const newSt = payload.new.status
-            setCurrentStatus((prev) => {
-              if (prev !== newSt) {
-                if (newSt === 'cancelled') {
-                  playNotificationSound('alert')
-                } else {
-                  playNotificationSound('status_change')
-                }
-              }
-              return newSt
-            })
+          if (payload.new && payload.new.status) {
+            setCurrentStatus(payload.new.status)
+            playNotificationSound('status_change')
             setLastSyncedAt(new Date())
+            fetchStatus()
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries', filter: `order_id=eq.${orderId}` },
+        () => {
+          fetchStatus()
         }
       )
       .on('broadcast', { event: 'location' }, (payload: any) => {
@@ -137,7 +194,7 @@ function TrackOrderContent() {
             lat: payload.payload.lat,
             lng: payload.payload.lng,
             heading: payload.payload.heading,
-            speed: payload.payload.speed,
+            speed: payload.payload.speed || 24,
             updatedAt: Date.now(),
           })
           if (payload.payload.status) {
@@ -148,16 +205,7 @@ function TrackOrderContent() {
       })
       .subscribe()
 
-    // Custom Event Listener for local status changes
-    const handleStatusSync = (e: any) => {
-      if (e.detail?.orderId === orderId && e.detail?.newStatus) {
-        setCurrentStatus(e.detail.newStatus)
-        setLastSyncedAt(new Date())
-      } else {
-        fetchStatus()
-      }
-    }
-
+    const handleStatusSync = () => fetchStatus()
     window.addEventListener('orderStatusUpdated', handleStatusSync)
     window.addEventListener('storage', handleStatusSync)
 
@@ -167,7 +215,7 @@ function TrackOrderContent() {
       window.removeEventListener('orderStatusUpdated', handleStatusSync)
       window.removeEventListener('storage', handleStatusSync)
     }
-  }, [orderId])
+  }, [orderId, fetchStatus, supabase])
 
   const handleSearch = (query: string) => {
     if (!query.trim()) return
@@ -186,13 +234,14 @@ function TrackOrderContent() {
       case 'picked_up':
       case 'heading_to_customer':
       case 'out_for_delivery':
+      case 'arrived':
         return 3
       case 'delivered':
         return 4
       case 'cancelled':
         return -1
       default:
-        return 3
+        return 2
     }
   }
 
@@ -236,7 +285,6 @@ function TrackOrderContent() {
           </button>
         </div>
 
-
         {/* Live Interactive Map Canvas */}
         <LiveDeliveryMap
           driverLocation={driverLocation}
@@ -250,12 +298,14 @@ function TrackOrderContent() {
 
         {/* Main Tracking Details Card */}
         {orderId && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#E7E0D8] shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E7E0D8] shadow-sm space-y-6">
             {/* Top Bar with Order ID & Notifications */}
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-4 flex-wrap gap-2">
               <div>
                 <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Tracking Order</span>
-                <span className="font-mono font-black text-[#1C1917] text-lg sm:text-xl">{orderId}</span>
+                <span className="font-mono font-black text-[#1C1917] text-lg sm:text-xl">
+                  #{orderId.slice(-6).toUpperCase()}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -280,6 +330,10 @@ function TrackOrderContent() {
                 <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border uppercase font-mono ${
                   isCancelled
                     ? 'bg-[#FEE2E2] text-[#DC2626] border-[#DC2626]/30'
+                    : currentStatus === 'out_for_delivery' || currentStatus === 'picked_up'
+                    ? 'bg-[#FAF5FF] text-[#9333EA] border-[#E9D5FF]'
+                    : currentStatus === 'delivered'
+                    ? 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]'
                     : 'bg-[#FFFBEB] text-[#D97706] border-[#D97706]/30'
                 }`}>
                   <span className={`w-2 h-2 rounded-full ${isCancelled ? 'bg-[#DC2626]' : 'bg-[#D97706] animate-ping'}`} />
@@ -289,7 +343,7 @@ function TrackOrderContent() {
             </div>
 
             {/* Live Auto-Refresh Pulse Bar */}
-            <div className="bg-[#FBF9F5] border border-[#E7E0D8] rounded-xl px-3.5 py-2 flex items-center justify-between text-xs text-[#57534E]">
+            <div className="bg-[#FBF9F5] border border-[#E7E0D8] rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs text-[#57534E]">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -303,7 +357,64 @@ function TrackOrderContent() {
               </span>
             </div>
 
-            {/* Rider Information Card (Zomato-Style) */}
+            {/* Milestone Stages Timeline */}
+            <div className="py-2">
+              <div className="grid grid-cols-4 gap-2 relative">
+                <div className="absolute top-3.5 left-0 right-0 h-0.5 bg-[#E7E0D8] -z-0" />
+                <div
+                  className="absolute top-3.5 left-0 h-0.5 bg-[#B91C1C] -z-0 transition-all duration-500"
+                  style={{
+                    width: stepIndex === 1 ? '15%' : stepIndex === 2 ? '45%' : stepIndex === 3 ? '75%' : '100%',
+                  }}
+                />
+
+                <div className="relative z-10 flex flex-col items-center gap-1.5 text-center">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-xs transition-colors ${
+                    stepIndex >= 1 ? 'bg-[#B91C1C] text-white' : 'bg-[#E7E0D8] text-[#57534E]'
+                  }`}>
+                    ✓
+                  </div>
+                  <span className={`text-[11px] font-serif font-bold ${stepIndex >= 1 ? 'text-[#1C1917]' : 'text-[#78716C]'}`}>
+                    1. Confirmed
+                  </span>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-1.5 text-center">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-xs transition-colors ${
+                    stepIndex >= 2 ? 'bg-[#B91C1C] text-white ring-4 ring-[#B91C1C]/20' : 'bg-[#E7E0D8] text-[#57534E]'
+                  }`}>
+                    {stepIndex > 2 ? '✓' : '2'}
+                  </div>
+                  <span className={`text-[11px] font-serif font-bold ${stepIndex === 2 ? 'text-[#B91C1C]' : stepIndex > 2 ? 'text-[#1C1917]' : 'text-[#78716C]'}`}>
+                    2. In Oven
+                  </span>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-1.5 text-center">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    stepIndex >= 3 ? 'bg-[#B91C1C] text-white ring-4 ring-[#B91C1C]/20' : 'bg-[#E7E0D8] text-[#57534E]'
+                  }`}>
+                    {stepIndex > 3 ? '✓' : '3'}
+                  </div>
+                  <span className={`text-[11px] font-serif font-bold ${stepIndex === 3 ? 'text-[#B91C1C]' : stepIndex > 3 ? 'text-[#1C1917]' : 'text-[#78716C]'}`}>
+                    3. On the Way
+                  </span>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-1.5 text-center">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    stepIndex >= 4 ? 'bg-[#15803D] text-white' : 'bg-[#E7E0D8] text-[#57534E]'
+                  }`}>
+                    {stepIndex >= 4 ? '✓' : '4'}
+                  </div>
+                  <span className={`text-[11px] font-serif font-bold ${stepIndex >= 4 ? 'text-[#15803D]' : 'text-[#78716C]'}`}>
+                    4. Delivered
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rider Information Card (Zomato-Style with real Driver + real OTP) */}
             <DriverInfoCard
               driver={driver}
               otpCode={otpCode}
@@ -313,123 +424,19 @@ function TrackOrderContent() {
             />
 
             {/* ORDER CANCELLED STATE */}
-            {isCancelled ? (
-              <div className="space-y-6">
-                <div className="bg-[#FEF2F2] rounded-xl p-5 border border-[#FCA5A5] space-y-3">
-                  <div className="flex items-center gap-3 text-[#B91C1C]">
-                    <XCircle size={26} className="flex-shrink-0" />
-                    <div>
-                      <h3 className="font-serif font-bold text-base text-[#991B1B]">Order Cancelled</h3>
-                      <p className="text-xs text-[#7F1D1D]">
-                        This order was cancelled by the store. If payment was made, your refund has been automatically initiated.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#FDFBF7] rounded-xl p-5 border border-[#E7E0D8] space-y-4">
-                  <h4 className="font-serif font-bold text-sm text-[#1C1917] flex items-center gap-2">
-                    <CreditCard size={18} className="text-[#16A34A]" />
-                    Refund & Transaction Details
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-white p-3 rounded-lg border border-[#E7E0D8]">
-                      <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block mb-1">Refund Status</span>
-                      <span className="font-bold text-[#16A34A] bg-[#DCFCE7] px-2 py-0.5 rounded-full inline-block">
-                        Initiated & Processing
-                      </span>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-lg border border-[#E7E0D8]">
-                      <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block mb-1">Refund Amount</span>
-                      <span className="font-bold text-[#1C1917] text-sm font-mono">₹{orderTotal}.00</span>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-lg border border-[#E7E0D8]">
-                      <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block mb-1">Payment Method</span>
-                      <span className="font-semibold text-[#44403C] capitalize">{paymentMethod}</span>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-lg border border-[#E7E0D8]">
-                      <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block mb-1">Refund Reference ID</span>
-                      <span className="font-mono text-[#78716C]">RFND-{orderId.slice(0, 8).toUpperCase()}</span>
-                    </div>
+            {isCancelled && (
+              <div className="bg-[#FEF2F2] rounded-2xl p-5 border border-[#FCA5A5] space-y-3">
+                <div className="flex items-center gap-3 text-[#B91C1C]">
+                  <XCircle size={26} className="flex-shrink-0" />
+                  <div>
+                    <h3 className="font-serif font-bold text-base text-[#991B1B]">Order Cancelled</h3>
+                    <p className="text-xs text-[#7F1D1D]">
+                      This order was cancelled by the store. If payment was made, your refund has been automatically initiated.
+                    </p>
                   </div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Live Status Progress Stepper */}
-                <div className="py-2">
-                  <div className="space-y-6 relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E7E0D8]">
-                    {/* Step 1: Placed */}
-                    <div className={`flex items-start gap-4 relative ${stepIndex >= 1 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 1 ? 'bg-[#15803D] text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
-                        <CheckCircle2 size={16} />
-                      </div>
-                      <div>
-                        <h4 className="font-serif font-bold text-[#1C1917] text-sm">Order Confirmed</h4>
-                        <p className="text-xs text-[#57534E]">Received by restaurant & sent to Allapur kitchen.</p>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Preparing / Baking */}
-                    <div className={`flex items-start gap-4 relative ${stepIndex >= 2 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 2 ? 'bg-[#B91C1C] text-white ring-4 ring-[#B91C1C]/20' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
-                        <Flame size={16} />
-                      </div>
-                      <div>
-                        <h4 className={`font-serif font-bold text-sm ${stepIndex === 2 ? 'text-[#B91C1C]' : 'text-[#1C1917]'}`}>
-                          Baking in Wood-Fired Oven {stepIndex === 2 && '(Current Step)'}
-                        </h4>
-                        <p className="text-xs text-[#57534E]">Handcrafted dough baking at 450°C with fresh mozzarella.</p>
-                      </div>
-                    </div>
-
-                    {/* Step 3: Out for Delivery */}
-                    <div className={`flex items-start gap-4 relative ${stepIndex >= 3 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 3 ? 'bg-amber-500 text-black ring-4 ring-amber-500/20' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
-                        <Truck size={16} />
-                      </div>
-                      <div>
-                        <h4 className={`font-serif font-bold text-sm ${stepIndex === 3 ? 'text-amber-600' : 'text-[#1C1917]'}`}>
-                          Out for Delivery {stepIndex === 3 && '(Rider En Route on Live Map)'}
-                        </h4>
-                        <p className="text-xs text-[#57534E]">Rahul is riding with your insulated hot bag.</p>
-                      </div>
-                    </div>
-
-                    {/* Step 4: Delivered */}
-                    <div className={`flex items-start gap-4 relative ${stepIndex >= 4 ? 'opacity-100' : 'opacity-40'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold z-10 ${stepIndex >= 4 ? 'bg-emerald-600 text-white' : 'bg-[#E7E0D8] text-[#57534E]'}`}>
-                        <Home size={16} />
-                      </div>
-                      <div>
-                        <h4 className="font-serif font-bold text-[#1C1917] text-sm">Delivered at Doorstep</h4>
-                        <p className="text-xs text-[#57534E]">Enjoy your fresh hot meal!</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
             )}
-
-            {/* Quick Re-order & Loyalty Membership Badges */}
-            <div className="pt-4 border-t border-[#E7E0D8] space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-semibold text-[#57534E]">Love your order? Reorder in 1-Click:</span>
-                <QuickReorderButton orderId={orderId} />
-              </div>
-              <LoyaltyBadge points={240} userTierName="Silver" />
-            </div>
-
-            {/* Address Footer */}
-            <div className="pt-4 border-t border-[#E7E0D8] flex items-center justify-between text-xs text-[#57534E]">
-              <span className="flex items-center gap-1.5">
-                <MapPin size={14} className="text-[#B91C1C]" /> Delivery Address: {addressStr}
-              </span>
-            </div>
           </div>
         )}
       </div>
@@ -439,7 +446,16 @@ function TrackOrderContent() {
 
 export default function TrackOrderPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 font-serif">Loading live GPS tracking...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#FBF9F5]">
+          <div className="flex items-center gap-2 font-mono text-xs text-[#78716C]">
+            <Compass size={20} className="animate-spin text-[#B91C1C]" />
+            <span>Loading Live Order Telemetry...</span>
+          </div>
+        </div>
+      }
+    >
       <TrackOrderContent />
     </Suspense>
   )
