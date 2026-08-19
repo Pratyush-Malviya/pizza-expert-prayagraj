@@ -341,63 +341,90 @@ export async function createManagedUser(payload: {
   auto_verify?: boolean
 }) {
   try {
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    let userId = crypto.randomUUID()
+    const admin = getSupabaseAdmin()
 
+    // 1. Try creating Auth user first
     try {
-      const admin = getSupabaseAdmin()
-      
-      await admin.from('profiles').insert({
+      const cleanPhone = payload.phone?.replace(/\D/g, '') || ''
+      const { data: authData } = await admin.auth.admin.createUser({
+        email: payload.email,
+        phone: payload.phone?.startsWith('+') ? payload.phone : cleanPhone ? `+91${cleanPhone}` : undefined,
+        email_confirm: true,
+        user_metadata: { name: payload.name, role: payload.role },
+        password: `PizzaUser@${Math.random().toString(36).slice(-6)}!`,
+      })
+      if (authData?.user?.id) {
+        userId = authData.user.id
+      }
+    } catch (authError) {
+      console.warn('Auth user creation notice:', authError)
+    }
+
+    // 2. Upsert into profiles
+    const { error: profileError } = await admin.from('profiles').upsert({
+      id: userId,
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone || null,
+      role: payload.role,
+      is_active: true,
+      invite_status: 'accepted',
+      updated_at: new Date().toISOString(),
+    })
+
+    if (profileError) {
+      console.error('Profile upsert failed:', profileError.message)
+      return { success: false, error: `Database error: ${profileError.message}` }
+    }
+
+    // 3. Upsert staff details
+    if (['super_admin', 'manager', 'staff', 'viewer'].includes(payload.role)) {
+      await admin.from('staff_details').upsert({
+        id: userId,
+        department: payload.department || 'General Operations',
+        employee_code: payload.employee_code || `EMP-${Date.now().toString().slice(-4)}`,
+        updated_at: new Date().toISOString(),
+      })
+    }
+
+    // 4. Upsert driver details & live drivers table
+    if (payload.role === 'driver') {
+      await admin.from('driver_details').upsert({
+        id: userId,
+        vehicle_type: payload.vehicle_type || 'bike',
+        vehicle_number: payload.vehicle_number || '',
+        license_number: payload.license_number || '',
+        verification_status: payload.auto_verify ? 'verified' : 'pending',
+        is_online: true,
+        updated_at: new Date().toISOString(),
+      })
+
+      await admin.from('drivers').upsert({
         id: userId,
         name: payload.name,
-        email: payload.email,
-        phone: payload.phone || null,
-        role: payload.role,
-        is_active: true,
-        invite_status: 'accepted',
+        phone: payload.phone || '',
+        vehicle_type: payload.vehicle_type || 'bike',
+        vehicle_number: payload.vehicle_number || '',
+        is_online: true,
+        is_busy: false,
+        current_lat: 25.4358,
+        current_lng: 81.8682,
+        last_location_update: new Date().toISOString(),
       })
-
-      if (['super_admin', 'manager', 'staff', 'viewer'].includes(payload.role)) {
-        await admin.from('staff_details').insert({
-          id: userId,
-          department: payload.department || 'General Operations',
-          employee_code: payload.employee_code || `EMP-${Date.now().toString().slice(-4)}`,
-        })
-      }
-
-      if (payload.role === 'driver') {
-        await admin.from('driver_details').insert({
-          id: userId,
-          vehicle_type: payload.vehicle_type || 'bike',
-          vehicle_number: payload.vehicle_number || '',
-          license_number: payload.license_number || '',
-          verification_status: payload.auto_verify ? 'verified' : 'pending',
-          is_online: true,
-        })
-
-        await admin.from('drivers').insert({
-          id: userId,
-          name: payload.name,
-          phone: payload.phone || '',
-          vehicle_type: payload.vehicle_type || 'bike',
-          vehicle_number: payload.vehicle_number || '',
-          is_online: true,
-          is_busy: false,
-        })
-      }
-
-      await logAudit({
-        action: 'user.created_rbac',
-        targetTable: 'profiles',
-        targetId: userId,
-        after: payload,
-      })
-    } catch (err) {
-      console.warn('Note: Stored in memory / local database:', err)
     }
+
+    await logAudit({
+      action: 'user.created_rbac',
+      targetTable: 'profiles',
+      targetId: userId,
+      after: payload,
+    })
 
     revalidatePath('/admin/users')
     revalidatePath('/admin/staff')
     revalidatePath('/admin/drivers')
+    revalidatePath('/admin/deliveries')
 
     return {
       success: true,

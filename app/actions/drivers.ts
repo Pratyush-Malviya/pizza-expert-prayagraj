@@ -157,7 +157,7 @@ export async function onboardDriverDirect(formData: FormData) {
   try {
     const name = formData.get('name') as string
     const phone = formData.get('phone') as string
-    const email = formData.get('email') as string
+    const rawEmail = formData.get('email') as string
     const vehicleType = (formData.get('vehicle_type') as string) || 'bike'
     const vehicleNumber = (formData.get('vehicle_number') as string) || ''
     const licenseNumber = (formData.get('license_number') as string) || ''
@@ -167,45 +167,90 @@ export async function onboardDriverDirect(formData: FormData) {
       return { success: false, error: 'Driver name and phone number are required.' }
     }
 
-    const driverId = `driver_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    const cleanPhone = phone.replace(/\D/g, '')
+    const email = rawEmail || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`
+    let driverId = crypto.randomUUID()
 
-    // Try Supabase admin if available
+    const admin = getSupabaseAdmin()
+
+    // 1. Try creating Auth user first
     try {
-      const admin = getSupabaseAdmin()
-      await admin.from('profiles').insert({
-        id: driverId,
-        name,
-        phone,
-        email: email || `${phone}@driver.pizzaexpert.local`,
-        role: 'driver',
-        is_active: true,
-        invite_status: 'accepted',
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
+        email,
+        phone: phone.startsWith('+') ? phone : `+91${cleanPhone}`,
+        email_confirm: true,
+        phone_confirm: true,
+        user_metadata: { name, role: 'driver' },
+        password: `DriverPass@${Math.random().toString(36).slice(-6)}!`,
       })
-
-      await admin.from('driver_details').insert({
-        id: driverId,
-        vehicle_type: vehicleType,
-        vehicle_number: vehicleNumber,
-        license_number: licenseNumber,
-        verification_status: autoVerify ? 'verified' : 'pending',
-        is_online: true,
-      })
-
-      await admin.from('drivers').insert({
-        id: driverId,
-        name,
-        phone,
-        vehicle_type: vehicleType,
-        vehicle_number: vehicleNumber,
-        is_online: true,
-        is_busy: false,
-      })
-    } catch (err) {
-      console.warn('Note: Stored in memory / local database:', err)
+      if (authData?.user?.id) {
+        driverId = authData.user.id
+      }
+    } catch (authErr) {
+      console.warn('Auth user create notice:', authErr)
     }
+
+    // 2. Upsert into profiles
+    const { error: profileError } = await admin.from('profiles').upsert({
+      id: driverId,
+      name,
+      phone,
+      email,
+      role: 'driver',
+      is_active: true,
+      invite_status: 'accepted',
+      updated_at: new Date().toISOString(),
+    })
+
+    if (profileError) {
+      console.error('Profile upsert failed:', profileError.message)
+      return { success: false, error: `Database profile error: ${profileError.message}` }
+    }
+
+    // 3. Upsert into driver_details
+    const { error: detailsError } = await admin.from('driver_details').upsert({
+      id: driverId,
+      vehicle_type: vehicleType,
+      vehicle_number: vehicleNumber,
+      license_number: licenseNumber,
+      verification_status: autoVerify ? 'verified' : 'pending',
+      is_online: true,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (detailsError) {
+      console.warn('Driver details upsert note:', detailsError.message)
+    }
+
+    // 4. Upsert into drivers table
+    const { error: driversError } = await admin.from('drivers').upsert({
+      id: driverId,
+      name,
+      phone,
+      vehicle_type: vehicleType,
+      vehicle_number: vehicleNumber,
+      is_online: true,
+      is_busy: false,
+      current_lat: 25.4358,
+      current_lng: 81.8682,
+      last_location_update: new Date().toISOString(),
+    })
+
+    if (driversError) {
+      console.warn('Drivers table upsert note:', driversError.message)
+    }
+
+    await logAudit({
+      action: 'driver.onboarded_direct',
+      targetTable: 'profiles',
+      targetId: driverId,
+      after: { name, phone, email, vehicleType, vehicleNumber, licenseNumber },
+    })
 
     revalidatePath('/admin/drivers')
     revalidatePath('/admin/deliveries')
+    revalidatePath('/admin/users')
+
     return {
       success: true,
       driver: {
@@ -237,20 +282,30 @@ export async function submitDriverApplication(data: {
   payoutUpi?: string
 }) {
   try {
-    const applicationId = `APP-${Date.now().toString().slice(-6)}`
+    const applicationId = crypto.randomUUID()
+    const admin = getSupabaseAdmin()
 
-    try {
-      const admin = getSupabaseAdmin()
-      await admin.from('driver_details').insert({
-        id: `applicant_${applicationId}`,
-        vehicle_type: data.vehicleType,
-        vehicle_number: data.vehicleNumber,
-        license_number: data.licenseNumber,
-        verification_status: 'pending',
-        is_online: false,
-        rejection_reason: `Applied online for area: ${data.area} | UPI: ${data.payoutUpi || 'N/A'}`,
-      })
-    } catch {}
+    await admin.from('profiles').upsert({
+      id: applicationId,
+      name: data.name,
+      phone: data.phone,
+      email: data.email || `${data.phone.replace(/\D/g, '')}@applicant.pizzaexpert.local`,
+      role: 'driver',
+      is_active: false,
+      invite_status: 'pending',
+      updated_at: new Date().toISOString(),
+    })
+
+    await admin.from('driver_details').upsert({
+      id: applicationId,
+      vehicle_type: data.vehicleType,
+      vehicle_number: data.vehicleNumber,
+      license_number: data.licenseNumber,
+      verification_status: 'pending',
+      is_online: false,
+      rejection_reason: `Applied online for area: ${data.area} | UPI: ${data.payoutUpi || 'N/A'}`,
+      updated_at: new Date().toISOString(),
+    })
 
     revalidatePath('/admin/drivers')
     return { success: true, applicationId }
