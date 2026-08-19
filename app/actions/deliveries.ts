@@ -98,7 +98,7 @@ export async function fetchAvailableDrivers(): Promise<{
           name: p.name || 'Delivery Partner',
           phone: p.phone || live?.phone || '',
           vehicle_type: det?.vehicle_type || live?.vehicle_type || 'Bike',
-          vehicle_number: det?.vehicle_number || live?.vehicle_number || '',
+          vehicle_number: det?.vehicle_number || live?.vehicle_number || 'UP 70',
           rating: 5.0,
           total_deliveries: 0,
           is_online: isOnline,
@@ -118,7 +118,7 @@ export async function fetchAvailableDrivers(): Promise<{
             name: ld.name || 'Delivery Partner',
             phone: ld.phone || '',
             vehicle_type: ld.vehicle_type || 'Bike',
-            vehicle_number: ld.vehicle_number || '',
+            vehicle_number: ld.vehicle_number || 'UP 70',
             rating: 5.0,
             total_deliveries: 0,
             is_online: ld.is_online !== false,
@@ -176,7 +176,7 @@ export async function assignOrderToDriver(
       name: profile?.name || dbDriver?.name || 'Assigned Driver',
       phone: profile?.phone || dbDriver?.phone || '',
       vehicle_type: det?.vehicle_type || dbDriver?.vehicle_type || 'Bike',
-      vehicle_number: det?.vehicle_number || dbDriver?.vehicle_number || '',
+      vehicle_number: det?.vehicle_number || dbDriver?.vehicle_number || 'UP 70',
       rating: 5.0,
       total_deliveries: 0,
       is_online: true,
@@ -455,8 +455,9 @@ export async function reassignOrderDriver(
 }
 
 /**
- * Driver Trip Workflow Action:
+ * Driver Trip Workflow Action with COD Payment Gate:
  * Handles rider progression: 'assigned' -> 'accepted' -> 'picked_up' -> 'heading_to_customer' -> 'arrived' -> 'delivered'.
+ * Enforces cash collection for Cash on Delivery orders before allowing delivered status.
  */
 export async function updateDriverTripStatus(payload: {
   deliveryId?: string
@@ -465,6 +466,8 @@ export async function updateDriverTripStatus(payload: {
   newStatus: 'assigned' | 'accepted' | 'picked_up' | 'heading_to_customer' | 'arrived' | 'delivered'
   otpCode?: string
   notes?: string
+  codCollected?: boolean
+  codPaymentMode?: 'cash' | 'driver_upi'
 }): Promise<{
   success: boolean
   message?: string
@@ -475,9 +478,19 @@ export async function updateDriverTripStatus(payload: {
     const admin = getAdminClient()
     const client = admin || supabase
 
-    const { orderId, driverId, newStatus, otpCode } = payload
+    const { orderId, driverId, newStatus, otpCode, codCollected, codPaymentMode } = payload
 
-    // 1. If delivering, verify OTP against database
+    // Fetch order details
+    const { data: ordData } = await client
+      .from('orders')
+      .select('id, total, address_json, status')
+      .eq('id', orderId)
+      .single()
+
+    const addr = ordData?.address_json || {}
+    const isCodOrder = addr.paymentMethod === 'cod'
+
+    // 1. If delivering, verify OTP against database & verify COD payment collection
     if (newStatus === 'delivered') {
       const { data: delivData } = await client
         .from('deliveries')
@@ -485,16 +498,10 @@ export async function updateDriverTripStatus(payload: {
         .eq('order_id', orderId)
         .maybeSingle()
 
-      const { data: ordData } = await client
-        .from('orders')
-        .select('address_json')
-        .eq('id', orderId)
-        .single()
-
       const expectedOtp =
         delivData?.otp_code ||
-        ordData?.address_json?.deliveryOtp ||
-        ordData?.address_json?.otp ||
+        addr.deliveryOtp ||
+        addr.otp ||
         '1234'
 
       const enteredOtp = (otpCode || '').trim()
@@ -503,6 +510,14 @@ export async function updateDriverTripStatus(payload: {
         return {
           success: false,
           error: 'Invalid 4-digit Delivery OTP! Please confirm code with customer.',
+        }
+      }
+
+      // COD Enforcement: Driver must collect payment before marking delivered
+      if (isCodOrder && !codCollected) {
+        return {
+          success: false,
+          error: `Please collect ₹${ordData?.total || 0} Cash on Delivery payment from the customer before completing delivery.`,
         }
       }
     }
@@ -525,7 +540,7 @@ export async function updateDriverTripStatus(payload: {
       .update(updateDelivPayload)
       .eq('order_id', orderId)
 
-    // 3. Update orders parent table
+    // 3. Update orders parent table and COD collection status
     let orderDbStatus = 'confirmed'
     if (newStatus === 'picked_up' || newStatus === 'heading_to_customer' || newStatus === 'arrived') {
       orderDbStatus = 'out_for_delivery'
@@ -533,12 +548,47 @@ export async function updateDriverTripStatus(payload: {
       orderDbStatus = 'delivered'
     }
 
+    const updatedAddrJson = {
+      ...addr,
+      ...(newStatus === 'delivered' && isCodOrder
+        ? {
+            codStatus: 'collected_by_driver',
+            codCollectedAt: new Date().toISOString(),
+            codCollectedBy: driverId,
+            codPaymentMode: codPaymentMode || 'cash',
+            codAmount: Number(ordData?.total) || 0,
+          }
+        : {}),
+    }
+
     await client
       .from('orders')
-      .update({ status: orderDbStatus })
+      .update({
+        status: orderDbStatus,
+        address_json: updatedAddrJson,
+      })
       .eq('id', orderId)
 
-    // 4. If delivered, mark driver idle and check for pending queue
+    // 4. If delivered & COD, record payment collection in payments table
+    if (newStatus === 'delivered' && isCodOrder) {
+      try {
+        await client.from('payments').upsert(
+          {
+            order_id: orderId,
+            gateway: 'cod',
+            amount: Number(ordData?.total) || 0,
+            status: 'paid',
+            gateway_payment_id: `cod_collected_by_${driverId}_pending_store_settlement`,
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: 'order_id' }
+        )
+      } catch (payErr) {
+        console.warn('COD payment upsert note:', payErr)
+      }
+    }
+
+    // 5. If delivered, mark driver idle and check for pending queue
     if (newStatus === 'delivered') {
       try {
         await client
@@ -558,18 +608,21 @@ export async function updateDriverTripStatus(payload: {
       }, 1000)
     }
 
-    // 5. Add status history
+    // 6. Add status history
     try {
       await client.from('order_status_history').insert({
         order_id: orderId,
         status: newStatus,
-        notes: `Rider update: ${newStatus.replace(/_/g, ' ').toUpperCase()}`,
+        notes: isCodOrder && newStatus === 'delivered'
+          ? `Delivered & Collected ₹${ordData?.total || 0} COD payment (${codPaymentMode || 'cash'}). Pending remittance to store manager.`
+          : `Rider update: ${newStatus.replace(/_/g, ' ').toUpperCase()}`,
       })
     } catch {}
 
     revalidatePath('/admin/deliveries')
     revalidatePath('/admin/orders')
     revalidatePath('/admin/kitchen')
+    revalidatePath('/admin/payments')
     revalidatePath('/partner/deliveries')
     revalidatePath('/driver')
     revalidatePath('/track')
@@ -581,6 +634,221 @@ export async function updateDriverTripStatus(payload: {
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Status update failed' }
+  }
+}
+
+/**
+ * Store Manager COD Cash Remittance Action:
+ * Store manager verifies and settles COD cash collected by the delivery partner at the store counter.
+ */
+export async function settleDriverCodCashAtStore(payload: {
+  orderId: string
+  driverId: string
+  managerName?: string
+  notes?: string
+}): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+    const admin = getAdminClient()
+    const client = admin || supabase
+
+    const { orderId, driverId, managerName } = payload
+
+    const { data: ord } = await client
+      .from('orders')
+      .select('id, total, address_json')
+      .eq('id', orderId)
+      .single()
+
+    if (!ord) {
+      return { success: false, error: 'Order not found' }
+    }
+
+    const addr = ord.address_json || {}
+    const updatedAddr = {
+      ...addr,
+      codStatus: 'settled_at_store',
+      codSettledAt: new Date().toISOString(),
+      codSettledBy: managerName || 'Store Manager',
+    }
+
+    // Update orders table
+    await client
+      .from('orders')
+      .update({ address_json: updatedAddr })
+      .eq('id', orderId)
+
+    // Update payments table
+    try {
+      await client
+        .from('payments')
+        .update({
+          gateway_payment_id: `cod_settled_at_store_by_${managerName || 'manager'}`,
+          status: 'paid',
+        })
+        .eq('order_id', orderId)
+    } catch {}
+
+    // Record audit log in order_status_history
+    try {
+      await client.from('order_status_history').insert({
+        order_id: orderId,
+        status: 'cod_settled',
+        notes: `COD cash of ₹${ord.total} submitted to store manager (${managerName || 'Manager'}) by rider.`,
+      })
+    } catch {}
+
+    revalidatePath('/admin/payments')
+    revalidatePath('/admin/deliveries')
+    revalidatePath('/admin/orders')
+    revalidatePath('/partner/deliveries')
+
+    return {
+      success: true,
+      message: `COD payment of ₹${ord.total} successfully settled at store counter.`,
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to settle COD cash' }
+  }
+}
+
+/**
+ * Batch Settle all unremitted COD orders for a specific delivery partner.
+ */
+export async function batchSettleDriverCodAtStore(payload: {
+  driverId: string
+  managerName?: string
+}): Promise<{
+  success: boolean
+  settledCount: number
+  totalSettledAmount: number
+  message?: string
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+    const admin = getAdminClient()
+    const client = admin || supabase
+
+    const { driverId, managerName } = payload
+
+    // Find all delivered COD orders with codStatus = 'collected_by_driver'
+    const { data: orders } = await client
+      .from('orders')
+      .select('id, total, address_json')
+      .eq('status', 'delivered')
+
+    const driverPendingOrders = (orders || []).filter((o: any) => {
+      const addr = o.address_json || {}
+      return (
+        addr.paymentMethod === 'cod' &&
+        addr.codStatus === 'collected_by_driver' &&
+        addr.codCollectedBy === driverId
+      )
+    })
+
+    if (driverPendingOrders.length === 0) {
+      return {
+        success: true,
+        settledCount: 0,
+        totalSettledAmount: 0,
+        message: 'No pending COD cash to settle for this rider.',
+      }
+    }
+
+    let totalSettledAmount = 0
+    let settledCount = 0
+
+    for (const ord of driverPendingOrders) {
+      await settleDriverCodCashAtStore({
+        orderId: ord.id,
+        driverId,
+        managerName,
+      })
+      totalSettledAmount += Number(ord.total) || 0
+      settledCount++
+    }
+
+    revalidatePath('/admin/payments')
+    revalidatePath('/admin/deliveries')
+    revalidatePath('/partner/deliveries')
+
+    return {
+      success: true,
+      settledCount,
+      totalSettledAmount,
+      message: `Successfully accepted and settled ₹${totalSettledAmount} cash across ${settledCount} order(s).`,
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      settledCount: 0,
+      totalSettledAmount: 0,
+      error: err.message || 'Batch settlement failed',
+    }
+  }
+}
+
+/**
+ * Fetch Driver's COD Cash in Hand Ledger.
+ */
+export async function fetchDriverCodLedger(driverId: string): Promise<{
+  success: boolean
+  totalCashInHand: number
+  pendingOrders: Array<{
+    id: string
+    total: number
+    customer: string
+    address: string
+    collectedAt: string
+    paymentMode: string
+  }>
+}> {
+  try {
+    const supabase = await createServerClient()
+    const admin = getAdminClient()
+    const client = admin || supabase
+
+    const { data: orders } = await client
+      .from('orders')
+      .select('id, total, address_json, created_at')
+      .eq('status', 'delivered')
+      .order('created_at', { ascending: false })
+
+    const unremitted = (orders || []).filter((o: any) => {
+      const addr = o.address_json || {}
+      return (
+        addr.paymentMethod === 'cod' &&
+        addr.codStatus === 'collected_by_driver' &&
+        addr.codCollectedBy === driverId
+      )
+    })
+
+    const pendingOrders = unremitted.map((o: any) => {
+      const addr = o.address_json || {}
+      return {
+        id: o.id,
+        total: Number(o.total) || 0,
+        customer: addr.name || 'Customer',
+        address: [addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj',
+        collectedAt: addr.codCollectedAt || o.created_at,
+        paymentMode: addr.codPaymentMode || 'cash',
+      }
+    })
+
+    const totalCashInHand = pendingOrders.reduce((sum, o) => sum + o.total, 0)
+
+    return {
+      success: true,
+      totalCashInHand,
+      pendingOrders,
+    }
+  } catch (err: any) {
+    return { success: false, totalCashInHand: 0, pendingOrders: [] }
   }
 }
 

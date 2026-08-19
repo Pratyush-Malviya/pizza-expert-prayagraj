@@ -279,7 +279,7 @@ export default function KitchenDisplayPage() {
         {STAGE_COLUMNS.map((col) => {
           const count = orders.filter((o) =>
             col.status === 'confirmed'
-              ? o.status === 'confirmed' || o.status === 'pending'
+              ? o.status === 'confirmed'
               : o.status === col.status
           ).length
 
@@ -309,7 +309,7 @@ export default function KitchenDisplayPage() {
           const ColumnIcon = col.icon
           const colOrders = orders.filter((o) =>
             col.status === 'confirmed'
-              ? o.status === 'confirmed' || o.status === 'pending'
+              ? o.status === 'confirmed'
               : o.status === col.status
           )
 

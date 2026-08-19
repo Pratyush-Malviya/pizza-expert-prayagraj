@@ -6,12 +6,18 @@ import {
   Bike, MapPin, Navigation, Phone, MessageCircle,
   CheckCircle2, Clock, AlertCircle, Play, Pause,
   KeyRound, ShieldCheck, Flame, ExternalLink, RefreshCw, Compass,
-  Check, ArrowRight, UserCheck, UtensilsCrossed
+  Check, ArrowRight, UserCheck, UtensilsCrossed, Banknote, QrCode,
+  Building2, Landmark, Wallet, CheckSquare, Square
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_LOCATION, STORE_DETAILS, SIMULATED_ROUTE_CIVIL_LINES } from '@/lib/tracking/types'
 import { playNotificationSound } from '@/lib/utils/notifications'
-import { updateDriverTripStatus, broadcastDriverGPS, fetchAvailableDrivers } from '@/app/actions/deliveries'
+import {
+  updateDriverTripStatus,
+  broadcastDriverGPS,
+  fetchAvailableDrivers,
+  fetchDriverCodLedger
+} from '@/app/actions/deliveries'
 import { toast } from 'sonner'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
@@ -50,17 +56,24 @@ export default function PartnerDeliveriesPage() {
   const [isBroadcastingGps, setIsBroadcastingGps] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [otpInput, setOtpInput] = useState('')
+  const [codCollectedConfirmed, setCodCollectedConfirmed] = useState(false)
+  const [codPaymentMode, setCodPaymentMode] = useState<'cash' | 'driver_upi'>('cash')
+
+  // COD Cash in hand ledger
+  const [cashInHandTotal, setCashInHandTotal] = useState(0)
+  const [pendingCodOrders, setPendingCodOrders] = useState<any[]>([])
+  const [loadingLedger, setLoadingLedger] = useState(false)
+
   const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number }>({
     lat: STORE_LOCATION.lat,
     lng: STORE_LOCATION.lng,
   })
 
-  const watchIdRef = useRef<number | null>(null)
   const simulationIntervalRef = useRef<any>(null)
   const simStepRef = useRef<number>(0)
   const supabase = createClient()
 
-  // 1. Fetch available drivers to populate profile selector & detect auth user
+  // 1. Fetch available drivers
   const loadDriversAndProfile = useCallback(async () => {
     try {
       const { drivers } = await fetchAvailableDrivers()
@@ -90,7 +103,22 @@ export default function PartnerDeliveriesPage() {
     loadDriversAndProfile()
   }, [loadDriversAndProfile])
 
-  // 2. Fetch active trip assigned to this driver
+  // 2. Fetch driver's COD Cash Ledger
+  const loadDriverLedger = useCallback(async (driverId: string) => {
+    if (!driverId) return
+    setLoadingLedger(true)
+    try {
+      const ledger = await fetchDriverCodLedger(driverId)
+      if (ledger.success) {
+        setCashInHandTotal(ledger.totalCashInHand)
+        setPendingCodOrders(ledger.pendingOrders)
+      }
+    } catch {} finally {
+      setLoadingLedger(false)
+    }
+  }, [])
+
+  // 3. Fetch active trip assigned to this driver
   const fetchActiveTrip = useCallback(async (driverId: string) => {
     if (!driverId) return
     try {
@@ -108,7 +136,6 @@ export default function PartnerDeliveriesPage() {
         setActiveOrder(deliv.order)
         setCurrentStep(deliv.status as any)
       } else {
-        // Fallback: check orders table directly where driver_id is set
         const { data: ord } = await supabase
           .from('orders')
           .select('*, order_items(*, products(name))')
@@ -125,8 +152,10 @@ export default function PartnerDeliveriesPage() {
           setActiveOrder(null)
         }
       }
+
+      await loadDriverLedger(driverId)
     } catch {}
-  }, [driverProfile.name, supabase])
+  }, [driverProfile.name, loadDriverLedger, supabase])
 
   useEffect(() => {
     if (selectedDriverId) {
@@ -134,7 +163,7 @@ export default function PartnerDeliveriesPage() {
     }
   }, [selectedDriverId, fetchActiveTrip])
 
-  // 3. Realtime subscription for newly dispatched deliveries
+  // 4. Realtime subscription
   useEffect(() => {
     if (!selectedDriverId) return
 
@@ -314,15 +343,23 @@ export default function PartnerDeliveriesPage() {
       })
       setCurrentStep('arrived')
       playNotificationSound('status_change')
-      toast.success('Arrived at customer address! Ask customer for 4-digit Delivery OTP.')
+      toast.success('Arrived at customer address!')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // Step 5: Verify OTP & Complete Delivery
+  // Step 5: Verify OTP, Confirm COD Cash Collection & Complete Delivery
   const handleVerifyOtpAndComplete = async () => {
     if (!activeOrder?.id) return
+    const addr = activeOrder.address_json || {}
+    const isCod = addr.paymentMethod === 'cod'
+
+    if (isCod && !codCollectedConfirmed) {
+      toast.error(`Please confirm that you have collected ₹${activeOrder.total} Cash on Delivery payment.`)
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const res = await updateDriverTripStatus({
@@ -331,16 +368,19 @@ export default function PartnerDeliveriesPage() {
         driverId: selectedDriverId,
         newStatus: 'delivered',
         otpCode: otpInput,
+        codCollected: codCollectedConfirmed,
+        codPaymentMode,
       })
 
       if (res.success) {
         setCurrentStep('delivered')
         setIsBroadcastingGps(false)
         playNotificationSound('status_change')
-        toast.success('🎉 Delivery Completed Successfully! Payment & Handover Verified.')
+        toast.success('🎉 Delivery Completed! Payment collected & recorded in cash ledger.')
         setActiveOrder(null)
         setActiveDeliveryRow(null)
         setOtpInput('')
+        setCodCollectedConfirmed(false)
         await fetchActiveTrip(selectedDriverId)
       } else {
         playNotificationSound('alert')
@@ -358,11 +398,12 @@ export default function PartnerDeliveriesPage() {
   const summaryStr = itemsList
     .map((i: any) => `${i.quantity}x ${i.products?.name || 'Pizza'}`)
     .join(', ') || 'Wood-Fired Pizza Order'
+  const isCodOrder = addr.paymentMethod === 'cod'
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto pb-12">
+    <div className="space-y-4 max-w-2xl mx-auto pb-16">
       {/* Driver Switcher Header (Testing & Multi-rider simulation) */}
-      <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E7E0D8] shadow-xs">
+      <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-[#E7E0D8] shadow-xs">
         <div className="flex items-center gap-2">
           <UserCheck size={16} className="text-[#B91C1C]" />
           <span className="text-xs font-bold text-[#1C1917]">Active Driver Portal:</span>
@@ -409,6 +450,41 @@ export default function PartnerDeliveriesPage() {
         </button>
       </div>
 
+      {/* Cash In Hand / Store Counter Remittance Card */}
+      <div className="bg-white rounded-3xl p-5 border border-[#E7E0D8] shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+              <Banknote size={18} />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-[#78716C] tracking-wider block">
+                COD Cash in Hand Ledger
+              </span>
+              <span className="font-mono font-bold text-lg text-[#1C1917]">
+                ₹{cashInHandTotal.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+              {pendingCodOrders.length} {pendingCodOrders.length === 1 ? 'Trip' : 'Trips'} Pending Deposit
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3 bg-[#FBF9F5] rounded-2xl border border-[#E7E0D8] text-xs text-[#57534E] flex items-start gap-2">
+          <Building2 size={16} className="text-[#B91C1C] mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-bold text-[#1C1917] block">Store Remittance Rule:</span>
+            <span>
+              Submit all collected COD cash of <strong className="text-[#1C1917] font-mono">₹{cashInHandTotal}</strong> to the Store Manager at the Allapur counter upon returning.
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Active Trip Workflow */}
       {activeOrder ? (
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E7E0D8] shadow-sm space-y-5">
@@ -424,13 +500,32 @@ export default function PartnerDeliveriesPage() {
 
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-[#78716C] tracking-wider block">
-                Collect Amount
+                {isCodOrder ? 'Collect Cash on Delivery' : 'Online Paid (Prepaid)'}
               </span>
               <span className="font-mono font-bold text-lg text-emerald-700">
                 ₹{activeOrder.total}
               </span>
             </div>
           </div>
+
+          {/* COD Payment Alert Box */}
+          {isCodOrder && (
+            <div className="bg-[#FFFBEB] p-4 rounded-2xl border border-[#FDE68A] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
+                  <Banknote size={22} />
+                </div>
+                <div>
+                  <span className="font-bold text-xs text-amber-900 block">
+                    Cash on Delivery (COD) Order
+                  </span>
+                  <span className="text-[11px] text-amber-800">
+                    Must collect <strong className="font-mono text-base font-black">₹{activeOrder.total}</strong> in cash or via Driver QR from the customer.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Customer & Destination Card */}
           <div className="bg-[#FBF9F5] rounded-2xl p-4 border border-[#E7E0D8] space-y-3">
@@ -551,30 +646,85 @@ export default function PartnerDeliveriesPage() {
             )}
 
             {currentStep === 'arrived' && (
-              <div className="bg-[#FFFBEB] p-4 rounded-2xl border border-[#FDE68A] space-y-3">
-                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                  <KeyRound size={16} />
-                  <span>Enter Customer 4-Digit Delivery OTP</span>
-                </div>
+              <div className="space-y-4 bg-[#FBF9F5] p-5 rounded-3xl border border-[#E7E0D8]">
+                {/* 1. Mandatory COD Cash Collection Gate */}
+                {isCodOrder && (
+                  <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-[#1C1917] flex items-center gap-1.5">
+                        <Banknote size={15} className="text-amber-600" />
+                        <span>Step 1: Collect COD Payment</span>
+                      </span>
+                      <span className="font-mono font-bold text-base text-emerald-700">
+                        ₹{activeOrder.total}
+                      </span>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    maxLength={4}
-                    placeholder="e.g. 4821"
-                    value={otpInput}
-                    onChange={(e) => setOtpInput(e.target.value)}
-                    className="flex-1 px-4 py-3 bg-white border border-[#E7E0D8] rounded-xl font-mono text-center text-lg font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-[#B91C1C]"
-                  />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCodPaymentMode('cash')}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          codPaymentMode === 'cash'
+                            ? 'bg-[#1C1917] text-white border-[#1C1917]'
+                            : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                        }`}
+                      >
+                        💵 Cash Received
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCodPaymentMode('driver_upi')}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          codPaymentMode === 'driver_upi'
+                            ? 'bg-[#1C1917] text-white border-[#1C1917]'
+                            : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                        }`}
+                      >
+                        📱 Driver UPI / QR
+                      </button>
+                    </div>
 
-                  <button
-                    disabled={isSubmitting || otpInput.trim().length < 4}
-                    onClick={handleVerifyOtpAndComplete}
-                    className="px-6 py-3 bg-[#15803D] hover:bg-[#166534] disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Check size={16} />
-                    <span>Verify & Deliver</span>
-                  </button>
+                    <label className="flex items-center gap-2.5 pt-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={codCollectedConfirmed}
+                        onChange={(e) => setCodCollectedConfirmed(e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-stone-300"
+                      />
+                      <span className="text-xs font-bold text-[#1C1917]">
+                        I have collected ₹{activeOrder.total} from customer in full.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {/* 2. Customer OTP Verification */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1917]">
+                    <KeyRound size={15} className="text-[#B91C1C]" />
+                    <span>{isCodOrder ? 'Step 2: Enter Customer 4-Digit Delivery OTP' : 'Enter Customer 4-Digit Delivery OTP'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={4}
+                      placeholder="e.g. 4821"
+                      value={otpInput}
+                      onChange={(e) => setOtpInput(e.target.value)}
+                      className="flex-1 px-4 py-3 bg-white border border-[#E7E0D8] rounded-2xl font-mono text-center text-lg font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-[#B91C1C]"
+                    />
+
+                    <button
+                      disabled={isSubmitting || otpInput.trim().length < 4 || (isCodOrder && !codCollectedConfirmed)}
+                      onClick={handleVerifyOtpAndComplete}
+                      className="px-6 py-3 bg-[#15803D] hover:bg-[#166534] disabled:opacity-50 text-white rounded-2xl font-bold text-sm flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+                    >
+                      <Check size={16} />
+                      <span>Verify & Complete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
