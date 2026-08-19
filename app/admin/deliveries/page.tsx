@@ -60,8 +60,8 @@ export default function AdminDeliveriesPage() {
   const [activeDeliveriesCount, setActiveDeliveriesCount] = useState(0)
   const [todayCompletedTrips, setTodayCompletedTrips] = useState(0)
   const [todayRevenue, setTodayRevenue] = useState(0)
-  const [avgDeliveryTimeMinutes, setAvgDeliveryTimeMinutes] = useState(21.4)
-  const [onTimeRate, setOnTimeRate] = useState(98.5)
+  const [avgDeliveryTimeMinutes, setAvgDeliveryTimeMinutes] = useState(0)
+  const [onTimeRate, setOnTimeRate] = useState(0)
   const [selectedRider, setSelectedRider] = useState<DeliveryRiderItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [dispatchingId, setDispatchingId] = useState<string | null>(null)
@@ -165,18 +165,27 @@ export default function AdminDeliveriesPage() {
       if (deliveredToday.length > 0) {
         let totalMins = 0
         let count = 0
+        let onTimeCount = 0
         deliveredToday.forEach(o => {
           if (o.created_at && o.updated_at) {
             const diff = (new Date(o.updated_at).getTime() - new Date(o.created_at).getTime()) / 60000
-            if (diff > 5 && diff < 120) {
+            if (diff > 0 && diff < 240) {
               totalMins += diff
               count++
+              if (diff <= 30) onTimeCount++
             }
           }
         })
         if (count > 0) {
           setAvgDeliveryTimeMinutes(Math.round((totalMins / count) * 10) / 10)
+          setOnTimeRate(Math.round((onTimeCount / count) * 100))
+        } else {
+          setAvgDeliveryTimeMinutes(0)
+          setOnTimeRate(100)
         }
+      } else {
+        setAvgDeliveryTimeMinutes(0)
+        setOnTimeRate(0)
       }
 
       // Combine Real Drivers strictly from Database
@@ -443,10 +452,10 @@ export default function AdminDeliveriesPage() {
             Avg Delivery Time
           </span>
           <div className="text-2xl sm:text-3xl font-bold font-mono text-[#B91C1C]">
-            {todayCompletedTrips > 0 ? `${avgDeliveryTimeMinutes} Mins` : '21.4 Mins'}
+            {todayCompletedTrips > 0 ? `${avgDeliveryTimeMinutes} Mins` : '0.0 Mins'}
           </div>
-          <span className="text-[11px] text-emerald-600 font-bold">
-            ✓ 30m Express SLA Standard
+          <span className="text-[11px] text-[#78716C] font-medium">
+            {todayCompletedTrips > 0 ? '✓ Live trip average' : 'No completed trips yet'}
           </span>
         </div>
 
@@ -455,10 +464,10 @@ export default function AdminDeliveriesPage() {
             On-Time Delivery Rate
           </span>
           <div className="text-2xl sm:text-3xl font-bold font-mono text-emerald-700">
-            {onTimeRate}%
+            {todayCompletedTrips > 0 ? `${onTimeRate}%` : '0%'}
           </div>
           <span className="text-[11px] text-[#78716C] font-medium">
-            Past 7 days SLA benchmark
+            {todayCompletedTrips > 0 ? 'Within 30m Express SLA' : '0 deliveries recorded'}
           </span>
         </div>
 
