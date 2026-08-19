@@ -510,12 +510,12 @@ export default function AdminDeliveriesPage() {
         </div>
 
         <LiveDeliveryMap
-          driverLocation={selectedRider ? {
-            lat: selectedRider.current_lat || STORE_LOCATION.lat,
-            lng: selectedRider.current_lng || STORE_LOCATION.lng,
-            updatedAt: Date.now()
-          } : { lat: STORE_LOCATION.lat, lng: STORE_LOCATION.lng, updatedAt: Date.now() }}
-          destinationLocation={selectedRider?.destinationCoords || { lat: 25.4528, lng: 81.8346 }}
+          driverLocation={selectedRider?.current_lat && selectedRider?.current_lng ? {
+            lat: selectedRider.current_lat,
+            lng: selectedRider.current_lng,
+            updatedAt: 0,
+          } : null}
+          destinationLocation={selectedRider?.is_busy ? (selectedRider?.destinationCoords || { lat: 25.4528, lng: 81.8346 }) : undefined}
           destinationAddress={selectedRider?.destination || 'Pizza Expert Kitchen (Allapur)'}
           driverName={selectedRider ? `${selectedRider.name} (${selectedRider.is_busy ? 'Active' : 'Idle'})` : 'Pizza Expert Hub'}
           etaMinutes={selectedRider?.is_busy ? (selectedRider.eta ? parseInt(selectedRider.eta) : 11) : 0}
