@@ -707,22 +707,37 @@ export default function UsersManagementClient({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
-                <button
-                  type="button"
-                  onClick={() => setSelectedUser(null)}
-                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="btn btn-primary px-5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs"
-                >
-                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  <span>Save RBAC Changes</span>
-                </button>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#E7E0D8]">
+                {!isPrimarySuperAdmin(selectedUser) ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(selectedUser)}
+                    className="px-4 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold flex items-center justify-center gap-1.5 transition-colors text-xs"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete User</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUser(null)}
+                    className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E] text-xs hover:bg-[#F5F5F4] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="btn btn-primary px-5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs text-xs"
+                  >
+                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    <span>Save RBAC Changes</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

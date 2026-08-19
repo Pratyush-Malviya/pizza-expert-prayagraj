@@ -173,19 +173,33 @@ export function isPrimarySuperAdmin(
   userOrEmailOrId?: string | { email?: string; id?: string; name?: string; role?: string } | null
 ): boolean {
   if (!userOrEmailOrId) return false
+
   if (typeof userOrEmailOrId === 'string') {
     const clean = userOrEmailOrId.trim().toLowerCase()
-    return (
-      PRIMARY_SUPER_ADMIN_EMAILS.includes(clean) ||
-      clean === 'usr-01'
-    )
+    // Only the explicit canonical root account ID is immutable Primary Super Admin
+    return clean === 'usr-01'
   }
-  const email = userOrEmailOrId.email?.trim().toLowerCase() || ''
-  const id = userOrEmailOrId.id?.trim().toLowerCase() || ''
-  return (
-    PRIMARY_SUPER_ADMIN_EMAILS.includes(email) ||
-    id === 'usr-01'
-  )
+
+  const id = (userOrEmailOrId.id || '').trim().toLowerCase()
+  const role = (userOrEmailOrId.role || '').trim().toLowerCase()
+  const email = (userOrEmailOrId.email || '').trim().toLowerCase()
+
+  // Dynamically created user accounts (usr_...) are NEVER the immutable Root Super Admin
+  if (id.startsWith('usr_')) {
+    return false
+  }
+
+  // Any non-super_admin role (e.g. driver, staff, manager, customer, viewer) is NEVER the Primary Super Admin
+  if (role && role !== 'super_admin') {
+    return false
+  }
+
+  // Canonical root account
+  if (id === 'usr-01') {
+    return true
+  }
+
+  return false
 }
 
 export function canDeleteTargetUser(
