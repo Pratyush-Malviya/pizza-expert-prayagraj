@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { DEFAULT_SAMPLE_DRIVER, type DeliveryPartner } from '@/lib/tracking/types'
 
@@ -153,5 +154,63 @@ export async function autoAssignNearestAvailableDriver(orderId: string): Promise
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Auto-assignment failed' }
+  }
+}
+
+export async function purgeOldDeliveryActivities(): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+
+    // 1. Purge all location history and breadcrumbs
+    try {
+      await supabase.from('driver_locations').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    } catch {}
+
+    // 2. Purge past delivery assignments
+    try {
+      await supabase.from('deliveries').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    } catch {}
+
+    // 3. Reset all drivers' busy status to idle & reset GPS to Allapur kitchen hub
+    try {
+      await supabase
+        .from('drivers')
+        .update({
+          is_busy: false,
+          current_lat: 25.4358,
+          current_lng: 81.8682,
+          last_location_update: new Date().toISOString(),
+        })
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+    } catch {}
+
+    // 4. Try admin service role if available
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (url && serviceKey && serviceKey !== 'your-service-role-key') {
+        const admin = createAdminClient(url, serviceKey)
+        await admin.from('driver_locations').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+        await admin.from('deliveries').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+        await admin.from('drivers').update({ is_busy: false, current_lat: 25.4358, current_lng: 81.8682 }).neq('id', '00000000-0000-0000-0000-000000000000')
+      }
+    } catch {}
+
+    revalidatePath('/admin/deliveries')
+    revalidatePath('/admin/orders')
+    revalidatePath('/admin/drivers')
+    revalidatePath('/track')
+    revalidatePath('/partner/deliveries')
+
+    return {
+      success: true,
+      message: 'All past delivery activities, GPS tracking logs, and active trip assignments have been purged.'
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to purge delivery activities' }
   }
 }

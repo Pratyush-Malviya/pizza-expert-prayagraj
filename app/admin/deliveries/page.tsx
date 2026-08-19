@@ -7,12 +7,12 @@ import { toast } from 'sonner'
 import {
   Bike, MapPin, Compass, Phone, ShieldCheck, Clock,
   CheckCircle2, AlertCircle, Search, ExternalLink, Plus, RefreshCw, UserCheck, Zap,
-  Navigation, Flame, Loader2
+  Navigation, Flame, Loader2, Trash2
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { DeliveryPartner, GPSLocation } from '@/lib/tracking/types'
 import { STORE_LOCATION, STORE_DETAILS, SIMULATED_ROUTE_CIVIL_LINES } from '@/lib/tracking/types'
-import { autoAssignNearestAvailableDriver } from '@/app/actions/deliveries'
+import { autoAssignNearestAvailableDriver, purgeOldDeliveryActivities } from '@/app/actions/deliveries'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
   ssr: false,
@@ -94,6 +94,7 @@ export default function AdminDeliveriesPage() {
   const [selectedRider, setSelectedRider] = useState<DeliveryRiderItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [dispatchingId, setDispatchingId] = useState<string | null>(null)
+  const [isPurging, setIsPurging] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'idle' | 'offline'>('all')
 
@@ -323,6 +324,33 @@ export default function AdminDeliveriesPage() {
     }
   }
 
+  // Handle Purge Old Delivery Activities
+  const handlePurgeActivities = async () => {
+    if (!confirm('Are you sure you want to purge all old delivery activities, GPS logs, and reset rider trip statuses?')) {
+      return
+    }
+    setIsPurging(true)
+    try {
+      // Clear client-side demo state
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pizza_active_delivery')
+        localStorage.removeItem('pizza_driver_gps')
+      }
+
+      const res = await purgeOldDeliveryActivities()
+      if (res.success) {
+        toast.success(res.message || 'All old delivery activities purged successfully!')
+        await fetchFleetAndOrders()
+      } else {
+        toast.error(res.error || 'Failed to purge delivery activities')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Purge error')
+    } finally {
+      setIsPurging(false)
+    }
+  }
+
   const filteredDrivers = drivers.filter((d) => {
     const matchesSearch =
       d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -366,6 +394,20 @@ export default function AdminDeliveriesPage() {
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
+          </button>
+
+          <button
+            disabled={isPurging}
+            onClick={handlePurgeActivities}
+            className="btn btn-outline text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-rose-600 hover:bg-rose-50 hover:border-rose-300 border-[#E7E0D8] disabled:opacity-50"
+            title="Purge Old Delivery Activities & Reset Radar"
+          >
+            {isPurging ? (
+              <Loader2 size={14} className="animate-spin text-rose-600" />
+            ) : (
+              <Trash2 size={14} className="text-rose-600" />
+            )}
+            <span>Purge Old Activities</span>
           </button>
 
           <Link
