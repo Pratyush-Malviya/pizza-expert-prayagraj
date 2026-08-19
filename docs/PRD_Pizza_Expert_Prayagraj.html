@@ -338,6 +338,14 @@
 
 <!-- ════════════════════════ SECTION 2: SYSTEM ARCHITECTURE ════════════════════════ -->
 <h1>2. System Architecture & Technology Stack</h1>
+<pre class="mermaid">
+flowchart TD
+  Client[Next.js Client / PWA] <-->|Realtime WebSockets| SupabaseDB[(Supabase PostgreSQL)]
+  Client -->|HTTPS| NextServer[Next.js App Router]
+  NextServer -->|SQL Queries & RLS| SupabaseDB
+  NextServer -->|Server-side HMAC| Razorpay[Razorpay Payment API]
+  NextServer -->|SMTP API| Resend[Resend Emails]
+</pre>
 <p>
   The platform is built on an enterprise-grade, serverless-ready architecture optimized for sub-100ms API responses and real-time bidirectional synchronization:
 </p>
@@ -426,6 +434,27 @@
 <!-- ════════════════════════ SECTION 4: CORE MODULES & WORKFLOWS ════════════════════════ -->
 <div class="page-break"></div>
 <h1>4. Detailed Feature Specifications & Workflows</h1>
+
+<h3>End-to-End Data Flow Diagram</h3>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Customer as Customer App
+  participant NextJS as Next.js API
+  participant Razorpay as Razorpay PG
+  participant KDS as Kitchen Display
+  participant Driver as Driver App
+
+  Customer->>NextJS: Place Order (Zod Validated)
+  NextJS->>Razorpay: Initialize Payment
+  Razorpay-->>NextJS: Webhook (Payment Success)
+  NextJS->>KDS: Queue Order (Realtime Sync)
+  KDS->>NextJS: Mark as Baked / Ready
+  NextJS->>Driver: Auto-Dispatch (Haversine Algorithm)
+  Driver->>Customer: Broadcast Live GPS coordinates
+  Driver->>NextJS: Deliver Order & Verify OTP
+  NextJS-->>Customer: Order Complete & Receipt Sent
+</pre>
 
 <h2>4.1 Customer Storefront & E-Commerce Module</h2>
 <ul>

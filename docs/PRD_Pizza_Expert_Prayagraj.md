@@ -24,6 +24,15 @@ Unlike traditional aggregator-dependent restaurants (Zomato/Swiggy) that suffer 
 
 ## 2. System Architecture & Technology Stack
 
+```mermaid
+flowchart TD
+  Client[Next.js Client / PWA] <-->|Realtime WebSockets| SupabaseDB[(Supabase PostgreSQL)]
+  Client -->|HTTPS| NextServer[Next.js App Router]
+  NextServer -->|SQL Queries & RLS| SupabaseDB
+  NextServer -->|Server-side HMAC| Razorpay[Razorpay Payment API]
+  NextServer -->|SMTP API| Resend[Resend Emails]
+```
+
 | Layer | Technology / Service | Architectural Purpose |
 | :--- | :--- | :--- |
 | **Frontend Framework** | Next.js 16.3.0 (Turbopack, App Router) | Server-side rendering (SSR), static generation for 51 production routes, edge API routes, dynamic metadata, and lightning-fast client hydration. |
@@ -62,7 +71,29 @@ graph TD
 
 ---
 
-## 4. Detailed Feature Specifications
+## 4. Detailed Feature Specifications & Workflows
+
+### End-to-End Data Flow Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Customer as Customer App
+  participant NextJS as Next.js API
+  participant Razorpay as Razorpay PG
+  participant KDS as Kitchen Display
+  participant Driver as Driver App
+
+  Customer->>NextJS: Place Order (Zod Validated)
+  NextJS->>Razorpay: Initialize Payment
+  Razorpay-->>NextJS: Webhook (Payment Success)
+  NextJS->>KDS: Queue Order (Realtime Sync)
+  KDS->>NextJS: Mark as Baked / Ready
+  NextJS->>Driver: Auto-Dispatch (Haversine Algorithm)
+  Driver->>Customer: Broadcast Live GPS coordinates
+  Driver->>NextJS: Deliver Order & Verify OTP
+  NextJS-->>Customer: Order Complete & Receipt Sent
+```
 
 ### 4.1 Customer Storefront & E-Commerce Module
 - **Artisanal Pizza Menu:** Categorized by Classics, Gourmet Specials, Wood-Fired Sourdough, Sides & Beverages with Veg/Non-Veg indicators, spice level badges, and nutritional details.
