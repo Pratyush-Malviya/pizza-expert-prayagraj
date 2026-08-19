@@ -20,14 +20,8 @@ interface TaxInvoiceRecord {
   generated_at: string
 }
 
-const MOCK_INVOICES: TaxInvoiceRecord[] = [
-  { id: '1', order_id: 'ORD-982143', invoice_number: 'PE-2026-00142', gstin: '09AAECP1234F1Z5', customer_name: 'Rahul Sharma', taxable_subtotal: 450, cgst: 11.25, sgst: 11.25, total_tax: 22.50, grand_total: 472.50, generated_at: '2026-08-10T12:30:00Z' },
-  { id: '2', order_id: 'ORD-982144', invoice_number: 'PE-2026-00143', gstin: '09AAECP1234F1Z5', customer_name: 'Anjali Verma', taxable_subtotal: 620, cgst: 15.50, sgst: 15.50, total_tax: 31.00, grand_total: 651.00, generated_at: '2026-08-10T13:15:00Z' },
-  { id: '3', order_id: 'ORD-982145', invoice_number: 'PE-2026-00144', gstin: '09AAECP1234F1Z5', customer_name: 'Priya Mishra', taxable_subtotal: 299, cgst: 7.48, sgst: 7.48, total_tax: 14.96, grand_total: 313.96, generated_at: '2026-08-10T14:00:00Z' },
-]
-
 export default function AdminCompliancePage() {
-  const [invoices, setInvoices] = useState<TaxInvoiceRecord[]>(MOCK_INVOICES)
+  const [invoices, setInvoices] = useState<TaxInvoiceRecord[]>([])
   const [loading, setLoading] = useState(false)
 
   const fetchTaxLedger = async () => {

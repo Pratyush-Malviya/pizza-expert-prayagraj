@@ -13,7 +13,6 @@ import { requestNotificationPermission, notifyOrderStatusChange, playNotificatio
 import LoyaltyBadge from '@/components/profile/LoyaltyBadge'
 import QuickReorderButton from '@/components/orders/QuickReorderButton'
 import DriverInfoCard from '@/components/tracking/DriverInfoCard'
-import DeliverySimulatorControl from '@/components/tracking/DeliverySimulatorControl'
 import type { GPSLocation, DeliveryPartner } from '@/lib/tracking/types'
 import { DEFAULT_SAMPLE_DRIVER, STORE_LOCATION } from '@/lib/tracking/types'
 
@@ -237,17 +236,6 @@ function TrackOrderContent() {
           </button>
         </div>
 
-        {/* Live GPS Simulator Test Bar (For Demo & Testing) */}
-        <DeliverySimulatorControl
-          orderId={orderId}
-          onLocationUpdate={(loc, idx) => {
-            setDriverLocation(loc)
-            const remainingSteps = 9 - idx
-            setEtaMinutes(Math.max(Math.round(remainingSteps * 1.5), 1))
-            setDistanceKm(Number((remainingSteps * 0.35).toFixed(1)))
-          }}
-          onStatusChange={(st) => setCurrentStatus(st)}
-        />
 
         {/* Live Interactive Map Canvas */}
         <LiveDeliveryMap

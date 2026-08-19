@@ -43,6 +43,7 @@ export default function LiveDeliveryMap({
 
     let isMounted = true
     let map: any = null
+    let resizeObserver: ResizeObserver | null = null
 
     const initialize = async () => {
       try {
@@ -50,7 +51,7 @@ export default function LiveDeliveryMap({
 
         if (!mapContainerRef.current || !isMounted) return
 
-        // Clean any existing leaflet instances
+        // Clean any existing leaflet instances safely
         if ((mapContainerRef.current as any)._leaflet_id) {
           (mapContainerRef.current as any)._leaflet_id = null
         }
@@ -68,26 +69,40 @@ export default function LiveDeliveryMap({
 
         L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-        // Standard OpenStreetMap tiles (100% reliable)
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // OpenStreetMap Standard Tiles (100% Free, Global Standard)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
+          subdomains: ['a', 'b', 'c'],
+          attribution: '&copy; OpenStreetMap contributors',
         }).addTo(map)
 
         const layerGroup = L.layerGroup().addTo(map)
         layerGroupRef.current = layerGroup
         mapInstanceRef.current = map
 
-        // Invalidate size on initial mount and when layout stabilizes
+        // Automatic ResizeObserver to immediately resize tiles when container mounts
+        if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(() => {
+            if (map) map.invalidateSize()
+          })
+          resizeObserver.observe(mapContainerRef.current)
+        }
+
+        // Multi-pass invalidation triggers
         setTimeout(() => {
           if (map && isMounted) {
             map.invalidateSize()
             setMapReady(true)
           }
-        }, 150)
+        }, 100)
 
         setTimeout(() => {
           if (map && isMounted) map.invalidateSize()
-        }, 500)
+        }, 400)
+
+        setTimeout(() => {
+          if (map && isMounted) map.invalidateSize()
+        }, 1000)
       } catch (err) {
         console.warn('Leaflet map initialization warning:', err)
       }
@@ -97,6 +112,9 @@ export default function LiveDeliveryMap({
 
     return () => {
       isMounted = false
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
       if (map) {
         try { map.remove() } catch {}
       }
@@ -119,7 +137,7 @@ export default function LiveDeliveryMap({
 
       layerGroup.clearLayers()
 
-      // ── Store Pin (Allapur) ──
+      // ── Store Pin (Allapur Hub) ──
       const storeIcon = L.divIcon({
         className: 'custom-store-marker',
         html: `
@@ -250,12 +268,26 @@ export default function LiveDeliveryMap({
   }
 
   return (
-    <div className="relative w-full h-[360px] sm:h-[440px] rounded-2xl overflow-hidden border border-[#E7E0D8] shadow-md bg-[#FBF9F5]">
+    <div className="relative w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden border border-[#E7E0D8] shadow-md bg-[#F4F1EA]">
+      {/* Inline Leaflet CSS Guard (prevents any Tailwind reset collapse) */}
+      <style>{`
+        .leaflet-container img.leaflet-tile {
+          max-width: none !important;
+          max-height: none !important;
+          width: 256px !important;
+          height: 256px !important;
+          display: block !important;
+        }
+        .leaflet-pane {
+          z-index: 1 !important;
+        }
+      `}</style>
+
       {/* Map Canvas */}
       <div
         ref={mapContainerRef}
         className="w-full h-full min-h-[360px]"
-        style={{ width: '100%', height: '100%', minHeight: '360px', zIndex: 1 }}
+        style={{ width: '100%', height: '100%', minHeight: '360px', position: 'relative', zIndex: 1 }}
       />
 
       {/* Floating Live Telemetry HUD Bar */}

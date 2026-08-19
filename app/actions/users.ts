@@ -48,94 +48,18 @@ export interface ManagedUser {
 
 const DELETED_USER_IDS = new Set<string>()
 
-const SAMPLE_USERS: ManagedUser[] = [
-  {
-    id: 'USR-01',
-    name: 'Pratyush Malviya',
-    email: 'malviya.pratyush26@gmail.com',
-    phone: '+91 99999 88888',
-    role: 'super_admin',
-    is_active: true,
-    created_at: new Date(Date.now() - 90 * 86400000).toISOString(),
-    department: 'Executive Management',
-    employee_code: 'EMP-001',
-    shift_pattern: 'General'
-  },
-  {
-    id: 'USR-02',
-    name: 'Anjali Sharma',
-    email: 'anjali.manager@pizzaexpert.in',
-    phone: '+91 98765 11111',
-    role: 'manager',
-    is_active: true,
-    created_at: new Date(Date.now() - 60 * 86400000).toISOString(),
-    department: 'Store Operations (Allapur)',
-    employee_code: 'EMP-004',
-    shift_pattern: 'Morning / Evening'
-  },
-  {
-    id: 'USR-03',
-    name: 'Rohan Gupta',
-    email: 'rohan.kitchen@pizzaexpert.in',
-    phone: '+91 98765 22222',
-    role: 'staff',
-    is_active: true,
-    created_at: new Date(Date.now() - 45 * 86400000).toISOString(),
-    department: 'Kitchen (Head Pizzaiolo)',
-    employee_code: 'EMP-012',
-    shift_pattern: 'Full Time'
-  },
-  {
-    id: 'USR-04',
-    name: 'Rahul Sharma',
-    email: 'rahul.driver@pizzaexpert.in',
-    phone: '+91 98765 43210',
-    role: 'driver',
-    is_active: true,
-    created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-    vehicle_type: 'Honda Activa 6G',
-    vehicle_number: 'UP 70 AB 1234',
-    license_number: 'UP-70-2023-009182',
-    verification_status: 'verified',
-    is_online: true,
-    is_busy: true
-  },
-  {
-    id: 'USR-05',
-    name: 'Amit Verma',
-    email: 'amit.rider@pizzaexpert.in',
-    phone: '+91 98765 11223',
-    role: 'driver',
-    is_active: true,
-    created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
-    vehicle_type: 'TVS Jupiter',
-    vehicle_number: 'UP 70 CD 5678',
-    license_number: 'UP-70-2024-001234',
-    verification_status: 'verified',
-    is_online: true,
-    is_busy: false
-  },
-  {
-    id: 'USR-06',
-    name: 'Sunita Mishra',
-    email: 'sunita.audit@pizzaexpert.in',
-    phone: '+91 98765 33333',
-    role: 'viewer',
-    is_active: true,
-    created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-    department: 'Finance & Compliance',
-    employee_code: 'EMP-020',
-  },
-  {
-    id: 'USR-07',
-    name: 'Pooja Verma',
-    email: 'pooja.verma@gmail.com',
-    phone: '+91 98765 99999',
-    role: 'customer',
-    is_active: true,
-    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-  }
-]
+const ROOT_SUPER_ADMIN: ManagedUser = {
+  id: 'usr_root_superadmin',
+  name: 'Pratyush Malviya',
+  email: 'malviya.pratyush26@gmail.com',
+  phone: '+91 97950 49988',
+  role: 'super_admin',
+  is_active: true,
+  created_at: '2026-01-01T00:00:00.000Z',
+  department: 'Founder / Root Authority',
+  employee_code: 'ROOT-001',
+  shift_pattern: 'Permanent'
+}
 
 export async function fetchAllUsers(): Promise<{ success: boolean; users: ManagedUser[] }> {
   try {
@@ -175,7 +99,7 @@ export async function fetchAllUsers(): Promise<{ success: boolean; users: Manage
       userList = profiles.map((p: any) => {
         const staffInfo = Array.isArray(p.staff_details) ? p.staff_details[0] : p.staff_details
         const driverInfo = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
-        const email = authEmailMap[p.id] || p.email || (p.phone ? `${p.phone.replace(/\D/g, '')}@pizzaexpert.in` : `${(p.name || 'user').toLowerCase().replace(/\s+/g, '.')}@pizzaexpert.in`)
+        const email = authEmailMap[p.id] || (p.phone ? `${p.phone.replace(/\D/g, '')}@pizzaexpert.in` : `${(p.name || 'user').toLowerCase().replace(/\s+/g, '.')}@pizzaexpert.in`)
 
         return {
           id: p.id,
@@ -200,8 +124,12 @@ export async function fetchAllUsers(): Promise<{ success: boolean; users: Manage
           is_online: driverInfo?.is_online,
         }
       })
-    } else {
-      userList = [...SAMPLE_USERS]
+    }
+
+    // Ensure root super admin is present if no matching email profile is found
+    const hasSuperAdmin = userList.some(u => u.email === ROOT_SUPER_ADMIN.email || u.role === 'super_admin')
+    if (!hasSuperAdmin) {
+      userList.unshift(ROOT_SUPER_ADMIN)
     }
 
     // Filter out any explicitly deleted user IDs
@@ -209,7 +137,7 @@ export async function fetchAllUsers(): Promise<{ success: boolean; users: Manage
 
     return { success: true, users: finalUsers }
   } catch (err) {
-    return { success: true, users: SAMPLE_USERS.filter((u) => !DELETED_USER_IDS.has(u.id)) }
+    return { success: true, users: [ROOT_SUPER_ADMIN] }
   }
 }
 
@@ -242,9 +170,8 @@ export async function updateUserRoleAndDetails(
       currentRole = prof?.role
     } catch {}
 
-    if (!currentRole) {
-      const sample = SAMPLE_USERS.find(u => u.id === userId)
-      currentRole = sample?.role
+    if (!currentRole && (userId === ROOT_SUPER_ADMIN.id || isPrimarySuperAdmin(userId))) {
+      currentRole = ROOT_SUPER_ADMIN.role
     }
 
     const isTargetSuperAdmin = currentRole === 'super_admin' || isPrimarySuperAdmin(userId) || userId.toLowerCase() === 'usr-01'
@@ -470,6 +397,13 @@ export async function deleteManagedUser(userId: string) {
       admin = getSupabaseAdmin()
     } catch {}
 
+    if (userId === ROOT_SUPER_ADMIN.id || isPrimarySuperAdmin(userId)) {
+      return {
+        success: false,
+        error: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
+      }
+    }
+
     if (admin) {
       // Check if target profile is a Super Admin
       try {
@@ -481,14 +415,6 @@ export async function deleteManagedUser(userId: string) {
           }
         }
       } catch {}
-    } else {
-      const sample = SAMPLE_USERS.find(u => u.id === userId)
-      if (sample && (sample.role === 'super_admin' || isPrimarySuperAdmin(sample))) {
-        return {
-          success: false,
-          error: '👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.',
-        }
-      }
     }
 
     // 1. Blacklist from memory so it never reappears

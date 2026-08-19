@@ -92,16 +92,16 @@ export const SIMULATED_ROUTE_CIVIL_LINES: [number, number][] = [
 ]
 
 export const DEFAULT_SAMPLE_DRIVER: DeliveryPartner = {
-  id: 'DP-ALLAPUR-01',
-  name: 'Rahul Sharma',
-  phone: '+91 98765 43210',
-  photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  vehicle_type: 'Honda Activa 6G',
-  vehicle_number: 'UP 70 AB 1234',
-  rating: 4.9,
-  total_deliveries: 1420,
-  is_online: true,
-  is_busy: true,
-  current_lat: 25.4401,
-  current_lng: 81.8585
+  id: '',
+  name: 'Delivery Partner',
+  phone: '',
+  photo_url: '',
+  vehicle_type: 'Bike',
+  vehicle_number: '',
+  rating: 5.0,
+  total_deliveries: 0,
+  is_online: false,
+  is_busy: false,
+  current_lat: 25.4358,
+  current_lng: 81.8682,
 }
