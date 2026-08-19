@@ -2,11 +2,12 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com;
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://cdn.pixabay.com https://*.razorpay.com https://cdn.razorpay.com;
-  font-src 'self';
-  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://lumberjack-cx.razorpay.com https://*.razorpay.com;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com https://unpkg.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://plus.unsplash.com https://cdn.pixabay.com https://*.razorpay.com https://cdn.razorpay.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://lumberjack-cx.razorpay.com https://*.razorpay.com https://us.i.posthog.com https://eu.i.posthog.com https://us-assets.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com;
+  worker-src 'self' blob:;
   frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com;
   object-src 'none';
   base-uri 'self';
