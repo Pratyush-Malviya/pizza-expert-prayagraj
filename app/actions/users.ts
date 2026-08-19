@@ -233,6 +233,7 @@ export async function updateUserRoleAndDetails(
     is_online?: boolean
   }
 ) {
+  try {
     // 👑 Super Admin Protection: Cannot be demoted or deactivated
     let currentRole: string | undefined = undefined
     try {
