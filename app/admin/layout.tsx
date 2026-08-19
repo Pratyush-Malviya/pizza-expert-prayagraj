@@ -202,8 +202,8 @@ export default function AdminLayout({
           </div>
         </header>
 
-        {/* Dynamic Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8 flex-1 min-w-0 overflow-x-hidden">
+        {/* Dynamic Page Content — POS uses full-bleed for split-panel layout */}
+        <main className={pathname?.startsWith('/admin/pos') ? 'flex-1 min-w-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8 flex-1 min-w-0 overflow-x-hidden'}>
           {children}
         </main>
       </div>

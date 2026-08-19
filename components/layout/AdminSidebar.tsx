@@ -9,7 +9,9 @@ import {
   Settings, LogOut, ChevronDown, ChevronRight,
   CreditCard, UtensilsCrossed, Truck, X, Palette,
   TrendingUp, Boxes, FileText, Users, Contact, History, Star,
-  Layers, Package, Sparkles, ShieldCheck
+  Layers, Package, Sparkles, ShieldCheck,
+  Monitor, Clock, Pause, TableProperties, ClipboardList, Banknote,
+  ChefHat, Trash2, SlidersHorizontal, Gift, Percent, BarChart3
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +37,19 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     icon: LayoutDashboard,
   },
   {
+    id: 'pos',
+    label: 'POS Billing',
+    icon: Monitor,
+    items: [
+      { label: '🖥 Counter Billing', href: '/admin/pos', icon: Monitor },
+      { label: 'Floor & Tables', href: '/admin/pos/tables', icon: UtensilsCrossed },
+      { label: 'Active Orders', href: '/admin/pos/orders', icon: ClipboardList },
+      { label: 'Held Orders', href: '/admin/pos/held', icon: Pause },
+      { label: 'Cashier Shifts', href: '/admin/pos/shifts', icon: Clock },
+      { label: 'Receipts', href: '/admin/pos/receipts', icon: FileText },
+    ],
+  },
+  {
     id: 'operations',
     label: 'Operations',
     icon: UtensilsCrossed,
@@ -51,6 +66,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     icon: Pizza,
     items: [
       { label: 'Products', href: '/admin/products', icon: Pizza },
+      { label: 'Recipe BOM & Costing', href: '/admin/recipes', icon: ChefHat },
       { label: 'Flash Offers Carousel', href: '/admin/offers', icon: Flame },
       { label: 'Coupons', href: '/admin/coupons', icon: Tag },
       { label: 'Reviews', href: '/admin/reviews', icon: Star },
@@ -58,10 +74,11 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'customers',
-    label: 'Customers',
+    label: 'Customers & Loyalty',
     icon: Contact,
     items: [
       { label: 'Customer CRM', href: '/admin/customers', icon: Contact },
+      { label: 'Loyalty Rewards', href: '/admin/loyalty', icon: Gift },
     ],
   },
   {
@@ -73,7 +90,10 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
       { label: 'Staff Roster', href: '/admin/staff', icon: Users },
       { label: 'Driver Fleet', href: '/admin/drivers', icon: Truck },
       { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
-      { label: 'Suppliers & POs', href: '/admin/suppliers', icon: Truck },
+      { label: 'Wastage Tracker', href: '/admin/inventory/wastage', icon: Trash2 },
+      { label: 'Stock Adjustments', href: '/admin/inventory/adjustments', icon: SlidersHorizontal },
+      { label: 'Purchase Orders (GRN)', href: '/admin/purchases', icon: Truck },
+      { label: 'Suppliers & Vendors', href: '/admin/suppliers', icon: Truck },
     ],
   },
   {
@@ -100,11 +120,24 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'reports',
+    label: 'Reports & Intelligence',
+    icon: FileText,
+    items: [
+      { label: 'Sales by Channel', href: '/admin/reports/sales', icon: TrendingUp },
+      { label: 'Menu Engineering', href: '/admin/reports/menu-engineering', icon: BarChart3 },
+      { label: 'Profit & Loss (P&L)', href: '/admin/reports/pnl', icon: TrendingUp },
+      { label: 'Day-End Z-Report', href: '/admin/reports/z-report', icon: FileText },
+      { label: 'Cashier & Cash', href: '/admin/reports/cashier', icon: Banknote },
+    ],
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: Settings,
     items: [
       { label: 'Settings', href: '/admin/settings', icon: Settings },
+      { label: 'Tax Engine & GST', href: '/admin/settings/taxes', icon: Percent },
       { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
     ],
   },

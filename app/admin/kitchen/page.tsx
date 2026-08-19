@@ -14,6 +14,7 @@ import { playNotificationSound } from '@/lib/utils/notifications'
 import { autoAssignNearestAvailableDriver, fetchAvailableDrivers, reassignOrderDriver } from '@/app/actions/deliveries'
 import { toast } from 'sonner'
 import type { DeliveryPartner } from '@/lib/tracking/types'
+import { cn } from '@/lib/utils'
 
 const STAGE_COLUMNS: { label: string; status: OrderStatus; color: string; activeTabColor: string; icon: any }[] = [
   { label: 'New Orders', status: 'confirmed', color: 'bg-[#FFFBEB] border-[#FDE68A] text-[#D97706]', activeTabColor: 'bg-[#D97706] text-white', icon: Clock },
@@ -33,6 +34,7 @@ export default function KitchenDisplayPage() {
   const [assignModalOrder, setAssignModalOrder] = useState<string | null>(null)
   const [dispatchingOrderId, setDispatchingOrderId] = useState<string | null>(null)
   const [products, setProducts] = useState<any[]>([])
+  const [activeStation, setActiveStation] = useState<string>('ALL')
   const previousOrderCountRef = useRef<number>(0)
 
   const fetchOrders = useCallback(async () => {
@@ -274,6 +276,30 @@ export default function KitchenDisplayPage() {
         </div>
       </div>
 
+      {/* Kitchen Station Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {[
+          { code: 'ALL', label: 'All Stations' },
+          { code: 'OVEN', label: '🔥 Pizza Oven' },
+          { code: 'PREP', label: '🥗 Prep & Assembly' },
+          { code: 'BEV', label: '🍹 Beverage Bar' },
+          { code: 'EXPEDITE', label: '📦 Packing & Expedite' },
+        ].map((st) => (
+          <button
+            key={st.code}
+            onClick={() => setActiveStation(st.code)}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0',
+              activeStation === st.code
+                ? 'bg-[#1C1917] text-white shadow-xs'
+                : 'bg-white text-[#78716C] border border-[#E7E0D8] hover:bg-[#F4EFEA] hover:text-[#1C1917]'
+            )}
+          >
+            {st.label}
+          </button>
+        ))}
+      </div>
+
       {/* Mobile Stage Toggle Bar */}
       <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2 border-b border-[#E7E0D8]">
         {STAGE_COLUMNS.map((col) => {
@@ -373,6 +399,23 @@ export default function KitchenDisplayPage() {
                             <span className="font-mono font-bold text-sm text-[#B91C1C]">
                               #{String(ord.id).slice(-6).toUpperCase()}
                             </span>
+                            {/* Order Source Badge */}
+                            {(ord as any).source && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${
+                                (ord as any).source === 'pos'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : (ord as any).source === 'qr'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-[#FEF3C7] text-[#D97706]'
+                              }`}>
+                                {(ord as any).source === 'pos' ? '🖥 POS' : (ord as any).source === 'qr' ? '📱 QR' : '🌐 Online'}
+                              </span>
+                            )}
+                            {(ord as any).kot_number && (
+                              <span className="text-[10px] font-mono bg-[#F4EFEA] text-[#57534E] px-1.5 py-0.5 rounded">
+                                {(ord as any).kot_number}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className={`text-[11px] font-bold font-mono px-2 py-0.5 rounded-md flex items-center gap-1 ${
