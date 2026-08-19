@@ -1,14 +1,46 @@
 import { toast } from 'sonner'
 
+let sharedAudioCtx: AudioContext | null = null
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return null
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioCtx()
+      
+      // Auto unlock audio context on user gesture
+      const unlockAudio = () => {
+        if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+          sharedAudioCtx.resume().then(() => {
+            window.removeEventListener('click', unlockAudio)
+            window.removeEventListener('keydown', unlockAudio)
+            window.removeEventListener('touchstart', unlockAudio)
+          }).catch(() => {})
+        }
+      }
+      window.addEventListener('click', unlockAudio)
+      window.addEventListener('keydown', unlockAudio)
+      window.addEventListener('touchstart', unlockAudio)
+    }
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {})
+    }
+    return sharedAudioCtx
+  } catch {
+    return null
+  }
+}
+
 /**
  * Play a clean Web Audio synthesizer chime sound.
  */
 export function playNotificationSound(type: 'success' | 'alert' | 'status_change' = 'status_change') {
   if (typeof window === 'undefined') return
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioContext) return
-    const ctx = new AudioContext()
+    const ctx = getAudioContext()
+    if (!ctx) return
 
     const now = ctx.currentTime
     const osc1 = ctx.createOscillator()
@@ -34,7 +66,7 @@ export function playNotificationSound(type: 'success' | 'alert' | 'status_change
       osc2.frequency.setValueAtTime(440, now)
     }
 
-    gain.gain.setValueAtTime(0.25, now)
+    gain.gain.setValueAtTime(0.3, now)
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
 
     osc1.connect(gain)

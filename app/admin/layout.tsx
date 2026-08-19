@@ -36,59 +36,108 @@ export default function AdminLayout({
     setMobileOpen(false)
   }, [pathname])
 
-  // Real-time Supabase & local event order listener for Admin
+  // Real-time Supabase, Broadcast, Storage, and Polling Order Notifier for Admin
   useEffect(() => {
-    try {
-      const supabase = createClient()
-      const channel = supabase
-        .channel('admin-order-events')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'orders' },
-          (payload: any) => {
-            const newOrder = payload.new
-            const addr = newOrder.address_json || {}
-            const idShort = String(newOrder.id).slice(0, 8).toUpperCase()
-            const customerName = addr.name || 'Guest Customer'
-            const orderTotal = Number(newOrder.total || newOrder.subtotal || 0)
+    const notifiedOrderIds = new Set<string>()
+    const supabase = createClient()
 
-            // 1. Play audio chime alert for staff/admin
-            playNotificationSound('success')
+    const handleNewOrderNotification = (order: any) => {
+      if (!order?.id || notifiedOrderIds.has(order.id)) return
+      notifiedOrderIds.add(order.id)
 
-            // 2. High-visibility Toast Notification Pop-up
-            toast.success(`🍕 New Order Received! #${idShort}`, {
-              description: `${customerName} placed an order for ₹${orderTotal}.`,
-              duration: 10000,
-              action: {
-                label: 'View Orders',
-                onClick: () => {
-                  window.location.href = '/admin/orders'
-                },
-              },
-            })
+      const addr = order.address_json || {}
+      const idShort = String(order.id).slice(0, 8).toUpperCase()
+      const customerName = addr.name || order.customer_name || 'Customer'
+      const orderTotal = Number(order.total || order.total_amount || order.subtotal || 0)
 
-            // 3. Native Browser Notification
-            triggerSystemNotification(`🍕 New Order Received #${idShort}`, {
-              body: `${customerName} placed an order for ₹${orderTotal}.`,
-            })
+      // 1. Play audio chime alert for staff/admin
+      playNotificationSound('alert')
 
-            // 4. Store in admin notification dropdown state
-            addNotification({
-              title: `🍕 New Order #${idShort}`,
-              message: `${customerName} placed a new order for ₹${orderTotal}.`,
-              type: 'order',
-              orderId: newOrder.id,
-              time: 'Just now',
-            })
-          }
-        )
-        .subscribe()
+      // 2. High-visibility Toast Notification Pop-up
+      toast.success(`🍕 New Order Received! #${idShort}`, {
+        description: `${customerName} placed an order for ₹${orderTotal}.`,
+        duration: 10000,
+        action: {
+          label: 'View Orders',
+          onClick: () => {
+            window.location.href = '/admin/orders'
+          },
+        },
+      })
 
-      return () => {
-        supabase.removeChannel(channel)
+      // 3. Native Browser System Notification
+      triggerSystemNotification(`🍕 New Order Received #${idShort}`, {
+        body: `${customerName} placed an order for ₹${orderTotal}.`,
+      })
+
+      // 4. Store in admin notification dropdown state
+      addNotification({
+        title: `🍕 New Order #${idShort}`,
+        message: `${customerName} placed a new order for ₹${orderTotal}.`,
+        type: 'order',
+        orderId: order.id,
+        time: 'Just now',
+      })
+    }
+
+    // ── Channel 1: Supabase Realtime Postgres Changes ──
+    const channel = supabase
+      .channel('admin-realtime-orders')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        (payload: any) => {
+          if (payload?.new) handleNewOrderNotification(payload.new)
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'new-order' },
+        (payload: any) => {
+          if (payload?.payload) handleNewOrderNotification(payload.payload)
+        }
+      )
+      .subscribe()
+
+    // ── Channel 2: Cross-tab LocalStorage Event ──
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'pizza-expert-last-order' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue)
+          handleNewOrderNotification(parsed)
+        } catch {}
       }
-    } catch (err) {
-      console.warn('Realtime subscription note:', err)
+    }
+    window.addEventListener('storage', handleStorage)
+
+    // ── Channel 3: Active Order Polling Heartbeat (every 12s) ──
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: recentOrders } = await supabase
+          .from('orders')
+          .select('id, total, subtotal, address_json, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (recentOrders && recentOrders.length > 0) {
+          for (const ord of recentOrders) {
+            const createdAtMs = new Date(ord.created_at).getTime()
+            const ageSeconds = (Date.now() - createdAtMs) / 1000
+            // If order was created in the last 45 seconds and hasn't been notified yet
+            if (ageSeconds < 45 && !notifiedOrderIds.has(ord.id)) {
+              handleNewOrderNotification(ord)
+            } else {
+              notifiedOrderIds.add(ord.id)
+            }
+          }
+        }
+      } catch {}
+    }, 12000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      window.removeEventListener('storage', handleStorage)
+      clearInterval(pollInterval)
     }
   }, [addNotification])
 

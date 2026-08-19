@@ -18,6 +18,7 @@ export default function AdminNotificationDropdown() {
   const {
     notifications,
     browserPermissionGranted,
+    addNotification,
     markAsRead,
     markAllAsRead,
     clearAll,
@@ -202,25 +203,32 @@ export default function AdminNotificationDropdown() {
           </div>
 
           {/* Footer Bar */}
-          {notifications.length > 0 && (
-            <div className="p-2.5 bg-[#FBF9F5] border-t border-[#E7E0D8] flex items-center justify-between text-xs">
+          <div className="p-2.5 bg-[#FBF9F5] border-t border-[#E7E0D8] flex items-center justify-between text-xs">
+            <button
+              onClick={() => {
+                addNotification({
+                  title: '🔔 Test Notification Alert',
+                  message: 'Kitchen audio chime & system notification is working properly!',
+                  type: 'system',
+                  time: 'Just now',
+                })
+                toast.success('🔔 Notification System Verified & Active!')
+              }}
+              className="text-[#B91C1C] hover:underline font-bold text-[11px] flex items-center gap-1"
+              title="Test notification sound and popup"
+            >
+              <BellRing size={12} /> Test Alert Sound
+            </button>
+
+            {notifications.length > 0 && (
               <button
                 onClick={clearAll}
-                className="text-[#A8A29E] hover:text-red-600 flex items-center gap-1 text-[11px] transition-colors"
+                className="text-[#A8A29E] hover:text-red-600 flex items-center gap-1 text-[11px] transition-colors ml-auto"
               >
                 <Trash2 size={12} /> Clear All
               </button>
-              <button
-                onClick={() => {
-                  setOpen(false)
-                  router.push('/admin/orders')
-                }}
-                className="font-bold text-[#B91C1C] hover:underline flex items-center gap-1 text-[11px]"
-              >
-                <span>All Orders</span> <ExternalLink size={11} />
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
