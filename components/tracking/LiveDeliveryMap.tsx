@@ -21,7 +21,7 @@ export default function LiveDeliveryMap({
   destinationLocation = { lat: 25.4528, lng: 81.8346 },
   destinationAddress = 'Civil Lines, Prayagraj',
   status = 'heading_to_customer',
-  driverName = 'Rahul Sharma',
+  driverName = 'Delivery Partner',
   routeWaypoints = [],
   etaMinutes = 14,
   distanceKm = 2.8,

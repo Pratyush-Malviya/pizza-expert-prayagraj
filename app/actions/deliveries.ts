@@ -3,82 +3,70 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import { DEFAULT_SAMPLE_DRIVER, type DeliveryPartner } from '@/lib/tracking/types'
+import { type DeliveryPartner } from '@/lib/tracking/types'
 
-const SAMPLE_FLEET: DeliveryPartner[] = [
-  DEFAULT_SAMPLE_DRIVER,
-  {
-    id: 'DP-02',
-    name: 'Amit Verma',
-    phone: '+91 98765 11223',
-    vehicle_type: 'TVS Jupiter',
-    vehicle_number: 'UP 70 CD 5678',
-    rating: 4.8,
-    total_deliveries: 980,
-    is_online: true,
-    is_busy: false,
-    current_lat: 25.4358,
-    current_lng: 81.8682,
-  },
-  {
-    id: 'DP-03',
-    name: 'Vikas Maurya',
-    phone: '+91 98765 99887',
-    vehicle_type: 'Hero Splendor+',
-    vehicle_number: 'UP 70 EF 9012',
-    rating: 4.9,
-    total_deliveries: 1850,
-    is_online: true,
-    is_busy: false,
-    current_lat: 25.4380,
-    current_lng: 81.8710,
-  },
-  {
-    id: 'DP-04',
-    name: 'Suresh Yadav',
-    phone: '+91 98765 33445',
-    vehicle_type: 'Bajaj Pulsar 150',
-    vehicle_number: 'UP 70 GH 3456',
-    rating: 4.7,
-    total_deliveries: 620,
-    is_online: true,
-    is_busy: false,
-    current_lat: 25.4410,
-    current_lng: 81.8590,
-  }
-]
-
-export async function fetchAvailableDrivers(): Promise<{ success: boolean; drivers: DeliveryPartner[] }> {
+export async function fetchAvailableDrivers(): Promise<{ success: boolean; drivers: DeliveryPartner[]; error?: string }> {
   try {
     const supabase = await createServerClient()
-    const { data: dbDrivers, error } = await supabase
+
+    // 1. Try querying drivers table
+    const { data: dbDrivers } = await supabase
       .from('drivers')
       .select('*')
       .eq('is_online', true)
       .eq('is_busy', false)
 
-    if (error || !dbDrivers || dbDrivers.length === 0) {
-      // Return available sample fleet if DB is not populated yet
-      return { success: true, drivers: SAMPLE_FLEET.filter(d => d.is_online && !d.is_busy) }
+    if (dbDrivers && dbDrivers.length > 0) {
+      const formatted: DeliveryPartner[] = dbDrivers.map(d => ({
+        id: d.id,
+        name: d.name,
+        phone: d.phone,
+        vehicle_type: d.vehicle_type || 'Bike',
+        vehicle_number: d.vehicle_number || '',
+        rating: 5.0,
+        total_deliveries: 0,
+        is_online: d.is_online,
+        is_busy: d.is_busy,
+        current_lat: Number(d.current_lat || 25.4358),
+        current_lng: Number(d.current_lng || 81.8682),
+      }))
+      return { success: true, drivers: formatted }
     }
 
-    const formatted: DeliveryPartner[] = dbDrivers.map(d => ({
-      id: d.id,
-      name: d.name,
-      phone: d.phone,
-      vehicle_type: d.vehicle_type,
-      vehicle_number: d.vehicle_number || '',
-      rating: 4.9,
-      total_deliveries: 120,
-      is_online: d.is_online,
-      is_busy: d.is_busy,
-      current_lat: Number(d.current_lat || 25.4358),
-      current_lng: Number(d.current_lng || 81.8682),
-    }))
+    // 2. Try querying profiles where role = 'driver'
+    const { data: profileDrivers } = await supabase
+      .from('profiles')
+      .select('id, name, phone, driver_details(vehicle_type, vehicle_number, is_online)')
+      .eq('role', 'driver')
 
-    return { success: true, drivers: formatted }
+    if (profileDrivers && profileDrivers.length > 0) {
+      const onlineDrivers: DeliveryPartner[] = profileDrivers
+        .filter((p: any) => {
+          const det = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
+          return det?.is_online !== false
+        })
+        .map((p: any) => {
+          const det = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
+          return {
+            id: p.id,
+            name: p.name,
+            phone: p.phone || '',
+            vehicle_type: det?.vehicle_type || 'Bike',
+            vehicle_number: det?.vehicle_number || '',
+            rating: 5.0,
+            total_deliveries: 0,
+            is_online: true,
+            is_busy: false,
+            current_lat: 25.4358,
+            current_lng: 81.8682,
+          }
+        })
+      return { success: true, drivers: onlineDrivers }
+    }
+
+    return { success: true, drivers: [] }
   } catch (err: any) {
-    return { success: true, drivers: SAMPLE_FLEET.filter(d => d.is_online && !d.is_busy) }
+    return { success: false, drivers: [], error: err.message }
   }
 }
 
@@ -89,10 +77,34 @@ export async function assignOrderToDriver(orderId: string, driverId: string): Pr
 }> {
   try {
     const supabase = await createServerClient()
-    
-    // Find driver
-    const fleet = SAMPLE_FLEET
-    const selectedDriver = fleet.find(d => d.id === driverId) || fleet[0]
+
+    // Find driver in DB
+    const { data: dbDriver } = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('id', driverId)
+      .single()
+
+    const { data: profileDriver } = await supabase
+      .from('profiles')
+      .select('id, name, phone, driver_details(vehicle_type, vehicle_number)')
+      .eq('id', driverId)
+      .single()
+
+    const det = Array.isArray(profileDriver?.driver_details) ? profileDriver?.driver_details[0] : profileDriver?.driver_details
+    const assignedDriver: DeliveryPartner = {
+      id: driverId,
+      name: dbDriver?.name || profileDriver?.name || 'Assigned Driver',
+      phone: dbDriver?.phone || profileDriver?.phone || '',
+      vehicle_type: dbDriver?.vehicle_type || det?.vehicle_type || 'Bike',
+      vehicle_number: dbDriver?.vehicle_number || det?.vehicle_number || '',
+      rating: 5.0,
+      total_deliveries: 0,
+      is_online: true,
+      is_busy: true,
+      current_lat: Number(dbDriver?.current_lat || 25.4358),
+      current_lng: Number(dbDriver?.current_lng || 81.8682),
+    }
 
     // Update database
     try {
@@ -112,7 +124,7 @@ export async function assignOrderToDriver(orderId: string, driverId: string): Pr
 
       await supabase
         .from('orders')
-        .update({ status: 'assigned' })
+        .update({ status: 'assigned', driver_id: driverId })
         .eq('id', orderId)
     } catch {}
 
@@ -120,7 +132,7 @@ export async function assignOrderToDriver(orderId: string, driverId: string): Pr
     revalidatePath('/admin/deliveries')
     revalidatePath(`/track`)
 
-    return { success: true, driver: selectedDriver }
+    return { success: true, driver: assignedDriver }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to assign driver' }
   }
@@ -138,19 +150,17 @@ export async function autoAssignNearestAvailableDriver(orderId: string): Promise
     if (!drivers || drivers.length === 0) {
       return {
         success: false,
-        error: 'No idle delivery partners currently online. Please check driver fleet or assign manually.'
+        error: 'No idle delivery partners registered in the system. Please onboard delivery staff from Driver Management first.'
       }
     }
 
-    // Pick top available driver with highest rating / ready at Allapur kitchen
     const chosenDriver = drivers[0]
-
     await assignOrderToDriver(orderId, chosenDriver.id)
 
     return {
       success: true,
       driver: chosenDriver,
-      message: `Successfully auto-dispatched to ${chosenDriver.name} (${chosenDriver.vehicle_type} • ${chosenDriver.vehicle_number})`
+      message: `Successfully auto-dispatched to ${chosenDriver.name} (${chosenDriver.vehicle_type} • ${chosenDriver.vehicle_number || 'UP 70'})`
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Auto-assignment failed' }

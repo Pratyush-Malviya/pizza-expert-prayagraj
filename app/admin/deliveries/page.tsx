@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { DeliveryPartner, GPSLocation } from '@/lib/tracking/types'
-import { STORE_LOCATION, STORE_DETAILS, SIMULATED_ROUTE_CIVIL_LINES } from '@/lib/tracking/types'
+import { STORE_LOCATION, STORE_DETAILS } from '@/lib/tracking/types'
 import { autoAssignNearestAvailableDriver, purgeOldDeliveryActivities } from '@/app/actions/deliveries'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
@@ -54,35 +54,6 @@ export interface ReadyOrder {
   created_at: string
 }
 
-const DEFAULT_FALLBACK_DRIVERS: DeliveryRiderItem[] = [
-  {
-    id: 'USR-04',
-    name: 'Rahul Sharma',
-    phone: '+91 98765 43210',
-    vehicle_type: 'Honda Activa 6G',
-    vehicle_number: 'UP 70 AB 1234',
-    rating: 4.9,
-    total_deliveries: 1420,
-    is_online: true,
-    is_busy: false,
-    current_lat: 25.4410,
-    current_lng: 81.8590,
-  },
-  {
-    id: 'USR-05',
-    name: 'Amit Verma',
-    phone: '+91 98765 11223',
-    vehicle_type: 'TVS Jupiter',
-    vehicle_number: 'UP 70 CD 5678',
-    rating: 4.8,
-    total_deliveries: 980,
-    is_online: true,
-    is_busy: false,
-    current_lat: 25.4390,
-    current_lng: 81.8620,
-  }
-]
-
 export default function AdminDeliveriesPage() {
   const [drivers, setDrivers] = useState<DeliveryRiderItem[]>([])
   const [readyOrders, setReadyOrders] = useState<ReadyOrder[]>([])
@@ -103,16 +74,16 @@ export default function AdminDeliveriesPage() {
       const supabase = createClient()
 
       // 1. Fetch Real Driver Profiles & Details from Supabase
-      const { data: driversProfiles, error: driversError } = await supabase
+      const { data: driversProfiles } = await supabase
         .from('profiles')
         .select(`
-          id, name, phone, is_active, created_at,
+          id, name, phone, is_active, role, created_at,
           driver_details ( vehicle_type, vehicle_number, license_number, verification_status, is_online )
         `)
         .eq('role', 'driver')
         .order('created_at', { ascending: false })
 
-      // 2. Fetch Drivers live table for GPS coordinates
+      // 2. Fetch Drivers live table for GPS coordinates & busy states
       const { data: liveDriversTable } = await supabase
         .from('drivers')
         .select('id, name, phone, vehicle_type, vehicle_number, is_online, is_busy, current_lat, current_lng')
@@ -124,7 +95,7 @@ export default function AdminDeliveriesPage() {
         }
       }
 
-      // 3. Fetch Active & Ready Orders
+      // 3. Fetch Orders from Database (and localStorage demo orders if any)
       const { data: allOrders } = await supabase
         .from('orders')
         .select('*, order_items(*, products(name))')
@@ -133,7 +104,6 @@ export default function AdminDeliveriesPage() {
 
       let ordersList: any[] = allOrders || []
 
-      // Merge localStorage orders if available (for test orders placed in demo)
       try {
         if (typeof window !== 'undefined') {
           const local = JSON.parse(localStorage.getItem('pizza_orders') || '[]')
@@ -157,13 +127,13 @@ export default function AdminDeliveriesPage() {
       // Ready at Kitchen orders (confirmed / preparing / ready)
       const kitchenReady: ReadyOrder[] = ordersList
         .filter(o => o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready')
-        .slice(0, 8)
+        .slice(0, 10)
         .map(o => {
           const addr = o.address_json || {}
           const itemsList = o.order_items || []
           const summaryStr = itemsList
             .map((i: any) => `${i.quantity}x ${i.products?.name || i.product_name || 'Pizza'}`)
-            .join(', ') || o.items_summary || 'Fresh Oven Baked Items'
+            .join(', ') || o.items_summary || 'Oven Baked Item'
 
           return {
             id: o.id,
@@ -192,7 +162,6 @@ export default function AdminDeliveriesPage() {
       setTodayCompletedTrips(deliveredToday.length)
       setTodayRevenue(totalDeliveredRevenue)
 
-      // Calculate Average Delivery Time (in minutes)
       if (deliveredToday.length > 0) {
         let totalMins = 0
         let count = 0
@@ -207,71 +176,89 @@ export default function AdminDeliveriesPage() {
         })
         if (count > 0) {
           setAvgDeliveryTimeMinutes(Math.round((totalMins / count) * 10) / 10)
-        } else {
-          setAvgDeliveryTimeMinutes(21.4)
         }
       }
 
-      // Map Real Drivers
-      let formattedDrivers: DeliveryRiderItem[] = []
+      // Combine Real Drivers strictly from Database
+      const driverMap: Map<string, DeliveryRiderItem> = new Map()
 
-      if (!driversError && driversProfiles && driversProfiles.length > 0) {
-        formattedDrivers = driversProfiles.map((d: any) => {
-          const details = Array.isArray(d.driver_details) ? d.driver_details[0] : d.driver_details
-          const live = liveDriversMap[d.id]
-          const activeOrd = activeOrderMap[d.id] || (activeOrders.length > 0 && live?.is_busy ? activeOrders[0] : null)
+      // From profiles
+      if (driversProfiles && driversProfiles.length > 0) {
+        for (const p of driversProfiles) {
+          const details = Array.isArray(p.driver_details) ? p.driver_details[0] : p.driver_details
+          const live = liveDriversMap[p.id]
+          const activeOrd = activeOrderMap[p.id]
           const addr = activeOrd?.address_json || {}
 
           const isOnline = live?.is_online ?? details?.is_online ?? true
           const isBusy = Boolean(activeOrd || live?.is_busy)
 
-          return {
-            id: d.id,
-            name: d.name || 'Delivery Partner',
-            phone: d.phone || '+91 98765 00000',
-            vehicle_type: details?.vehicle_type || live?.vehicle_type || 'Motorcycle',
-            vehicle_number: details?.vehicle_number || live?.vehicle_number || 'UP 70 AB 0000',
-            rating: 4.9,
-            total_deliveries: deliveredToday.length * 4 + 120,
+          driverMap.set(p.id, {
+            id: p.id,
+            name: p.name || 'Delivery Partner',
+            phone: p.phone || '',
+            vehicle_type: details?.vehicle_type || live?.vehicle_type || 'Vehicle',
+            vehicle_number: details?.vehicle_number || live?.vehicle_number || 'N/A',
+            rating: 5.0,
+            total_deliveries: deliveredToday.length,
             is_online: isOnline,
             is_busy: isBusy,
-            current_lat: Number(live?.current_lat || 25.4410),
-            current_lng: Number(live?.current_lng || 81.8590),
+            current_lat: Number(live?.current_lat || STORE_LOCATION.lat),
+            current_lng: Number(live?.current_lng || STORE_LOCATION.lng),
             activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 10) : undefined,
-            destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Civil Lines, Prayagraj') : undefined,
+            destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj') : undefined,
             destinationCoords: { lat: 25.4528, lng: 81.8346 },
-            eta: activeOrd ? '11 mins' : undefined,
+            eta: activeOrd ? '10-15 mins' : undefined,
             distanceKm: activeOrd ? 2.4 : undefined,
-          }
-        })
-      } else {
-        // Use default fallback roster if no DB profiles exist yet
-        formattedDrivers = DEFAULT_FALLBACK_DRIVERS.map((d, idx) => {
-          const activeOrd = activeOrders[idx]
-          const addr = activeOrd?.address_json || {}
-          return {
-            ...d,
-            is_busy: Boolean(activeOrd),
-            activeOrderId: activeOrd ? String(activeOrd.id).slice(0, 10) : undefined,
-            destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Civil Lines, Prayagraj') : undefined,
-            destinationCoords: { lat: 25.4528, lng: 81.8346 },
-            eta: activeOrd ? '11 mins' : undefined,
-            distanceKm: activeOrd ? 2.4 : undefined,
-          }
-        })
+          })
+        }
       }
 
-      setDrivers(formattedDrivers)
-      setActiveDeliveriesCount(formattedDrivers.filter(d => d.is_busy).length || activeOrders.length)
+      // From raw drivers table (if any additional records exist)
+      if (liveDriversTable && liveDriversTable.length > 0) {
+        for (const ld of liveDriversTable) {
+          if (!driverMap.has(ld.id)) {
+            const activeOrd = activeOrderMap[ld.id]
+            const addr = activeOrd?.address_json || {}
+            driverMap.set(ld.id, {
+              id: ld.id,
+              name: ld.name || 'Delivery Partner',
+              phone: ld.phone || '',
+              vehicle_type: ld.vehicle_type || 'Vehicle',
+              vehicle_number: ld.vehicle_number || 'N/A',
+              rating: 5.0,
+              total_deliveries: deliveredToday.length,
+              is_online: ld.is_online !== false,
+              is_busy: Boolean(activeOrd || ld.is_busy),
+              current_lat: Number(ld.current_lat || STORE_LOCATION.lat),
+              current_lng: Number(ld.current_lng || STORE_LOCATION.lng),
+              activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 10) : undefined,
+              destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj') : undefined,
+              destinationCoords: { lat: 25.4528, lng: 81.8346 },
+              eta: activeOrd ? '10-15 mins' : undefined,
+              distanceKm: activeOrd ? 2.4 : undefined,
+            })
+          }
+        }
+      }
 
-      // Set initial selected rider for live GPS map
-      const busyRider = formattedDrivers.find(d => d.is_busy) || formattedDrivers.find(d => d.is_online) || formattedDrivers[0]
-      if (busyRider && (!selectedRider || !formattedDrivers.some(d => d.id === selectedRider.id))) {
-        setSelectedRider(busyRider)
+      const formattedDrivers = Array.from(driverMap.values())
+      setDrivers(formattedDrivers)
+      setActiveDeliveriesCount(formattedDrivers.filter(d => d.is_busy).length)
+
+      // Set tracked rider if active
+      if (formattedDrivers.length > 0) {
+        const busyRider = formattedDrivers.find(d => d.is_busy) || formattedDrivers.find(d => d.is_online) || formattedDrivers[0]
+        if (!selectedRider || !formattedDrivers.some(d => d.id === selectedRider.id)) {
+          setSelectedRider(busyRider)
+        }
+      } else {
+        setSelectedRider(null)
       }
     } catch (err) {
       console.warn('Error fetching deliveries data:', err)
-      setDrivers(DEFAULT_FALLBACK_DRIVERS)
+      setDrivers([])
+      setSelectedRider(null)
     } finally {
       setLoading(false)
     }
@@ -282,7 +269,6 @@ export default function AdminDeliveriesPage() {
 
     const supabase = createClient()
 
-    // Realtime subscriptions for live fleet coordination
     const channel = supabase
       .channel('deliveries-live-radar')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
@@ -310,7 +296,7 @@ export default function AdminDeliveriesPage() {
     try {
       const res = await autoAssignNearestAvailableDriver(orderId)
       if (res.success && res.driver) {
-        toast.success(`⚡ Order #${orderId.slice(0, 8)} auto-dispatched to ${res.driver.name}!`, {
+        toast.success(`⚡ Order #${orderId.slice(0, 8)} dispatched to ${res.driver.name}!`, {
           description: `Assigned Rider: ${res.driver.name} (${res.driver.vehicle_type || 'Rider'})`,
         })
         await fetchFleetAndOrders()
@@ -326,12 +312,11 @@ export default function AdminDeliveriesPage() {
 
   // Handle Purge Old Delivery Activities
   const handlePurgeActivities = async () => {
-    if (!confirm('Are you sure you want to purge all old delivery activities, GPS logs, and reset rider trip statuses?')) {
+    if (!confirm('Are you sure you want to purge all past delivery tracking logs, GPS breadcrumbs, and reset driver active trip statuses?')) {
       return
     }
     setIsPurging(true)
     try {
-      // Clear client-side demo state
       if (typeof window !== 'undefined') {
         localStorage.removeItem('pizza_active_delivery')
         localStorage.removeItem('pizza_driver_gps')
@@ -339,7 +324,7 @@ export default function AdminDeliveriesPage() {
 
       const res = await purgeOldDeliveryActivities()
       if (res.success) {
-        toast.success(res.message || 'All old delivery activities purged successfully!')
+        toast.success(res.message || 'All past delivery activities purged successfully!')
         await fetchFleetAndOrders()
       } else {
         toast.error(res.error || 'Failed to purge delivery activities')
@@ -458,10 +443,10 @@ export default function AdminDeliveriesPage() {
             Avg Delivery Time
           </span>
           <div className="text-2xl sm:text-3xl font-bold font-mono text-[#B91C1C]">
-            {avgDeliveryTimeMinutes} Mins
+            {todayCompletedTrips > 0 ? `${avgDeliveryTimeMinutes} Mins` : '21.4 Mins'}
           </div>
           <span className="text-[11px] text-emerald-600 font-bold">
-            ✓ {(30 - avgDeliveryTimeMinutes > 0 ? (30 - avgDeliveryTimeMinutes).toFixed(1) : '0')}m faster than 30m SLA
+            ✓ 30m Express SLA Standard
           </span>
         </div>
 
@@ -498,9 +483,13 @@ export default function AdminDeliveriesPage() {
               <Compass size={18} className="text-[#B91C1C]" />
               <span>Prayagraj Live Fleet GPS Radar</span>
             </h2>
-            {selectedRider && (
+            {selectedRider ? (
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
                 Tracking: {selectedRider.name} ({selectedRider.is_busy ? 'Delivering' : 'Idle at Kitchen'})
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-[#78716C] px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-300">
+                Radar Standing By • Hub Ready (Allapur)
               </span>
             )}
           </div>
@@ -513,15 +502,15 @@ export default function AdminDeliveriesPage() {
 
         <LiveDeliveryMap
           driverLocation={selectedRider ? {
-            lat: selectedRider.current_lat || 25.4410,
-            lng: selectedRider.current_lng || 81.8590,
+            lat: selectedRider.current_lat || STORE_LOCATION.lat,
+            lng: selectedRider.current_lng || STORE_LOCATION.lng,
             updatedAt: Date.now()
-          } : { lat: 25.4358, lng: 81.8682, updatedAt: Date.now() }}
+          } : { lat: STORE_LOCATION.lat, lng: STORE_LOCATION.lng, updatedAt: Date.now() }}
           destinationLocation={selectedRider?.destinationCoords || { lat: 25.4528, lng: 81.8346 }}
-          destinationAddress={selectedRider?.destination || 'Civil Lines, Prayagraj'}
-          driverName={selectedRider ? `${selectedRider.name} (${selectedRider.is_busy ? 'Active' : 'Idle'})` : 'Rahul Sharma (Active)'}
+          destinationAddress={selectedRider?.destination || 'Pizza Expert Kitchen (Allapur)'}
+          driverName={selectedRider ? `${selectedRider.name} (${selectedRider.is_busy ? 'Active' : 'Idle'})` : 'Pizza Expert Hub'}
           etaMinutes={selectedRider?.is_busy ? (selectedRider.eta ? parseInt(selectedRider.eta) : 11) : 0}
-          distanceKm={selectedRider?.distanceKm || 2.4}
+          distanceKm={selectedRider?.distanceKm || 0}
         />
       </div>
 
@@ -644,8 +633,23 @@ export default function AdminDeliveriesPage() {
             <tbody className="divide-y divide-[#E7E0D8]">
               {filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-[#78716C] italic">
-                    No delivery drivers found matching filter.
+                  <td colSpan={5} className="p-12 text-center">
+                    <div className="max-w-md mx-auto space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+                        <Bike size={24} />
+                      </div>
+                      <div className="font-bold text-sm text-[#1C1917]">No Delivery Staff Registered</div>
+                      <p className="text-xs text-[#78716C]">
+                        There are currently no delivery partners registered in your database. Onboard riders from Driver Management to start tracking live fleet.
+                      </p>
+                      <Link
+                        href="/admin/drivers"
+                        className="btn btn-primary text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Plus size={14} />
+                        <span>Onboard Delivery Person</span>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -724,13 +728,15 @@ export default function AdminDeliveriesPage() {
 
                       <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
-                          <a
-                            href={`tel:${d.phone}`}
-                            title="Call Rider"
-                            className="p-2 bg-[#FBF9F5] hover:bg-[#E7E0D8] rounded-lg text-[#1C1917] transition-colors"
-                          >
-                            <Phone size={14} />
-                          </a>
+                          {d.phone && (
+                            <a
+                              href={`tel:${d.phone}`}
+                              title="Call Rider"
+                              className="p-2 bg-[#FBF9F5] hover:bg-[#E7E0D8] rounded-lg text-[#1C1917] transition-colors"
+                            >
+                              <Phone size={14} />
+                            </a>
+                          )}
 
                           <button
                             onClick={() => setSelectedRider(d)}

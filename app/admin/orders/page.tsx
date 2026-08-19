@@ -602,7 +602,7 @@ export default function AdminOrdersPage() {
                     driverLocation={{ lat: 25.4410, lng: 81.8590, updatedAt: Date.now() }}
                     destinationLocation={{ lat: 25.4528, lng: 81.8346 }}
                     destinationAddress={selectedOrder.address}
-                    driverName={selectedOrder.driver_name || 'Rahul Sharma (Assigned)'}
+                    driverName={selectedOrder.driver_name || 'Delivery Partner'}
                     status={selectedOrder.status}
                     etaMinutes={12}
                     distanceKm={2.4}
