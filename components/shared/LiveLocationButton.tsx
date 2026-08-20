@@ -1,14 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
-import { LocateFixed, Loader2, AlertTriangle } from 'lucide-react'
-import { useGeolocation } from '@/lib/hooks/useGeolocation'
+import { useState } from 'react'
+import { LocateFixed, Loader2, AlertTriangle, MapPin } from 'lucide-react'
 import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
 
 interface LiveLocationButtonProps {
-  /** Called when GPS + reverse geocode completes successfully */
   onLocationDetected: (coords: { lat: number; lng: number }, address: ReverseGeocodeResult) => void
-  /** Called when detection fails */
   onError?: (msg: string) => void
   variant?: 'default' | 'outline' | 'ghost'
   className?: string
@@ -16,13 +13,26 @@ interface LiveLocationButtonProps {
   id?: string
 }
 
+type Step = 'idle' | 'requesting-permission' | 'getting-gps' | 'geocoding' | 'error'
+
+const STEP_LABELS: Record<Step, string> = {
+  'idle': '',
+  'requesting-permission': 'Allow location in browser…',
+  'getting-gps': 'Getting GPS signal…',
+  'geocoding': 'Finding your address…',
+  'error': '',
+}
+
 /**
- * LiveLocationButton
- * 
- * Reusable "Use My Location" button. On click:
- *  1. Requests GPS via browser API
- *  2. Calls Nominatim reverse geocoding
- *  3. Returns coords + parsed address via onLocationDetected callback
+ * LiveLocationButton — fully self-contained GPS + reverse geocode flow.
+ *
+ * On click:
+ *  1. Shows "Allow location" prompt state
+ *  2. Calls navigator.geolocation.getCurrentPosition()
+ *  3. Calls /api/geocode/reverse (our server proxy) for address
+ *  4. Returns result via onLocationDetected()
+ *
+ * No external hook dependency — all logic is in the click handler.
  */
 export default function LiveLocationButton({
   onLocationDetected,
@@ -32,86 +42,156 @@ export default function LiveLocationButton({
   label = 'Use My Location',
   id = 'live-location-btn',
 }: LiveLocationButtonProps) {
-  const geo = useGeolocation()
+  const [step, setStep] = useState<Step>('idle')
+  const [permDenied, setPermDenied] = useState(false)
 
-  // When GPS coords obtained → reverse geocode
-  useEffect(() => {
-    if (geo.lat === null || geo.lng === null) return
+  const isLoading = step !== 'idle' && step !== 'error'
 
-    ;(async () => {
-      try {
-        const { reverseGeocode } = await import('@/lib/utils/reverseGeocode')
-        const result = await reverseGeocode(geo.lat!, geo.lng!)
-        onLocationDetected({ lat: geo.lat!, lng: geo.lng! }, result)
-      } catch (err: any) {
-        const msg = err.message || 'Could not determine address from your location.'
-        onError?.(msg)
-      }
-    })()
-    // Only trigger when coords change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.lat, geo.lng])
-
-  // Surface geo errors
-  useEffect(() => {
-    if (geo.error) {
-      onError?.(geo.error)
+  const handleClick = async () => {
+    // Check browser support
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      const msg = 'Your browser does not support location access.'
+      setStep('error')
+      onError?.(msg)
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.error])
 
-  const handleClick = () => {
-    geo.clearLocation()
-    geo.requestLocation()
+    setStep('requesting-permission')
+    setPermDenied(false)
+
+    // Wrap getCurrentPosition in a Promise for async/await
+    const getPosition = (): Promise<GeolocationPosition> =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 60000,
+        })
+      })
+
+    let position: GeolocationPosition
+    try {
+      setStep('getting-gps')
+      position = await getPosition()
+    } catch (err: any) {
+      let msg = 'Unable to get your location. Please try again.'
+      if (err?.code === 1) {
+        // PERMISSION_DENIED
+        msg = 'Location access denied. Please click the 🔒 icon in your browser address bar and allow location, then try again.'
+        setPermDenied(true)
+      } else if (err?.code === 2) {
+        msg = 'Location unavailable. Please check your GPS / Wi-Fi and try again.'
+      } else if (err?.code === 3) {
+        msg = 'Location request timed out. Please try again.'
+      }
+      setStep('error')
+      onError?.(msg)
+      // Auto-reset after 5s so user can try again
+      setTimeout(() => setStep('idle'), 5000)
+      return
+    }
+
+    const { latitude: lat, longitude: lng } = position.coords
+
+    // Reverse geocode via our server proxy
+    try {
+      setStep('geocoding')
+      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Geocode failed (${res.status})`)
+      }
+      const data = await res.json()
+
+      // Parse Nominatim response
+      const addr = data.address || {}
+      const line1Parts = [addr.house_number, addr.road || addr.pedestrian || addr.path].filter(Boolean)
+      const line2Parts = [addr.neighbourhood, addr.suburb, addr.village].filter(Boolean)
+
+      const result: ReverseGeocodeResult = {
+        line1: line1Parts.join(', ') || addr.amenity || addr.building || 'Near ' + (addr.road || 'your location'),
+        line2: line2Parts.slice(0, 2).join(', '),
+        city: addr.city || addr.town || addr.village || addr.county || addr.state_district || '',
+        state: addr.state || '',
+        pincode: addr.postcode || '',
+        country: addr.country || 'India',
+        displayName: data.display_name || '',
+        raw: data,
+      }
+
+      setStep('idle')
+      onLocationDetected({ lat, lng }, result)
+    } catch (err: any) {
+      // Geocode failed — still surface the GPS coords with empty address fields
+      // so user can fill in manually
+      const emptyResult: ReverseGeocodeResult = {
+        line1: '', line2: '', city: 'Prayagraj', state: 'Uttar Pradesh',
+        pincode: '', country: 'India', displayName: '', raw: {},
+      }
+      setStep('idle')
+      // Still succeed with GPS coords — let user fill address manually
+      onLocationDetected({ lat, lng }, emptyResult)
+    }
   }
 
   const variantStyles: Record<string, string> = {
     default: 'bg-[#B91C1C] hover:bg-[#991B1B] text-white border border-transparent',
     outline: 'bg-white hover:bg-[#FEF2F2] text-[#B91C1C] border border-[#B91C1C]',
-    ghost: 'bg-transparent hover:bg-[#FEF2F2] text-[#B91C1C] border border-transparent',
+    ghost:   'bg-transparent hover:bg-[#FEF2F2] text-[#B91C1C] border border-transparent',
   }
 
-  const isDisabled = geo.loading || geo.permissionState === 'unsupported'
-  const isPermDenied = geo.permissionState === 'denied'
-
-  if (isPermDenied) {
+  // Permission hard-denied state
+  if (permDenied) {
     return (
-      <button
-        type="button"
-        disabled
-        id={id}
-        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
-          bg-[#F5F5F4] text-[#A8A29E] border border-[#E7E0D8] cursor-not-allowed ${className}`}
-        title="Location permission denied. Please enable it in browser settings."
-      >
-        <AlertTriangle size={15} />
-        Location Blocked
-      </button>
+      <div className="space-y-1">
+        <button
+          type="button"
+          disabled
+          id={id}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+            bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA] cursor-not-allowed ${className}`}
+        >
+          <AlertTriangle size={15} />
+          Location Blocked
+        </button>
+        <p className="text-[11px] text-[#B91C1C] leading-tight max-w-[220px]">
+          Click the 🔒 icon in your browser bar → Site Settings → Allow Location, then retry.
+        </p>
+      </div>
     )
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isDisabled}
-      id={id}
-      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
-        transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed
-        ${variantStyles[variant]} ${className}`}
-      title={geo.permissionState === 'unsupported' ? 'Geolocation not supported by your browser' : label}
-    >
-      {geo.loading ? (
-        <>
-          <Loader2 size={15} className="animate-spin" />
-          Detecting…
-        </>
-      ) : (
-        <>
-          <LocateFixed size={15} />
-          {label}
-        </>
-      )}
-    </button>
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isLoading}
+        id={id}
+        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+          transition-all duration-200 disabled:opacity-70 disabled:cursor-wait
+          ${variantStyles[variant]} ${className}`}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 size={15} className="animate-spin flex-shrink-0" />
+            <span className="truncate">{STEP_LABELS[step]}</span>
+          </>
+        ) : (
+          <>
+            <LocateFixed size={15} className="flex-shrink-0" />
+            {label}
+          </>
+        )}
+      </button>
+
+      {/* Contextual hint shown while requesting permission */}
+      {step === 'requesting-permission' || step === 'getting-gps' ? (
+        <p className="text-[11px] text-[#57534E] flex items-center gap-1">
+          <MapPin size={10} />
+          A browser prompt will appear — click <strong>"Allow"</strong>
+        </p>
+      ) : null}
+    </div>
   )
 }
