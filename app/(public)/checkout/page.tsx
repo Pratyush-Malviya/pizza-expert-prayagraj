@@ -21,6 +21,7 @@ import { EtaEstimate } from '@/lib/eta'
 import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorpay'
 import LiveLocationButton from '@/components/shared/LiveLocationButton'
 import SaveLocationModal from '@/components/shared/SaveLocationModal'
+import MapLocationPickerModal from '@/components/shared/MapLocationPickerModal'
 import type { Address } from '@/types'
 import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
 
@@ -56,8 +57,9 @@ export default function CheckoutPage() {
   /** 'saved' = picking from list | 'manual' = entering new manually | 'gps' = GPS in progress */
   const [addressMode, setAddressMode] = useState<'saved' | 'manual' | 'gps'>('saved')
 
-  // GPS / Save modal
+  // GPS / Save modal / Map modal
   const [showSaveModal, setShowSaveModal] = useState(false)
+  const [showMapModal, setShowMapModal] = useState(false)
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [gpsGeocode, setGpsGeocode] = useState<ReverseGeocodeResult | null>(null)
   const [gpsError, setGpsError] = useState<string | null>(null)
@@ -198,6 +200,25 @@ export default function CheckoutPage() {
     setAddressMode('manual')
     setShowSaveModal(true)
     toast.success('Address auto-populated from your live location!')
+  }, [])
+
+  // Map Pin selected → auto-populate fields
+  const handleMapLocationSelected = useCallback((geocode: ReverseGeocodeResult, coords: { lat: number; lng: number }) => {
+    setGpsCoords(coords)
+    setGpsGeocode(geocode)
+    setGpsError(null)
+
+    setAddressInfo((prev) => ({
+      ...prev,
+      line1: geocode.line1 || geocode.displayName || prev.line1,
+      line2: geocode.line2 || prev.line2,
+      city: geocode.city || 'Prayagraj',
+      state: geocode.state || 'Uttar Pradesh',
+      pincode: geocode.pincode || '211006',
+    }))
+
+    setAddressMode('manual')
+    toast.success('Address set from map pin!')
   }, [])
 
   // After GPS address saved → add to list + select it
@@ -586,12 +607,20 @@ export default function CheckoutPage() {
                       </div>
                       <span className="font-semibold text-[#15803D] text-xs">Use live GPS location</span>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowMapModal(true)}
+                        className="text-xs py-1.5 px-3 rounded-lg border border-[#16A34A]/40 bg-white hover:bg-[#DCFCE7] text-[#15803D] font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <MapPin size={13} />
+                        <span>Pin on Map</span>
+                      </button>
                       <LiveLocationButton
                         onLocationDetected={handleGpsDetected}
                         onError={setGpsError}
                         variant="ghost"
-                        label="Detect & Save"
+                        label="Detect GPS"
                         id="checkout-gps-btn"
                         className="text-xs py-1.5 px-3 text-[#15803D] hover:bg-[#DCFCE7]"
                       />
@@ -938,6 +967,26 @@ export default function CheckoutPage() {
           </div>
         </form>
       </div>
+
+      {/* Interactive Map Location Picker Modal */}
+      <MapLocationPickerModal
+        isOpen={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        initialCoords={gpsCoords}
+        onSelectLocation={handleMapLocationSelected}
+      />
+
+      {/* Save location modal for GPS captured address */}
+      {user && gpsGeocode && gpsCoords && (
+        <SaveLocationModal
+          isOpen={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          geocodeResult={gpsGeocode}
+          coords={gpsCoords}
+          userId={user.id}
+          onSaved={handleGpsAddressSaved}
+        />
+      )}
     </div>
   )
 }
