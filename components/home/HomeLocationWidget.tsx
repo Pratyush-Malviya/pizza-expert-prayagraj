@@ -6,7 +6,6 @@ import { MapPin, LocateFixed, Loader2, CheckCircle2, ChevronRight, Sparkles, Nav
 import { useLocationStore } from '@/store/locationStore'
 import { isPincodeInPrayagraj } from '@/lib/delivery-zone'
 import SaveLocationModal from '@/components/shared/SaveLocationModal'
-import MapLocationPickerModal from '@/components/shared/MapLocationPickerModal'
 import { createClient } from '@/lib/supabase/client'
 import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
 import Link from 'next/link'
@@ -17,7 +16,6 @@ export default function HomeLocationWidget() {
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [showSaveModal, setShowSaveModal] = useState(false)
-  const [showMapModal, setShowMapModal] = useState(false)
   const [stepLabel, setStepLabel] = useState<string>('')
   const [rawGeocode, setRawGeocode] = useState<ReverseGeocodeResult | null>(null)
   const [permDenied, setPermDenied] = useState(false)
@@ -178,15 +176,6 @@ export default function HomeLocationWidget() {
                   <ChevronRight size={14} />
                 </Link>
 
-                <button
-                  onClick={() => setShowMapModal(true)}
-                  className="py-2.5 px-3 rounded-xl border border-[#FF3B00]/40 bg-[#FF3B00]/10 hover:bg-[#FF3B00]/20 text-[#FF3B00] text-xs font-bold transition-colors flex items-center gap-1.5"
-                  title="Adjust exact location on map"
-                >
-                  <MapPin size={13} />
-                  <span>Pin on Map</span>
-                </button>
-
                 {user ? (
                   <button
                     onClick={() => setShowSaveModal(true)}
@@ -207,7 +196,7 @@ export default function HomeLocationWidget() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-zinc-300 leading-relaxed">
-                Allow browser location or pin on map to unlock instant address checkout and get accurate live delivery estimates across Prayagraj.
+                Allow browser location to check delivery radius, unlock instant address checkout, and get accurate live delivery estimates across Prayagraj.
               </p>
 
               {isDetecting ? (
@@ -225,16 +214,15 @@ export default function HomeLocationWidget() {
                     className="flex-1 bg-gradient-to-r from-[#FF3B00] to-[#E03400] hover:from-[#E03400] hover:to-[#C02B00] text-white py-3 px-5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#FF3B00]/25 transition-all group"
                   >
                     <LocateFixed size={16} className="group-hover:rotate-45 transition-transform" />
-                    <span>Detect Live GPS</span>
+                    <span>Detect Live Location</span>
                   </button>
 
-                  <button
-                    onClick={() => setShowMapModal(true)}
-                    className="py-3 px-4 rounded-xl border border-white/20 bg-white/10 hover:bg-white/15 text-white text-xs font-bold text-center transition-colors flex items-center justify-center gap-1.5"
+                  <Link
+                    href="/menu"
+                    className="py-3 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold text-center transition-colors"
                   >
-                    <MapPin size={15} className="text-[#FF3B00]" />
-                    <span>Pin on Map</span>
-                  </button>
+                    Explore Menu First
+                  </Link>
                 </div>
               )}
 
@@ -246,7 +234,7 @@ export default function HomeLocationWidget() {
                     <p className="font-semibold">{error}</p>
                     {permDenied && (
                       <p className="text-[11px] text-zinc-400 mt-1">
-                        👉 Click the 🔒 lock / tune icon in your browser address bar → enable <strong>Location</strong> → click Detect again. Or click <strong>Pin on Map</strong> to select manually!
+                        👉 Click the 🔒 lock / tune icon in your browser address bar → enable <strong>Location</strong> → click Detect again.
                       </p>
                     )}
                   </div>
@@ -256,13 +244,6 @@ export default function HomeLocationWidget() {
           )}
         </div>
       </div>
-
-      {/* Interactive Map Location Picker Modal */}
-      <MapLocationPickerModal
-        isOpen={showMapModal}
-        onClose={() => setShowMapModal(false)}
-        initialCoords={currentLocation ? { lat: currentLocation.lat, lng: currentLocation.lng } : null}
-      />
 
       {/* Save location modal if user is logged in */}
       {user && rawGeocode && currentLocation && (

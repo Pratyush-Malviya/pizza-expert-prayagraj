@@ -1,18 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapPin, LocateFixed, Loader2, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { MapPin, Loader2, ChevronDown } from 'lucide-react'
 import { useLocationStore } from '@/store/locationStore'
 import { toast } from 'sonner'
-import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
-
 import { cn } from '@/lib/utils'
-import MapLocationPickerModal from '@/components/shared/MapLocationPickerModal'
 
 export default function HeaderLocationPicker({ className }: { className?: string }) {
   const { currentLocation, setLocation, isDetecting, setDetecting } = useLocationStore()
   const [mounted, setMounted] = useState(false)
-  const [showMapModal, setShowMapModal] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -73,49 +69,41 @@ export default function HeaderLocationPicker({ className }: { className?: string
   const displaySubtitle = currentLocation?.line1 || (currentLocation ? `${currentLocation.city}, ${currentLocation.pincode}` : 'Tap to detect live location')
 
   return (
-    <>
-      <button
-        onClick={() => setShowMapModal(true)}
-        disabled={isDetecting}
-        className={cn(
-          'items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-colors group cursor-pointer',
-          className || 'hidden md:flex max-w-[210px] lg:max-w-[260px]'
+    <button
+      onClick={detectLocation}
+      disabled={isDetecting}
+      className={cn(
+        'items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-colors group cursor-pointer',
+        className || 'hidden md:flex max-w-[210px] lg:max-w-[260px]'
+      )}
+      title="Click to detect or update live delivery location"
+    >
+      <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-[#FF3B00]/15 text-[#FF3B00] group-hover:scale-110 transition-transform shrink-0">
+        {isDetecting ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <MapPin size={14} />
         )}
-        title="Click to view map or change live delivery location"
-      >
-        <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-[#FF3B00]/15 text-[#FF3B00] group-hover:scale-110 transition-transform shrink-0">
-          {isDetecting ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <MapPin size={14} />
-          )}
-          {currentLocation && (
-            <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#10B981]" />
-          )}
-        </div>
+        {currentLocation && (
+          <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#10B981]" />
+        )}
+      </div>
 
-        <div className="flex flex-col min-w-0 pr-1">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-              {currentLocation ? 'Deliver to' : 'Set Location'}
-            </span>
-            <span className="text-[11px] font-bold text-white truncate max-w-[90px] lg:max-w-[120px]">
-              {displayTitle}
-            </span>
-          </div>
-          <span className="text-[10px] text-zinc-400 truncate max-w-[130px] lg:max-w-[170px] leading-tight">
-            {displaySubtitle}
+      <div className="flex flex-col min-w-0 pr-1">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+            {currentLocation ? 'Deliver to' : 'Set Location'}
+          </span>
+          <span className="text-[11px] font-bold text-white truncate max-w-[90px] lg:max-w-[120px]">
+            {displayTitle}
           </span>
         </div>
+        <span className="text-[10px] text-zinc-400 truncate max-w-[130px] lg:max-w-[170px] leading-tight">
+          {displaySubtitle}
+        </span>
+      </div>
 
-        <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0 ml-auto" />
-      </button>
-
-      <MapLocationPickerModal
-        isOpen={showMapModal}
-        onClose={() => setShowMapModal(false)}
-        initialCoords={currentLocation ? { lat: currentLocation.lat, lng: currentLocation.lng } : null}
-      />
-    </>
+      <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0 ml-auto" />
+    </button>
   )
 }
