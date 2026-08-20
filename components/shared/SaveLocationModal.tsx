@@ -54,18 +54,18 @@ export default function SaveLocationModal({
   })
   const [saving, setSaving] = useState(false)
 
-  // Pre-fill form when geocode result arrives
+  // Pre-fill form when geocode result arrives or modal opens
   useEffect(() => {
-    if (!geocodeResult) return
+    if (!geocodeResult || !isOpen) return
     setForm((f) => ({
       ...f,
-      line1: geocodeResult.line1 || '',
+      line1: geocodeResult.line1 || geocodeResult.displayName || '',
       line2: geocodeResult.line2 || '',
       city: geocodeResult.city || 'Prayagraj',
       state: geocodeResult.state || 'Uttar Pradesh',
-      pincode: geocodeResult.pincode || '',
+      pincode: geocodeResult.pincode || '211006',
     }))
-  }, [geocodeResult])
+  }, [geocodeResult, isOpen])
 
   // Sync label with address_type
   useEffect(() => {

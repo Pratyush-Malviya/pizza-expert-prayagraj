@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
+import { useLocationStore } from '@/store/locationStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createOrder } from '@/app/actions/orders'
 import { createClient } from '@/lib/supabase/client'
@@ -128,12 +129,35 @@ export default function CheckoutPage() {
           })
           setAddressMode('saved')
         } else {
+          // If live location was detected on Homepage or Header, auto-populate it here!
+          const liveLoc = useLocationStore.getState().currentLocation
+          if (liveLoc) {
+            setAddressInfo({
+              line1: liveLoc.line1 || liveLoc.displayName || '',
+              line2: liveLoc.line2 || '',
+              city: liveLoc.city || 'Prayagraj',
+              state: liveLoc.state || 'Uttar Pradesh',
+              pincode: liveLoc.pincode || '211006',
+              notes: '',
+            })
+          }
           setAddressMode('manual')
         }
         setLoadingAddresses(false)
       } else if (isSimpleAdmin) {
         setUser({ id: 'admin-guest', email: 'admin@demo.com', user_metadata: { name: 'Admin Demo' } })
         setContactInfo((prev) => ({ ...prev, email: 'admin@demo.com', name: 'Admin Demo' }))
+        const liveLoc = useLocationStore.getState().currentLocation
+        if (liveLoc) {
+          setAddressInfo({
+            line1: liveLoc.line1 || liveLoc.displayName || '',
+            line2: liveLoc.line2 || '',
+            city: liveLoc.city || 'Prayagraj',
+            state: liveLoc.state || 'Uttar Pradesh',
+            pincode: liveLoc.pincode || '211006',
+            notes: '',
+          })
+        }
         setAddressMode('manual')
       }
       setCheckingAuth(false)
@@ -154,12 +178,26 @@ export default function CheckoutPage() {
     })
   }, [])
 
-  // GPS detected → offer to save then use
+  // GPS detected → auto-populate fields and offer to save
   const handleGpsDetected = useCallback((coords: { lat: number; lng: number }, geocode: ReverseGeocodeResult) => {
     setGpsCoords(coords)
     setGpsGeocode(geocode)
     setGpsError(null)
+
+    // Immediately populate address fields on screen!
+    setAddressInfo((prev) => ({
+      ...prev,
+      line1: geocode.line1 || geocode.displayName || prev.line1,
+      line2: geocode.line2 || prev.line2,
+      city: geocode.city || 'Prayagraj',
+      state: geocode.state || 'Uttar Pradesh',
+      pincode: geocode.pincode || '211006',
+    }))
+
+    // Switch to manual view so user immediately sees their auto-populated fields
+    setAddressMode('manual')
     setShowSaveModal(true)
+    toast.success('Address auto-populated from your live location!')
   }, [])
 
   // After GPS address saved → add to list + select it

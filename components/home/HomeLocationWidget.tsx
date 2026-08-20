@@ -60,26 +60,8 @@ export default function HomeLocationWidget() {
       const { latitude: lat, longitude: lng } = position.coords
 
       setStepLabel('Resolving your Prayagraj address…')
-      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
-      if (!res.ok) {
-        throw new Error('Geocoding server error')
-      }
-      const data = await res.json()
-
-      const addr = data.address || {}
-      const line1Parts = [addr.house_number, addr.road || addr.pedestrian || addr.path].filter(Boolean)
-      const line2Parts = [addr.neighbourhood, addr.suburb, addr.village].filter(Boolean)
-
-      const geocodeResult: ReverseGeocodeResult = {
-        line1: line1Parts.join(', ') || addr.amenity || addr.building || 'Near ' + (addr.road || 'your location'),
-        line2: line2Parts.slice(0, 2).join(', '),
-        city: addr.city || addr.town || addr.village || addr.county || 'Prayagraj',
-        state: addr.state || 'Uttar Pradesh',
-        pincode: addr.postcode || '211006',
-        country: addr.country || 'India',
-        displayName: data.display_name || '',
-        raw: data,
-      }
+      const { reverseGeocode } = await import('@/lib/utils/reverseGeocode')
+      const geocodeResult = await reverseGeocode(lat, lng)
 
       setRawGeocode(geocodeResult)
 

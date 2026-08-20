@@ -96,28 +96,8 @@ export default function LiveLocationButton({
     // Reverse geocode via our server proxy
     try {
       setStep('geocoding')
-      const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || `Geocode failed (${res.status})`)
-      }
-      const data = await res.json()
-
-      // Parse Nominatim response
-      const addr = data.address || {}
-      const line1Parts = [addr.house_number, addr.road || addr.pedestrian || addr.path].filter(Boolean)
-      const line2Parts = [addr.neighbourhood, addr.suburb, addr.village].filter(Boolean)
-
-      const result: ReverseGeocodeResult = {
-        line1: line1Parts.join(', ') || addr.amenity || addr.building || 'Near ' + (addr.road || 'your location'),
-        line2: line2Parts.slice(0, 2).join(', '),
-        city: addr.city || addr.town || addr.village || addr.county || addr.state_district || '',
-        state: addr.state || '',
-        pincode: addr.postcode || '',
-        country: addr.country || 'India',
-        displayName: data.display_name || '',
-        raw: data,
-      }
+      const { reverseGeocode } = await import('@/lib/utils/reverseGeocode')
+      const result = await reverseGeocode(lat, lng)
 
       const userLoc = {
         lat,
