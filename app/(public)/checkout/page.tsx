@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2,
-  AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock, Plus,
-  Home, Briefcase, Star, Building2, LocateFixed, AlertTriangle, Phone, Landmark
+  AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock,
+  Home, Briefcase, Star, Building2, LocateFixed, AlertTriangle
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
@@ -23,6 +23,7 @@ import LiveLocationButton from '@/components/shared/LiveLocationButton'
 import SaveLocationModal from '@/components/shared/SaveLocationModal'
 import type { Address } from '@/types'
 import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
+import type { User } from '@supabase/supabase-js'
 
 // ─── Address type helpers ─────────────────────────────────────────────────────
 const ADDR_TYPE_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
@@ -40,7 +41,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, clearCart, getSubtotal } = useCartStore()
 
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   const [contactInfo, setContactInfo] = useState({
@@ -145,7 +146,7 @@ export default function CheckoutPage() {
         }
         setLoadingAddresses(false)
       } else if (isSimpleAdmin) {
-        setUser({ id: 'admin-guest', email: 'admin@demo.com', user_metadata: { name: 'Admin Demo' } })
+        setUser({ id: 'admin-guest', email: 'admin@demo.com', user_metadata: { name: 'Admin Demo' } } as unknown as User)
         setContactInfo((prev) => ({ ...prev, email: 'admin@demo.com', name: 'Admin Demo' }))
         const liveLoc = useLocationStore.getState().currentLocation
         if (liveLoc) {
@@ -384,8 +385,8 @@ export default function CheckoutPage() {
       }
 
       // Ensure Razorpay SDK is loaded
-      if (typeof window === 'undefined' || !(window as any).Razorpay) {
-        // Fallback: If SDK fails to load, simulate verification or prompt user
+      const windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void; open: () => void } }
+      if (typeof window === 'undefined' || !windowWithRzp.Razorpay) {
         toast.info('Razorpay script loading...')
       }
 
@@ -405,7 +406,7 @@ export default function CheckoutPage() {
         theme: {
           color: '#FF3B00',
         },
-        handler: async function (response: any) {
+        handler: async function (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) {
           setLoading(true)
           const verifyRes = await verifyRazorpayPayment({
             orderId,
@@ -434,9 +435,9 @@ export default function CheckoutPage() {
         },
       }
 
-      if ((window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay(options)
-        rzp.on('payment.failed', function (response: any) {
+      if (windowWithRzp.Razorpay) {
+        const rzp = new windowWithRzp.Razorpay(options)
+        rzp.on('payment.failed', function (response: { error?: { description?: string } }) {
           setLoading(false)
           const errReason = response.error?.description || 'Payment failed on Razorpay.'
           setPaymentError(errReason)
@@ -458,8 +459,8 @@ export default function CheckoutPage() {
           router.push(`/order/${orderId}`)
         }
       }
-    } catch (err: any) {
-      const errMsg = err.message || 'Connection error. Please check your internet and try again.'
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Connection error. Please check your internet and try again.'
       setPaymentError(errMsg)
       toast.error(errMsg)
       setLoading(false)

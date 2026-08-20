@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import ZomatoProductCard from '@/components/menu/ZomatoProductCard'
 import ZomatoBrowseMenuModal from '@/components/menu/ZomatoBrowseMenuModal'
 import ProductQuickView from '@/components/menu/ProductQuickView'
 import {
-  Search, SlidersHorizontal, Star, Flame, Sparkles,
-  ShoppingBag, ArrowRight, UtensilsCrossed, X, ChevronDown
+  Search, Star, Flame, Sparkles,
+  ShoppingBag, ArrowRight, UtensilsCrossed, X
 } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { useCartStore } from '@/store/cartStore'
@@ -329,7 +329,6 @@ const SEED_PRODUCTS: Product[] = [
 ]
 
 function MenuContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [searchQuery, setSearchQuery] = useState('')

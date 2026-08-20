@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Pizza, Lock, Mail, ArrowRight, Eye, EyeOff, Sparkles, Star, Flame, ShieldCheck } from 'lucide-react'
+import { Pizza, Lock, Mail, ArrowRight, Eye, EyeOff, Star, Flame, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect, Suspense } from 'react'

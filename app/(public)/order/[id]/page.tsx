@@ -52,7 +52,7 @@ export default function OrderConfirmationPage() {
         const savedStatus = localStorage.getItem(`order_status_${orderId}`)
         if (savedStatus) setCurrentStatus(savedStatus)
         const localOrders = JSON.parse(localStorage.getItem('pizza_orders') || '[]')
-        const match = localOrders.find((o: any) => o.id === orderId || o.order_id === orderId)
+        const match = localOrders.find((o: Record<string, unknown>) => o.id === orderId || o.order_id === orderId) as { status?: string; total?: number } | undefined
         if (match?.status) setCurrentStatus(match.status)
         if (match?.total) setOrderTotal(Number(match.total))
       } catch {}
@@ -118,7 +118,7 @@ export default function OrderConfirmationPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
-        (payload: any) => {
+        (payload: { new?: { id?: string; order_id?: string; status?: string } }) => {
           if (payload.new && (payload.new.id === orderId || payload.new.order_id === orderId) && payload.new.status) {
             const newSt = payload.new.status
             setCurrentStatus((prev) => {

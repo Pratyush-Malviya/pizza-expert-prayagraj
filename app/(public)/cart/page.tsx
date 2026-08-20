@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Tag, Check, ArrowLeft, Clock } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
@@ -105,9 +106,9 @@ export default function CartPage() {
                   >
                     {/* Item Details */}
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-[#F4EFEA] rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="w-16 h-16 bg-[#F4EFEA] rounded-lg overflow-hidden flex-shrink-0 relative">
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <Image src={item.imageUrl} alt={item.name} fill sizes="64px" className="object-cover" />
                         ) : (
                           <span className="w-full h-full flex items-center justify-center text-3xl select-none">🍕</span>
                         )}
