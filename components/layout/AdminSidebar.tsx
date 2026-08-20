@@ -15,6 +15,7 @@ import {
   Mail, ArrowUpRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 
 export interface NavSubItem {
   label: string
@@ -134,6 +135,9 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
+  const businessName = useSettingsStore((s) => s.businessName)
+  const locationTagline = useSettingsStore((s) => s.locationTagline)
+  const [mounted, setMounted] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [activeQueryTab, setActiveQueryTab] = useState<string>('users')
@@ -213,6 +217,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
   }
 
   useEffect(() => {
+    setMounted(true)
     const fetchRole = async () => {
       try {
         const supabase = createClient()
@@ -336,10 +341,10 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
             </div>
             <div>
               <span className="font-serif font-bold text-white text-base block leading-tight">
-                Pizza Expert
+                {mounted && businessName ? businessName : 'Pizza Expert'}
               </span>
-              <span className="text-[10px] text-[#A8A29E] font-sans block uppercase tracking-wider font-semibold">
-                Admin Control
+              <span className="text-[10px] text-[#A8A29E] font-sans block uppercase tracking-wider font-semibold truncate max-w-[150px]">
+                {mounted && locationTagline ? locationTagline : 'Admin Control'}
               </span>
             </div>
           </Link>

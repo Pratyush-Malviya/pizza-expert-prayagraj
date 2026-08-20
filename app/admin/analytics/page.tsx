@@ -9,6 +9,7 @@ import {
   Smartphone, Globe, BarChart3, Zap, Star, Package,
   Clock, TrendingDown, Bell, X, ChevronRight, Send,
   Play, UserCheck, AlertTriangle, Info
+} from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useStoreStore } from '@/lib/store/useStoreStore'

@@ -31,6 +31,8 @@ export default function Header() {
   const toggleCart = useCartStore((s) => s.toggleCart)
   const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
   const businessName = useSettingsStore((state) => state.businessName)
+  const brandBadge = useSettingsStore((state) => state.brandBadge)
+  const locationTagline = useSettingsStore((state) => state.locationTagline)
 
   useEffect(() => {
     setMounted(true)
@@ -95,14 +97,20 @@ export default function Header() {
                   <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-[#FF3B00] group-hover:text-white transition-colors">
                     {mounted && businessName ? businessName.toUpperCase() : 'PIZZA EXPERT'}
                   </span>
-                  <span className="bg-[#FF3B00]/15 text-[#FF3B00] border border-[#FF3B00]/30 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md hidden sm:inline-block">
-                    PRO
-                  </span>
+                  {(mounted ? (brandBadge || '') : 'PRO') && (
+                    <span className="bg-[#FF3B00]/15 text-[#FF3B00] border border-[#FF3B00]/30 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md hidden sm:inline-block">
+                      {mounted ? brandBadge : 'PRO'}
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                  <span className="uppercase tracking-wider">ALLAPUR • PRAYAGRAJ</span>
-                </div>
+                {(mounted ? (locationTagline !== undefined ? locationTagline : 'ALLAPUR • PRAYAGRAJ') : 'ALLAPUR • PRAYAGRAJ') && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                    <span className="uppercase tracking-wider">
+                      {mounted ? (locationTagline || 'ALLAPUR • PRAYAGRAJ') : 'ALLAPUR • PRAYAGRAJ'}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </Link>

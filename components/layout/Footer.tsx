@@ -57,10 +57,10 @@ export default function Footer() {
               ) : (
                 <div className="flex flex-col">
                   <span className="font-heading font-extrabold text-2xl uppercase tracking-tight text-[#FF3B00]">
-                    {mounted ? storeSettings.businessName : 'PIZZA EXPERT'}
+                    {mounted ? (storeSettings.businessName || 'PIZZA EXPERT') : 'PIZZA EXPERT'}
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-zinc-400 tracking-wider">
-                    PRAYAGRAJ • ALLAPUR
+                  <span className="text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase">
+                    {mounted ? (storeSettings.locationTagline || 'ALLAPUR • PRAYAGRAJ') : 'ALLAPUR • PRAYAGRAJ'}
                   </span>
                 </div>
               )}

@@ -35,6 +35,8 @@ function AdminSettingsContent() {
   // Local state for the form so we don't update the global store on every keystroke
   const [formData, setFormData] = useState({
     businessName: '',
+    brandBadge: 'PRO',
+    locationTagline: '',
     phone: '',
     whatsapp: '',
     email: '',
@@ -68,7 +70,9 @@ function AdminSettingsContent() {
   useEffect(() => {
     queueMicrotask(() => {
       setFormData({
-        businessName: storeSettings.businessName,
+        businessName: storeSettings.businessName || 'Pizza Expert',
+        brandBadge: storeSettings.brandBadge !== undefined ? storeSettings.brandBadge : 'PRO',
+        locationTagline: storeSettings.locationTagline || 'ALLAPUR • PRAYAGRAJ',
         phone: storeSettings.phone,
         whatsapp: storeSettings.whatsapp,
         email: storeSettings.email,
@@ -271,23 +275,97 @@ function AdminSettingsContent() {
             </div>
           </div>
 
-          {/* Business Info */}
-          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
-            <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
-              <Building size={18} className="text-[#B91C1C]" /> Business Details
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+          {/* Business Info & Header Brand Names */}
+          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E7E0D8] pb-3">
               <div>
-                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Business Name</label>
+                <h2 className="font-serif font-bold text-[#1C1917] text-lg flex items-center gap-2">
+                  <Building size={18} className="text-[#B91C1C]" /> Business Details & Brand Names
+                </h2>
+                <p className="text-xs text-[#78716C] mt-0.5">
+                  Control both the main brand name, badge tag, and the location/branch subtitle displayed in the header & footer.
+                </p>
+              </div>
+            </div>
+
+            {/* Live Header Logo & Tagline Preview Box */}
+            <div className="p-4 rounded-xl bg-[#0D0D11] border border-white/10 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF3B00] mb-1 font-bold">
+                  Live Header Logo Preview
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-heading font-extrabold text-2xl tracking-tight text-[#FF3B00]">
+                      {formData.businessName ? formData.businessName.toUpperCase() : 'PIZZA EXPERT'}
+                    </span>
+                    {formData.brandBadge && (
+                      <span className="bg-[#FF3B00]/15 text-[#FF3B00] border border-[#FF3B00]/30 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md">
+                        {formData.brandBadge.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  {formData.locationTagline && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                      <span className="uppercase tracking-wider">{formData.locationTagline}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-right text-[11px] text-zinc-500 hidden sm:block max-w-[200px]">
+                Appears at the top-left of the navbar on all customer pages.
+              </div>
+            </div>
+
+            {/* Brand Names Grid */}
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                  1. Brand / Store Name <span className="text-[#B91C1C]">*</span>
+                </label>
                 <input
                   type="text"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   className="input-field"
-                  placeholder="Pizza Expert Prayagraj"
+                  placeholder="Pizza Expert"
                   required
                 />
+                <span className="text-[11px] text-[#78716C] mt-1 block">e.g. PIZZA EXPERT</span>
               </div>
+
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                  2. Brand Badge (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.brandBadge}
+                  onChange={(e) => setFormData({ ...formData, brandBadge: e.target.value })}
+                  className="input-field"
+                  placeholder="PRO"
+                />
+                <span className="text-[11px] text-[#78716C] mt-1 block">Badge next to logo (e.g. PRO, PLUS)</span>
+              </div>
+
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                  3. Location / Branch Subtitle <span className="text-[#B91C1C]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.locationTagline}
+                  onChange={(e) => setFormData({ ...formData, locationTagline: e.target.value })}
+                  className="input-field"
+                  placeholder="ALLAPUR • PRAYAGRAJ"
+                  required
+                />
+                <span className="text-[11px] text-[#78716C] mt-1 block">Sub-header text (e.g. ALLAPUR • PRAYAGRAJ)</span>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-4 pt-2 border-t border-[#E7E0D8]">
               <div>
                 <label className="block text-xs font-semibold text-[#1C1917] mb-1">Contact Phone</label>
                 <input
@@ -300,7 +378,7 @@ function AdminSettingsContent() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#1C1917] mb-1">WhatsApp Number (e.g. 919876543210)</label>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">WhatsApp Order Number</label>
                 <input
                   type="text"
                   value={formData.whatsapp}
@@ -322,6 +400,7 @@ function AdminSettingsContent() {
                 />
               </div>
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-[#1C1917] mb-1">Physical Kitchen Address</label>
               <textarea

@@ -72,8 +72,10 @@ interface SettingsState {
   updateEmailTemplate: (id: string, updates: Partial<EmailTemplate>) => void
   resetEmailTemplates: () => void
 
-  // Store General Info
+  // Store General Info & Header Names
   businessName: string
+  brandBadge: string
+  locationTagline: string
   phone: string
   whatsapp: string
   email: string
@@ -258,7 +260,9 @@ export const useSettingsStore = create<SettingsState>()(
       })),
       resetEmailTemplates: () => set({ emailTemplates: DEFAULT_EMAIL_TEMPLATES }),
 
-      businessName: 'Pizza Expert Prayagraj',
+      businessName: 'Pizza Expert',
+      brandBadge: 'PRO',
+      locationTagline: 'ALLAPUR • PRAYAGRAJ',
       phone: '+91-9999999999',
       whatsapp: '919999999999',
       email: 'hello@pizzaexpert.in',

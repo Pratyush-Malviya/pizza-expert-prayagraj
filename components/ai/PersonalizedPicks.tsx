@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
-import ProductCard from '@/components/product/ProductCard';
+import ProductCard from '@/components/menu/ProductCard';
 import { useStoreStore } from '@/lib/store/useStoreStore';
 import { Product } from '@/types';
 
