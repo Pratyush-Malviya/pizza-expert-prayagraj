@@ -150,7 +150,28 @@ export async function reverseGeocode(
     throw new Error(`Reverse geocode failed: ${data.error}`)
   }
 
-  const result = parseNominatimAddress(data)
+  const result: ReverseGeocodeResult = {
+    line1: data.line1 || '',
+    line2: data.line2 || '',
+    city: data.city || 'Prayagraj',
+    state: data.state || 'Uttar Pradesh',
+    pincode: data.pincode || '211006',
+    country: data.country || 'India',
+    displayName: data.displayName || data.display_name || '',
+    landmark: data.landmark || undefined,
+    raw: data,
+  }
+
+  // If server didn't provide pre-parsed fields, parse raw
+  if (!result.line1 && data.address) {
+    const parsed = parseNominatimAddress(data)
+    result.line1 = parsed.line1
+    result.line2 = parsed.line2
+    result.city = parsed.city
+    result.state = parsed.state
+    result.pincode = parsed.pincode
+  }
+
   cache.set(cacheKey, result)
   return result
 }

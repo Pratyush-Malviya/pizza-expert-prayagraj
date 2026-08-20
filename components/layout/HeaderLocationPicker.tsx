@@ -61,7 +61,7 @@ export default function HeaderLocationPicker({ className }: { className?: string
           toast.error('Unable to fetch GPS position.')
         }
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     )
   }
 

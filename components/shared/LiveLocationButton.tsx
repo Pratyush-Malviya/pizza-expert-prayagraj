@@ -64,8 +64,8 @@ export default function LiveLocationButton({
       new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 60000,
+          timeout: 20000,
+          maximumAge: 0,
         })
       })
 
