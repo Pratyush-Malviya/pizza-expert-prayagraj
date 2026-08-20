@@ -15,7 +15,7 @@ import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createOrder } from '@/app/actions/orders'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { isPincodeInPrayagraj } from '@/lib/delivery-zone'
+import { checkDeliveryDistance, MAX_DELIVERY_RADIUS_KM } from '@/lib/delivery-zone'
 import { fetchEta } from '@/app/actions/eta'
 import { EtaEstimate } from '@/lib/eta'
 import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorpay'
@@ -222,12 +222,22 @@ export default function CheckoutPage() {
   const tax = Math.round(subtotal * 0.05)
   const grandTotal = Math.max(0, subtotal + tax + deliveryFee)
 
-  // ─── Delivery Zone & Min Order Validation (All India Support) ────────
+  // ─── 15 KM Delivery Zone & Min Order Validation ─────────────────────
   const MIN_DELIVERY_ORDER = 149
+  const activeSavedAddr = savedAddresses.find((a) => a.id === selectedAddressId)
+  const activeLat = addressMode === 'saved' ? (activeSavedAddr?.latitude ?? gpsCoords?.lat) : gpsCoords?.lat
+  const activeLng = addressMode === 'saved' ? (activeSavedAddr?.longitude ?? gpsCoords?.lng) : gpsCoords?.lng
+
+  const zoneCheck = checkDeliveryDistance(activeLat, activeLng, MAX_DELIVERY_RADIUS_KM)
   const isPinValid = addressInfo.pincode.length === 6 ? /^[1-9][0-9]{5}$/.test(addressInfo.pincode.trim()) : true
-  const zoneError = !isPinValid && addressInfo.pincode.length >= 6
-    ? `Please enter a valid 6-digit Indian PIN code.`
-    : null
+
+  let zoneError: string | null = null
+  if (!isPinValid && addressInfo.pincode.length >= 6) {
+    zoneError = 'Please enter a valid 6-digit Indian PIN code.'
+  } else if (!zoneCheck.isDeliverable && zoneCheck.distanceKm !== null) {
+    zoneError = `Delivery unavailable in this area: Your location is ${zoneCheck.distanceKm} km away. We only deliver within ${MAX_DELIVERY_RADIUS_KM} km of our Allapur kitchen.`
+  }
+
   const minOrderError = subtotal > 0 && subtotal < MIN_DELIVERY_ORDER
     ? `Minimum order for delivery is ₹${MIN_DELIVERY_ORDER}. Add ₹${MIN_DELIVERY_ORDER - subtotal} more to proceed.`
     : null

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapPin, Loader2, ChevronDown } from 'lucide-react'
+import { MapPin, Loader2, ChevronDown, AlertTriangle } from 'lucide-react'
 import { useLocationStore } from '@/store/locationStore'
+import { checkDeliveryDistance } from '@/lib/delivery-zone'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +32,7 @@ export default function HeaderLocationPicker({ className }: { className?: string
           const { reverseGeocode } = await import('@/lib/utils/reverseGeocode')
           const geocodeResult = await reverseGeocode(lat, lng)
 
-          setLocation({
+          const userLoc = {
             lat,
             lng,
             line1: geocodeResult.line1,
@@ -43,8 +44,16 @@ export default function HeaderLocationPicker({ className }: { className?: string
             isGps: true,
             label: geocodeResult.line2 || geocodeResult.city || 'Live Location',
             updatedAt: new Date().toISOString(),
-          })
-          toast.success(`Delivery set to: ${geocodeResult.line2 || geocodeResult.city || 'Your Location'}`)
+          }
+
+          setLocation(userLoc)
+
+          const zone = checkDeliveryDistance(lat, lng)
+          if (zone.isDeliverable) {
+            toast.success(`Delivery set to: ${userLoc.label} (${zone.distanceKm} km)`)
+          } else {
+            toast.error(`Out of delivery zone (${zone.distanceKm} km away — we deliver within 15 km)`)
+          }
         } catch (e: any) {
           toast.error('Could not resolve location address.')
         } finally {
@@ -65,40 +74,60 @@ export default function HeaderLocationPicker({ className }: { className?: string
 
   if (!mounted) return null
 
+  const zone = checkDeliveryDistance(currentLocation?.lat, currentLocation?.lng)
+  const isDeliverable = zone.isDeliverable
+
   const displayTitle = currentLocation?.line2 || currentLocation?.city || 'Prayagraj'
-  const displaySubtitle = currentLocation?.line1 || (currentLocation ? `${currentLocation.city}, ${currentLocation.pincode}` : 'Tap to detect live location')
+  const displaySubtitle = !isDeliverable && zone.distanceKm
+    ? `Unavailable • ${zone.distanceKm}km away`
+    : currentLocation?.line1 || (currentLocation ? `${currentLocation.city}, ${currentLocation.pincode}` : 'Tap to detect live location')
 
   return (
     <button
       onClick={detectLocation}
       disabled={isDetecting}
       className={cn(
-        'items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-colors group cursor-pointer',
+        'items-center gap-2 px-3 py-1.5 rounded-full border text-left transition-colors group cursor-pointer',
+        isDeliverable
+          ? 'bg-white/5 hover:bg-white/10 border-white/10'
+          : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30',
         className || 'hidden md:flex max-w-[210px] lg:max-w-[260px]'
       )}
-      title="Click to detect or update live delivery location"
+      title={isDeliverable ? 'Click to update live delivery location' : `Location is ${zone.distanceKm}km away. We deliver within 15km.`}
     >
-      <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-[#FF3B00]/15 text-[#FF3B00] group-hover:scale-110 transition-transform shrink-0">
+      <div className={`relative flex items-center justify-center w-7 h-7 rounded-full transition-transform shrink-0 ${
+        isDeliverable
+          ? 'bg-[#FF3B00]/15 text-[#FF3B00] group-hover:scale-110'
+          : 'bg-red-500/20 text-red-400'
+      }`}>
         {isDetecting ? (
           <Loader2 size={14} className="animate-spin" />
+        ) : !isDeliverable ? (
+          <AlertTriangle size={14} />
         ) : (
           <MapPin size={14} />
         )}
         {currentLocation && (
-          <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#10B981]" />
+          <span className={`absolute top-0 right-0 w-2 h-2 rounded-full ${
+            isDeliverable ? 'bg-[#10B981]' : 'bg-red-500'
+          }`} />
         )}
       </div>
 
       <div className="flex flex-col min-w-0 pr-1">
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-            {currentLocation ? 'Deliver to' : 'Set Location'}
+          <span className={`text-[10px] font-black uppercase tracking-wider ${
+            isDeliverable ? 'text-zinc-400' : 'text-red-400'
+          }`}>
+            {currentLocation ? (isDeliverable ? 'Deliver to' : 'Out of Zone') : 'Set Location'}
           </span>
           <span className="text-[11px] font-bold text-white truncate max-w-[90px] lg:max-w-[120px]">
             {displayTitle}
           </span>
         </div>
-        <span className="text-[10px] text-zinc-400 truncate max-w-[130px] lg:max-w-[170px] leading-tight">
+        <span className={`text-[10px] truncate max-w-[130px] lg:max-w-[170px] leading-tight ${
+          isDeliverable ? 'text-zinc-400' : 'text-red-300 font-semibold'
+        }`}>
           {displaySubtitle}
         </span>
       </div>

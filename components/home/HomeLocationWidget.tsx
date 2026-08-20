@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, LocateFixed, Loader2, CheckCircle2, ChevronRight, Sparkles, Navigation, AlertCircle, RefreshCw } from 'lucide-react'
+import { MapPin, LocateFixed, Loader2, CheckCircle2, ChevronRight, Navigation, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useLocationStore } from '@/store/locationStore'
-import { isPincodeInPrayagraj } from '@/lib/delivery-zone'
+import { checkDeliveryDistance, MAX_DELIVERY_RADIUS_KM } from '@/lib/delivery-zone'
 import SaveLocationModal from '@/components/shared/SaveLocationModal'
 import { createClient } from '@/lib/supabase/client'
 import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
@@ -59,7 +59,7 @@ export default function HomeLocationWidget() {
       const position = await getPosition()
       const { latitude: lat, longitude: lng } = position.coords
 
-      setStepLabel('Resolving your Prayagraj address…')
+      setStepLabel('Resolving your address…')
       const { reverseGeocode } = await import('@/lib/utils/reverseGeocode')
       const geocodeResult = await reverseGeocode(lat, lng)
 
@@ -82,7 +82,13 @@ export default function HomeLocationWidget() {
       setLocation(userLoc)
       setDetecting(false)
       setStepLabel('')
-      toast.success(`Live location detected: ${userLoc.label}`)
+
+      const zone = checkDeliveryDistance(lat, lng)
+      if (zone.isDeliverable) {
+        toast.success(`Delivery available! (${zone.distanceKm} km from Allapur)`)
+      } else {
+        toast.error(`Location is ${zone.distanceKm} km away. We deliver within 15 km.`)
+      }
     } catch (err: any) {
       setDetecting(false)
       setStepLabel('')
@@ -101,7 +107,8 @@ export default function HomeLocationWidget() {
 
   if (!mounted) return null
 
-  const isDeliverable = currentLocation?.pincode ? isPincodeInPrayagraj(currentLocation.pincode) : true
+  const zoneResult = checkDeliveryDistance(currentLocation?.lat, currentLocation?.lng)
+  const isDeliverable = zoneResult.isDeliverable
 
   return (
     <>
@@ -123,13 +130,20 @@ export default function HomeLocationWidget() {
             </div>
 
             {currentLocation ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <CheckCircle2 size={11} />
-                Location Active
-              </span>
+              isDeliverable ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  <CheckCircle2 size={11} />
+                  Delivery Available {zoneResult.distanceKm ? `(${zoneResult.distanceKm} km)` : ''}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse">
+                  <AlertTriangle size={11} />
+                  Out of Delivery Zone ({zoneResult.distanceKm} km)
+                </span>
+              )
             ) : (
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
-                Prayagraj Delivery
+                15 km Delivery Radius
               </span>
             )}
           </div>
@@ -137,9 +151,13 @@ export default function HomeLocationWidget() {
           {/* Body: Detected Location or Detect Button */}
           {currentLocation ? (
             <div className="space-y-3">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex items-start justify-between gap-3">
+              <div className={`border rounded-xl p-3.5 flex items-start justify-between gap-3 ${
+                isDeliverable
+                  ? 'bg-white/5 border-white/10'
+                  : 'bg-red-500/10 border-red-500/30'
+              }`}>
                 <div className="flex items-start gap-2.5 min-w-0">
-                  <MapPin size={18} className="text-[#FF3B00] shrink-0 mt-0.5" />
+                  <MapPin size={18} className={`shrink-0 mt-0.5 ${isDeliverable ? 'text-[#FF3B00]' : 'text-red-400'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-white truncate">
                       {currentLocation.line1 || 'Live Location'}
@@ -148,9 +166,15 @@ export default function HomeLocationWidget() {
                       {[currentLocation.line2, currentLocation.city, currentLocation.pincode].filter(Boolean).join(', ')}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="inline-block text-[10px] font-mono font-bold text-[#FFC01D]">
-                        ⚡ Express Delivery in ~25-30 mins
-                      </span>
+                      {isDeliverable ? (
+                        <span className="inline-block text-[10px] font-mono font-bold text-[#FFC01D]">
+                          ⚡ Express Delivery in ~25-30 mins • {zoneResult.distanceKm ? `${zoneResult.distanceKm} km away` : 'Within 15 km'}
+                        </span>
+                      ) : (
+                        <span className="inline-block text-[10px] font-mono font-bold text-red-400">
+                          ⚠️ Delivery unavailable: Location is {zoneResult.distanceKm} km away (We deliver within 15 km of Allapur).
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -168,13 +192,23 @@ export default function HomeLocationWidget() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Link
-                  href="/menu"
-                  className="flex-1 bg-[#FF3B00] hover:bg-[#E03400] text-white py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#FF3B00]/20"
-                >
-                  <span>Order Pizzas to This Location</span>
-                  <ChevronRight size={14} />
-                </Link>
+                {isDeliverable ? (
+                  <Link
+                    href="/menu"
+                    className="flex-1 bg-[#FF3B00] hover:bg-[#E03400] text-white py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#FF3B00]/20"
+                  >
+                    <span>Order Pizzas to This Location</span>
+                    <ChevronRight size={14} />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/menu"
+                    className="flex-1 bg-white/10 hover:bg-white/15 text-zinc-200 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <span>Explore Menu (Dine-in / Takeaway)</span>
+                    <ChevronRight size={14} />
+                  </Link>
+                )}
 
                 {user ? (
                   <button
@@ -196,7 +230,7 @@ export default function HomeLocationWidget() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-zinc-300 leading-relaxed">
-                Allow browser location to check delivery radius, unlock instant address checkout, and get accurate live delivery estimates across Prayagraj.
+                Allow browser location to check if your doorstep is within our 15 km delivery radius, unlock instant address checkout, and get accurate delivery estimates.
               </p>
 
               {isDetecting ? (
