@@ -119,6 +119,24 @@ export default function LiveLocationButton({
         raw: data,
       }
 
+      const userLoc = {
+        lat,
+        lng,
+        line1: result.line1,
+        line2: result.line2,
+        city: result.city,
+        state: result.state,
+        pincode: result.pincode,
+        displayName: result.displayName,
+        isGps: true,
+        label: result.line2 || result.city || 'Live Location',
+        updatedAt: new Date().toISOString(),
+      }
+      try {
+        const { useLocationStore } = await import('@/store/locationStore')
+        useLocationStore.getState().setLocation(userLoc)
+      } catch (e) {}
+
       setStep('idle')
       onLocationDetected({ lat, lng }, result)
     } catch (err: any) {
@@ -128,6 +146,22 @@ export default function LiveLocationButton({
         line1: '', line2: '', city: 'Prayagraj', state: 'Uttar Pradesh',
         pincode: '', country: 'India', displayName: '', raw: {},
       }
+      try {
+        const { useLocationStore } = await import('@/store/locationStore')
+        useLocationStore.getState().setLocation({
+          lat,
+          lng,
+          line1: '',
+          city: 'Prayagraj',
+          state: 'Uttar Pradesh',
+          pincode: '',
+          displayName: '',
+          isGps: true,
+          label: 'Current Location',
+          updatedAt: new Date().toISOString(),
+        })
+      } catch (e) {}
+
       setStep('idle')
       // Still succeed with GPS coords — let user fill address manually
       onLocationDetected({ lat, lng }, emptyResult)

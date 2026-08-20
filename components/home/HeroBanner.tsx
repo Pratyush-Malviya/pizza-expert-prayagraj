@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Flame, ArrowRight, MapPin, Star, Truck, ShieldCheck, Zap } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import HomeLocationWidget from '@/components/home/HomeLocationWidget'
 
 export default function HeroBanner() {
   const store = useSettingsStore()
@@ -72,6 +73,15 @@ export default function HeroBanner() {
             >
               {description}
             </motion.p>
+
+            {/* Live Location Selector Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+            >
+              <HomeLocationWidget />
+            </motion.div>
 
             {/* CTAs */}
             <motion.div

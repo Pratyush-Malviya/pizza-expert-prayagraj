@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import HeaderLocationPicker from '@/components/layout/HeaderLocationPicker'
 
 const NAV_LINKS = [
   { label: 'HOME',    href: '/' },
@@ -100,6 +101,9 @@ export default function Header() {
             )}
           </Link>
 
+          {/* Live Delivery Location Pill */}
+          <HeaderLocationPicker />
+
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center gap-8 bg-white/5 border border-white/10 px-6 py-2 rounded-full backdrop-blur-md">
             {NAV_LINKS.map((link) => {
@@ -184,6 +188,11 @@ export default function Header() {
             className="md:hidden bg-[#0D0D11] border-b border-white/10 overflow-hidden sticky top-[68px] z-30 shadow-2xl"
           >
             <div className="container-custom py-6 flex flex-col gap-4">
+              {/* Mobile Location Quick Bar */}
+              <div className="pb-2">
+                <HeaderLocationPicker className="flex w-full max-w-none justify-between p-3 rounded-2xl bg-white/10" />
+              </div>
+
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
