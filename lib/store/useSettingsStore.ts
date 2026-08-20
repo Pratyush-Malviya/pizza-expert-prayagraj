@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { EmailTemplate } from '@/types/emailTemplate'
+import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/constants/defaultEmailTemplates'
 
 export interface FaqItem {
   id: string
@@ -65,7 +67,12 @@ interface SettingsState {
   reorderCarouselOffers: (offers: CarouselOffer[]) => void
   toggleCarouselOfferActive: (id: string) => void
 
-  // Business Details
+  // Email Templates Management
+  emailTemplates: EmailTemplate[]
+  updateEmailTemplate: (id: string, updates: Partial<EmailTemplate>) => void
+  resetEmailTemplates: () => void
+
+  // Store General Info
   businessName: string
   phone: string
   whatsapp: string
@@ -148,49 +155,36 @@ const DEFAULT_CAROUSEL_OFFERS: CarouselOffer[] = [
     badgeColor: 'orange',
     title: '20% OFF YOUR FIRST ORDER',
     subtitle: 'Taste Prayagraj’s finest wood-fired pizza crafted with 48h fermented dough.',
-    code: 'WELCOME20',
-    discount: 'FLAT 20% OFF',
-    expiryText: 'Valid for all new users',
-    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80',
+    code: 'PIZZA20',
+    discount: '20% OFF',
+    expiryText: 'Valid Today',
+    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',
     href: '/menu',
     active: true,
   },
   {
     id: 'offer-2',
-    badge: 'WEEKEND SPECIAL 🔥',
-    badgeColor: 'yellow',
-    title: 'BUY 1 LARGE PIZZA, GET 2ND AT 50% OFF',
-    subtitle: 'Double the pizza, double the joy! Choose any 2 Large gourmet wood-fired pizzas.',
-    code: 'BOGO50',
-    discount: 'SAVE UP TO ₹250',
-    expiryText: 'Limited period offer',
-    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80',
-    href: '/menu?category=pizzas',
+    badge: 'FAMILY COMBO 👨‍👩‍👧‍👦',
+    badgeColor: 'green',
+    title: 'BUY 2 LARGE GET 1 GARLIC BREAD FREE',
+    subtitle: 'Perfect for weekend pizza parties & family get-togethers in Prayagraj.',
+    code: 'COMBOFEAST',
+    discount: 'FREE SIDE',
+    expiryText: 'Weekend Special',
+    imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=800&q=80',
+    href: '/menu',
     active: true,
   },
   {
     id: 'offer-3',
-    badge: 'FREE GIFT 🎁',
-    badgeColor: 'green',
-    title: 'FREE CHEESY GARLIC BREAD & 2 COKES',
-    subtitle: 'Add any 2 Pizzas to cart & enjoy complimentary sides automatically!',
-    code: 'FREECOMBO',
-    discount: 'WORTH ₹199 FREE',
-    expiryText: 'Orders above ₹599',
-    imageUrl: 'https://images.unsplash.com/photo-1619895092538-128341789043?auto=format&fit=crop&w=600&q=80',
-    href: '/offers',
-    active: true,
-  },
-  {
-    id: 'offer-4',
-    badge: 'MEGA COMBO 🍕',
-    badgeColor: 'purple',
-    title: 'ULTIMATE FAMILY FEAST @ JUST ₹899',
-    subtitle: '2 Large Pizzas + Stuffed Garlic Bread + 4 Drinks. Save ₹450 today!',
-    code: 'FEAST899',
-    discount: 'FLAT 35% SAVINGS',
-    expiryText: 'Popular in Allapur',
-    imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80',
+    badge: 'FREE DELIVERY 🛵',
+    badgeColor: 'yellow',
+    title: 'ZERO DELIVERY FEE ON ORDERS ABOVE ₹499',
+    subtitle: 'Piping hot wood-fired pizzas delivered to your doorstep in 30 minutes.',
+    code: 'FREEDEL',
+    discount: '100% OFF',
+    expiryText: 'All Days',
+    imageUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80',
     href: '/menu',
     active: true,
   },
@@ -202,71 +196,67 @@ export const useSettingsStore = create<SettingsState>()(
       logoDataUrl: null,
       setLogoDataUrl: (url) => set({ logoDataUrl: url }),
 
-      // Theme Defaults
-      themePrimaryColor: '#e10600',
-      themeSecondaryColor: '#4f0423',
-      themeBackgroundColor: '#260212',
-      themeTextColor: '#ffffff',
-      themeFontFamily: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
+      // Theme & Colors
+      themePrimaryColor: '#FF3B00',
+      themeSecondaryColor: '#FFC01D',
+      themeBackgroundColor: '#08080B',
+      themeTextColor: '#FFFFFF',
+      themeFontFamily: 'Plus Jakarta Sans',
 
-      // Hero Section Defaults
-      heroBadge: 'EST. 2018 • ALLAPUR, PRAYAGRAJ',
-      heroTitleLine1: 'WOOD-FIRED',
-      heroTitleSub: '(FROM ALLAPUR)',
-      heroTitleLine2: 'REAL PIZZA.',
-      heroDescription: 'Authentic wood-fired pizza crafted daily in Allapur with slow-fermented 48-hour dough, real mozzarella, and aromatic basil leaves.',
-      heroPrimaryBtnText: 'ORDER ONLINE',
+      // Hero Section
+      heroBadge: 'ALLAPUR, PRAYAGRAJ • 100% AUTHENTIC WOOD-FIRED',
+      heroTitleLine1: 'HOTTEST',
+      heroTitleSub: 'WOOD-FIRED',
+      heroTitleLine2: 'PIZZAS IN PRAYAGRAJ',
+      heroDescription: 'Crafted with 48-hour slow-fermented Neapolitan dough, San Marzano tomato coulis, creamy Fior di Latte mozzarella, and baked at blistering 450°C in our wood-fired brick oven.',
+      heroPrimaryBtnText: 'ORDER ONLINE NOW',
       heroPrimaryBtnLink: '/menu',
-      heroSecondaryBtnText: 'FIND STORE & DEALS',
-      heroSecondaryBtnLink: '/offers',
+      heroSecondaryBtnText: 'VIEW LIVE MENU',
+      heroSecondaryBtnLink: '/menu',
       heroImageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1000&q=80',
 
-      // Section Content Defaults
-      aboutHeading: 'Crafted With Passion & Wood Fire',
-      aboutParagraph: 'Pizza Expert Prayagraj brings authentic wood-fired pizzas to Allapur and across Prayagraj. Every pizza features hand-stretched 48-hour fermented dough, signature tomato sauce, and 100% real mozzarella cheese.',
-      menuTitle: 'Our Full Menu',
-      menuSubtitle: 'Wood-fired pizzas, crispy burgers, pasta, sides & drinks delivered piping hot across Prayagraj.',
+      // Section Headings & Content
+      aboutHeading: 'The Art of Wood-Fired Pizza in the Heart of Prayagraj',
+      aboutParagraph: 'Founded in Allapur, Pizza Expert brings world-class Neapolitan pizza craftsmanship to the holy city of Prayagraj. Every dough is hand-stretched, topped with premium imported and fresh local farm ingredients, and baked to blistered leopard-spotted perfection in under 90 seconds.',
+      menuTitle: 'DISCOVER OUR ARTISANAL PIZZAS',
+      menuSubtitle: 'Wood-fired sourdough pizzas, cheesy garlic breads, and chilled beverages crafted with passion in Prayagraj.',
 
-      // FAQs Defaults & Handlers
+      // FAQs
       faqs: DEFAULT_FAQS,
-      addFaq: (faq) =>
-        set((state) => ({
-          faqs: [...state.faqs, { ...faq, id: `faq-${Date.now()}` }],
-        })),
-      updateFaq: (id, updated) =>
-        set((state) => ({
-          faqs: state.faqs.map((item) => (item.id === id ? { ...item, ...updated } : item)),
-        })),
-      deleteFaq: (id) =>
-        set((state) => ({
-          faqs: state.faqs.filter((item) => item.id !== id),
-        })),
+      addFaq: (faq) => set((state) => ({ faqs: [...state.faqs, { ...faq, id: `faq-${Date.now()}` }] })),
+      updateFaq: (id, updatedFaq) => set((state) => ({
+        faqs: state.faqs.map((f) => (f.id === id ? { ...f, ...updatedFaq } : f)),
+      })),
+      deleteFaq: (id) => set((state) => ({
+        faqs: state.faqs.filter((f) => f.id !== id),
+      })),
 
-      // Carousel Offers Defaults & Handlers
+      // Carousel Offers
       carouselOffers: DEFAULT_CAROUSEL_OFFERS,
-      addCarouselOffer: (offer) =>
-        set((state) => ({
-          carouselOffers: [
-            ...state.carouselOffers,
-            { ...offer, id: `offer-${Date.now()}`, active: offer.active ?? true },
-          ],
-        })),
-      updateCarouselOffer: (id, updated) =>
-        set((state) => ({
-          carouselOffers: state.carouselOffers.map((item) => (item.id === id ? { ...item, ...updated } : item)),
-        })),
-      deleteCarouselOffer: (id) =>
-        set((state) => ({
-          carouselOffers: state.carouselOffers.filter((item) => item.id !== id),
-        })),
-      reorderCarouselOffers: (newOffers) =>
-        set({ carouselOffers: newOffers }),
-      toggleCarouselOfferActive: (id) =>
-        set((state) => ({
-          carouselOffers: state.carouselOffers.map((item) =>
-            item.id === id ? { ...item, active: !item.active } : item
-          ),
-        })),
+      addCarouselOffer: (offer) => set((state) => ({
+        carouselOffers: [...state.carouselOffers, { ...offer, id: `offer-${Date.now()}` }],
+      })),
+      updateCarouselOffer: (id, updatedOffer) => set((state) => ({
+        carouselOffers: state.carouselOffers.map((o) => (o.id === id ? { ...o, ...updatedOffer } : o)),
+      })),
+      deleteCarouselOffer: (id) => set((state) => ({
+        carouselOffers: state.carouselOffers.filter((o) => o.id !== id),
+      })),
+      reorderCarouselOffers: (offers) => set({ carouselOffers: offers }),
+      toggleCarouselOfferActive: (id) => set((state) => ({
+        carouselOffers: state.carouselOffers.map((o) =>
+          o.id === id ? { ...o, active: !(o.active ?? true) } : o
+        ),
+      })),
+
+      // Email Templates Management
+      emailTemplates: DEFAULT_EMAIL_TEMPLATES,
+      updateEmailTemplate: (id, updates) => set((state) => ({
+        emailTemplates: (state.emailTemplates || DEFAULT_EMAIL_TEMPLATES).map((t) =>
+          t.id === id ? { ...t, ...updates } : t
+        ),
+      })),
+      resetEmailTemplates: () => set({ emailTemplates: DEFAULT_EMAIL_TEMPLATES }),
 
       businessName: 'Pizza Expert Prayagraj',
       phone: '+91-9999999999',
@@ -305,8 +295,7 @@ export const useSettingsStore = create<SettingsState>()(
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
     }),
     {
-      name: 'pizza-expert-settings', // unique name for localStorage key
+      name: 'pizza-expert-settings',
     }
   )
 )
-
