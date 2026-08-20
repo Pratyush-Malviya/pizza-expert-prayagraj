@@ -3,6 +3,7 @@ import Footer from '@/components/layout/Footer'
 import AnnouncementBanner from '@/components/layout/AnnouncementBanner'
 import WhatsAppButton from '@/components/shared/WhatsAppButton'
 import CartDrawer from '@/components/cart/CartDrawer'
+import LocationPermissionBanner from '@/components/shared/LocationPermissionBanner'
 
 export default function PublicLayout({
   children,
@@ -12,6 +13,7 @@ export default function PublicLayout({
   return (
     <>
       <AnnouncementBanner />
+      <LocationPermissionBanner />
       <Header />
       <main id="main-content" tabIndex={-1}>
         {children}
@@ -22,3 +24,4 @@ export default function PublicLayout({
     </>
   )
 }
+

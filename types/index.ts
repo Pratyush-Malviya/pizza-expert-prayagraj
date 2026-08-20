@@ -70,13 +70,21 @@ export interface Product {
 export interface Address {
   id: string
   user_id: string
-  label: string          // e.g. "Home", "Office"
+  label: string                                                    // e.g. "Home", "Office"
   line1: string
   line2: string | null
   city: string
   state: string
   pincode: string
   is_default: boolean
+  // Geolocation fields (added in migration 017)
+  latitude?: number | null
+  longitude?: number | null
+  address_type?: 'home' | 'work' | 'partner' | 'hotel' | 'other'
+  phone?: string | null
+  landmark?: string | null
+  is_gps_captured?: boolean
+  created_at?: string
 }
 
 export type OrderStatus =

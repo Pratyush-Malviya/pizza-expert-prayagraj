@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock } from 'lucide-react'
+import {
+  ArrowLeft, ShieldCheck, CreditCard, Banknote, LogIn, UserPlus, Loader2,
+  AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin, Lock, Plus,
+  Home, Briefcase, Star, Building2, LocateFixed, AlertTriangle, Phone, Landmark
+} from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -13,8 +17,23 @@ import { toast } from 'sonner'
 import { isPincodeInPrayagraj } from '@/lib/delivery-zone'
 import { fetchEta } from '@/app/actions/eta'
 import { EtaEstimate } from '@/lib/eta'
-
 import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorpay'
+import LiveLocationButton from '@/components/shared/LiveLocationButton'
+import SaveLocationModal from '@/components/shared/SaveLocationModal'
+import type { Address } from '@/types'
+import type { ReverseGeocodeResult } from '@/lib/utils/reverseGeocode'
+
+// ─── Address type helpers ─────────────────────────────────────────────────────
+const ADDR_TYPE_META: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  home:    { icon: <Home size={14} />,      color: 'text-[#B91C1C]', bg: 'bg-[#FEF2F2]' },
+  work:    { icon: <Briefcase size={14} />, color: 'text-blue-600',  bg: 'bg-blue-50'   },
+  partner: { icon: <Star size={14} />,      color: 'text-amber-600', bg: 'bg-amber-50'  },
+  hotel:   { icon: <Building2 size={14} />, color: 'text-purple-600',bg: 'bg-purple-50' },
+  other:   { icon: <MapPin size={14} />,    color: 'text-[#57534E]', bg: 'bg-[#F5F5F4]' },
+}
+function getAddrMeta(type?: string) {
+  return ADDR_TYPE_META[type || 'other'] ?? ADDR_TYPE_META.other
+}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -28,6 +47,19 @@ export default function CheckoutPage() {
     email: '',
     phone: '',
   })
+
+  // ─── Saved addresses state ─────────────────────────────────────────
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
+  const [loadingAddresses, setLoadingAddresses] = useState(false)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  /** 'saved' = picking from list | 'manual' = entering new manually | 'gps' = GPS in progress */
+  const [addressMode, setAddressMode] = useState<'saved' | 'manual' | 'gps'>('saved')
+
+  // GPS / Save modal
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [gpsGeocode, setGpsGeocode] = useState<ReverseGeocodeResult | null>(null)
+  const [gpsError, setGpsError] = useState<string | null>(null)
 
   const [addressInfo, setAddressInfo] = useState({
     line1: '',
@@ -57,7 +89,7 @@ export default function CheckoutPage() {
     }
   }, [])
 
-  // Check authentication on mount
+  // Check authentication + load saved addresses on mount
   useEffect(() => {
     async function checkUser() {
       const supabase = createClient()
@@ -72,13 +104,79 @@ export default function CheckoutPage() {
           name: user.user_metadata?.name || prev.name,
           phone: user.user_metadata?.phone || prev.phone,
         }))
+
+        // Load saved addresses
+        setLoadingAddresses(true)
+        const { data: addrs } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('is_default', { ascending: false })
+          .order('created_at', { ascending: false })
+        if (addrs && addrs.length > 0) {
+          setSavedAddresses(addrs)
+          // Pre-select primary (first after sort)
+          const primary = addrs.find((a: Address) => a.is_default) || addrs[0]
+          setSelectedAddressId(primary.id)
+          setAddressInfo({
+            line1: primary.line1,
+            line2: primary.line2 || '',
+            city: primary.city,
+            state: primary.state,
+            pincode: primary.pincode,
+            notes: '',
+          })
+          setAddressMode('saved')
+        } else {
+          setAddressMode('manual')
+        }
+        setLoadingAddresses(false)
       } else if (isSimpleAdmin) {
         setUser({ id: 'admin-guest', email: 'admin@demo.com', user_metadata: { name: 'Admin Demo' } })
         setContactInfo((prev) => ({ ...prev, email: 'admin@demo.com', name: 'Admin Demo' }))
+        setAddressMode('manual')
       }
       setCheckingAuth(false)
     }
     checkUser()
+  }, [])
+
+  // When user selects a saved address → sync addressInfo
+  const handleSelectAddress = useCallback((addr: Address) => {
+    setSelectedAddressId(addr.id)
+    setAddressInfo({
+      line1: addr.line1,
+      line2: addr.line2 || '',
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+      notes: '',
+    })
+  }, [])
+
+  // GPS detected → offer to save then use
+  const handleGpsDetected = useCallback((coords: { lat: number; lng: number }, geocode: ReverseGeocodeResult) => {
+    setGpsCoords(coords)
+    setGpsGeocode(geocode)
+    setGpsError(null)
+    setShowSaveModal(true)
+  }, [])
+
+  // After GPS address saved → add to list + select it
+  const handleGpsAddressSaved = useCallback((newAddr: Address) => {
+    setSavedAddresses((prev) => [newAddr, ...prev.map((a) => ({ ...a, is_default: false }))])
+    setSelectedAddressId(newAddr.id)
+    setAddressInfo({
+      line1: newAddr.line1,
+      line2: newAddr.line2 || '',
+      city: newAddr.city,
+      state: newAddr.state,
+      pincode: newAddr.pincode,
+      notes: '',
+    })
+    setAddressMode('saved')
+    setShowSaveModal(false)
+    toast.success('Location saved and selected!')
   }, [])
 
   const subtotal = getSubtotal()
@@ -424,78 +522,212 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Delivery Address Card */}
-            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
-              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3">
-                2. Delivery Address (Prayagraj)
+            {/* ─── Delivery Address Card ─────────────────────────────── */}
+            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-5">
+              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
+                <span>2. Delivery Address</span>
+                {savedAddresses.length > 0 && (
+                  <span className="text-xs font-sans font-semibold text-[#57534E] bg-[#F5F5F4] border border-[#E7E0D8] px-2.5 py-1 rounded-full">
+                    {savedAddresses.length} saved
+                  </span>
+                )}
               </h2>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    House / Flat No., Building Name, Street *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={addressInfo.line1}
-                    onChange={(e) => setAddressInfo({ ...addressInfo, line1: e.target.value })}
-                    placeholder="Flat 302, Green Valley Apartments, Allapur"
-                    className="input-field text-xs sm:text-sm"
-                  />
+              {loadingAddresses ? (
+                <div className="flex items-center gap-2 text-sm text-[#A8A29E] py-4">
+                  <Loader2 size={16} className="animate-spin" /> Loading your addresses…
                 </div>
+              ) : (
+                <>
+                  {/* ── GPS Live Location Bar ─────────────────────────── */}
+                  <div className="flex items-center justify-between gap-3 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl px-4 py-2.5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="relative">
+                        <LocateFixed size={15} className="text-[#16A34A]" />
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-ping" />
+                      </div>
+                      <span className="font-semibold text-[#15803D] text-xs">Use live GPS location</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <LiveLocationButton
+                        onLocationDetected={handleGpsDetected}
+                        onError={setGpsError}
+                        variant="ghost"
+                        label="Detect & Save"
+                        id="checkout-gps-btn"
+                        className="text-xs py-1.5 px-3 text-[#15803D] hover:bg-[#DCFCE7]"
+                      />
+                      {gpsError && (
+                        <p className="text-[10px] text-[#B91C1C] flex items-center gap-1">
+                          <AlertTriangle size={10} />{gpsError}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    Landmark / Sector (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={addressInfo.line2}
-                    onChange={(e) => setAddressInfo({ ...addressInfo, line2: e.target.value })}
-                    placeholder="Near Allapur Water Tank"
-                    className="input-field text-xs sm:text-sm"
-                  />
-                </div>
+                  {/* ── Mode Toggle ──────────────────────────────────── */}
+                  {savedAddresses.length > 0 && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAddressMode('saved')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                          addressMode === 'saved'
+                            ? 'bg-[#1C1917] text-white border-[#1C1917]'
+                            : 'bg-white text-[#57534E] border-[#E7E0D8] hover:border-[#1C1917]'
+                        }`}
+                      >
+                        Saved Addresses
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddressMode('manual')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                          addressMode === 'manual'
+                            ? 'bg-[#1C1917] text-white border-[#1C1917]'
+                            : 'bg-white text-[#57534E] border-[#E7E0D8] hover:border-[#1C1917]'
+                        }`}
+                      >
+                        + New Address
+                      </button>
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={addressInfo.city}
-                    className="input-field text-xs sm:text-sm bg-[#F4EFEA] font-semibold text-[#57534E]"
-                  />
-                </div>
+                  {/* ── Saved Address Cards ───────────────────────────── */}
+                  {addressMode === 'saved' && savedAddresses.length > 0 && (
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {savedAddresses.map((addr) => {
+                        const meta = getAddrMeta(addr.address_type)
+                        const isSelected = selectedAddressId === addr.id
+                        return (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            onClick={() => handleSelectAddress(addr)}
+                            className={`text-left rounded-xl border p-3 transition-all ${
+                              isSelected
+                                ? 'border-[#B91C1C] bg-[#FEF2F2] ring-2 ring-[#B91C1C]/20'
+                                : 'border-[#E7E0D8] bg-white hover:border-[#B91C1C]/50'
+                            }`}
+                            id={`checkout-addr-${addr.id}`}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.color}`}>
+                                {meta.icon}
+                              </div>
+                              <span className="font-bold text-xs text-[#1C1917] uppercase tracking-wide">{addr.label}</span>
+                              {addr.is_default && (
+                                <span className="ml-auto text-[9px] font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-1.5 py-0.5 rounded-full">
+                                  PRIMARY
+                                </span>
+                              )}
+                              {addr.is_gps_captured && (
+                                <span title="GPS captured" className="ml-auto flex-shrink-0">
+                                  <LocateFixed size={11} className="text-[#16A34A]" />
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#57534E] leading-snug">{addr.line1}</p>
+                            {addr.line2 && <p className="text-xs text-[#A8A29E]">{addr.line2}</p>}
+                            <p className="text-xs text-[#A8A29E]">{addr.city} {addr.pincode}</p>
+                            {isSelected && (
+                              <div className="flex items-center gap-1 text-[#B91C1C] mt-2 text-[10px] font-bold">
+                                <CheckCircle2 size={12} /> Delivering here
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    Pincode
-                  </label>
-                  <input
-                    type="text"
-                    value={addressInfo.pincode}
-                    onChange={(e) => setAddressInfo({ ...addressInfo, pincode: e.target.value })}
-                    className="input-field text-xs sm:text-sm font-mono"
-                  />
-                </div>
+                  {/* ── Manual New Address Form ─────────────────────── */}
+                  {(addressMode === 'manual' || savedAddresses.length === 0) && (
+                    <div className="space-y-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                          House / Flat No., Building, Street *
+                        </label>
+                        <input
+                          type="text"
+                          required={addressMode === 'manual' || savedAddresses.length === 0}
+                          value={addressInfo.line1}
+                          onChange={(e) => setAddressInfo({ ...addressInfo, line1: e.target.value })}
+                          placeholder="Flat 302, Green Valley Apartments, Allapur"
+                          className="input-field text-xs sm:text-sm w-full"
+                        />
+                      </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    Delivery Instructions / Notes (Optional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={addressInfo.notes}
-                    onChange={(e) => setAddressInfo({ ...addressInfo, notes: e.target.value })}
-                    placeholder="Please ring the bell twice or leave at the security gate."
-                    className="input-field text-xs sm:text-sm resize-none"
-                  />
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                          Locality / Area (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={addressInfo.line2}
+                          onChange={(e) => setAddressInfo({ ...addressInfo, line2: e.target.value })}
+                          placeholder="Near Allapur Water Tank"
+                          className="input-field text-xs sm:text-sm w-full"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1C1917] mb-1">City</label>
+                          <input type="text" disabled value={addressInfo.city}
+                            className="input-field text-xs sm:text-sm bg-[#F4EFEA] font-semibold text-[#57534E] w-full" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1C1917] mb-1">Pincode</label>
+                          <input type="text"
+                            value={addressInfo.pincode}
+                            onChange={(e) => setAddressInfo({ ...addressInfo, pincode: e.target.value })}
+                            className="input-field text-xs sm:text-sm font-mono w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Delivery Notes (always visible) ────────────── */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                      Delivery Instructions (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={addressInfo.notes}
+                      onChange={(e) => setAddressInfo({ ...addressInfo, notes: e.target.value })}
+                      placeholder="Ring the bell twice / leave at security gate…"
+                      className="input-field text-xs sm:text-sm resize-none w-full"
+                    />
+                  </div>
+
+                  {/* ── Address locked notice ──────────────────────── */}
+                  <div className="flex items-start gap-2 bg-[#F5F5F4] border border-[#E7E0D8] rounded-xl px-3 py-2.5 text-xs text-[#A8A29E]">
+                    <Lock size={12} className="flex-shrink-0 mt-0.5" />
+                    <p>
+                      Delivery address is <strong>locked</strong> once order is placed.
+                      Need to change it after ordering?{' '}
+                      <Link href="/contact" className="text-[#B91C1C] font-semibold hover:underline">
+                        Contact support →
+                      </Link>
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* GPS Save Modal */}
+            {user && (
+              <SaveLocationModal
+                isOpen={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                geocodeResult={gpsGeocode}
+                coords={gpsCoords}
+                userId={user.id}
+                onSaved={handleGpsAddressSaved}
+              />
+            )}
 
             {/* Payment Method Card */}
             <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
