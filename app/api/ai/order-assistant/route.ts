@@ -32,7 +32,7 @@ Provide the next response from the assistant. Do NOT include any prefixes like "
 `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
     });
 
