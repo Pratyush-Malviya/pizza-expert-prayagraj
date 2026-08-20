@@ -601,7 +601,7 @@ export default function AIChatWidget() {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 p-4 rounded-full bg-[#B91C1C] text-white shadow-lg hover:bg-rose-700 transition-all z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-20 md:bottom-6 right-6 p-4 rounded-full bg-[#B91C1C] text-white shadow-lg hover:bg-rose-700 transition-all z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
         aria-label="Open Pizza Assistant chat"
       >
         <MessageCircle size={24} />
@@ -609,10 +609,10 @@ export default function AIChatWidget() {
 
       {/* Chat Window */}
       <div
-        className={`fixed bottom-6 right-6 w-[360px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
+        className={`fixed bottom-20 md:bottom-6 right-6 w-[360px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
           isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
         }`}
-        style={{ height: '560px', maxHeight: 'calc(100vh - 48px)' }}
+        style={{ height: '560px', maxHeight: 'calc(100vh - 112px)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 bg-[#B91C1C] text-white rounded-t-2xl">
