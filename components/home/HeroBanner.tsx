@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Flame, ArrowRight, MapPin, Star, Truck, ShieldCheck, Zap } from 'lucide-react'
+import { Flame, ArrowRight, Sparkles, Star, Truck, ShieldCheck, Zap, Tag, CheckCircle2 } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
-import HomeLocationWidget from '@/components/home/HomeLocationWidget'
 
 export default function HeroBanner() {
   const store = useSettingsStore()
@@ -74,13 +73,69 @@ export default function HeroBanner() {
               {description}
             </motion.p>
 
-            {/* Live Location Selector Card */}
+            {/* Artisanal Craft & Fresh Oven Guarantee Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.25 }}
+              className="p-4 sm:p-5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-2xl space-y-3.5 max-w-xl"
             >
-              <HomeLocationWidget />
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#FFC01D]">
+                  <Sparkles size={14} className="text-[#FFC01D] animate-pulse" />
+                  <span>The Pizza Expert Craft Standards</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-[#10B981] bg-[#10B981]/15 px-2.5 py-0.5 rounded-full border border-[#10B981]/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
+                  <span>Baking Fresh Live</span>
+                </div>
+              </div>
+
+              {/* 4 Pillars Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-[#FF3B00]/40 transition-colors">
+                  <span className="text-xl">🪵</span>
+                  <div className="leading-tight">
+                    <span className="block text-[11px] font-bold text-white uppercase">Wood-Fired</span>
+                    <span className="text-[9px] text-zinc-400">450°C Brick Oven</span>
+                  </div>
+                </div>
+
+                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-[#FFC01D]/40 transition-colors">
+                  <span className="text-xl">🌾</span>
+                  <div className="leading-tight">
+                    <span className="block text-[11px] font-bold text-white uppercase">48h Ferment</span>
+                    <span className="text-[9px] text-zinc-400">Light Sourdough</span>
+                  </div>
+                </div>
+
+                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-[#10B981]/40 transition-colors">
+                  <span className="text-xl">🧀</span>
+                  <div className="leading-tight">
+                    <span className="block text-[11px] font-bold text-white uppercase">100% Mozzarella</span>
+                    <span className="text-[9px] text-zinc-400">Zero Analogs</span>
+                  </div>
+                </div>
+
+                <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex items-center gap-2.5 hover:border-blue-400/40 transition-colors">
+                  <span className="text-xl">⚡</span>
+                  <div className="leading-tight">
+                    <span className="block text-[11px] font-bold text-white uppercase">30 Min SLA</span>
+                    <span className="text-[9px] text-zinc-400">Express Delivery</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Promo Coupon Strip */}
+              <div className="flex items-center justify-between gap-3 bg-[#FF3B00]/10 border border-[#FF3B00]/25 px-3 py-1.5 rounded-xl text-xs">
+                <div className="flex items-center gap-2 text-zinc-200 truncate">
+                  <Tag size={13} className="text-[#FF3B00] shrink-0" />
+                  <span className="truncate text-[11px]">First Order Discount: <strong>20% OFF</strong></span>
+                </div>
+                <div className="bg-[#FF3B00] text-white px-2 py-0.5 rounded-md font-mono font-black text-[10px] uppercase tracking-wider shrink-0 shadow-xs">
+                  PIZZA20
+                </div>
+              </div>
             </motion.div>
 
             {/* CTAs */}
