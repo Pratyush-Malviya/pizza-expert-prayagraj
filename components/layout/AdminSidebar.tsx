@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, ShoppingBag, Pizza, Tag, Flame,
   Settings, LogOut, ChevronDown, ChevronRight,
   CreditCard, UtensilsCrossed, Truck, X, Palette,
   TrendingUp, Boxes, FileText, Users, Contact, History, Star,
-  Layers, Package, Sparkles, ShieldCheck,
-  Monitor, Clock, Pause, TableProperties, ClipboardList, Banknote,
-  ChefHat, Trash2, SlidersHorizontal, Gift, Percent, BarChart3
+  Layers, ShieldCheck, Search,
+  Monitor, Clock, Pause, ClipboardList, Banknote,
+  ChefHat, Trash2, SlidersHorizontal, Gift, Percent, BarChart3,
+  Mail, ArrowUpRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +20,7 @@ export interface NavSubItem {
   label: string
   href: string
   icon: any
+  keywords?: string[]
 }
 
 export interface NavGroup {
@@ -26,6 +28,7 @@ export interface NavGroup {
   label: string
   icon: any
   href?: string
+  keywords?: string[]
   items?: NavSubItem[]
 }
 
@@ -35,83 +38,91 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     label: 'Dashboard',
     href: '/admin',
     icon: LayoutDashboard,
+    keywords: ['home', 'overview', 'metrics', 'stats', 'kpi', 'summary'],
   },
   {
     id: 'front_of_house',
     label: 'Front of House',
     icon: Monitor,
+    keywords: ['billing', 'pos', 'cashier', 'tables', 'floors'],
     items: [
-      { label: '🖥 Counter Billing', href: '/admin/pos', icon: Monitor },
-      { label: 'Floor & Tables', href: '/admin/pos/tables', icon: UtensilsCrossed },
-      { label: 'Active Orders', href: '/admin/pos/orders', icon: ClipboardList },
-      { label: 'Held Orders', href: '/admin/pos/held', icon: Pause },
-      { label: 'Cashier Shifts', href: '/admin/pos/shifts', icon: Clock },
-      { label: 'Receipts', href: '/admin/pos/receipts', icon: FileText },
+      { label: '🖥 Counter Billing', href: '/admin/pos', icon: Monitor, keywords: ['pos', 'bill', 'cashier', 'takeaway', 'dine in', 'checkout', 'counter'] },
+      { label: 'Floor & Tables', href: '/admin/pos/tables', icon: UtensilsCrossed, keywords: ['tables', 'floor map', 'seating', 'dine in', 'table layout'] },
+      { label: 'Active Orders', href: '/admin/pos/orders', icon: ClipboardList, keywords: ['live orders', 'queue', 'processing', 'active'] },
+      { label: 'Held Orders', href: '/admin/pos/held', icon: Pause, keywords: ['parked', 'hold', 'paused', 'saved cart'] },
+      { label: 'Cashier Shifts', href: '/admin/pos/shifts', icon: Clock, keywords: ['register', 'drawer', 'cash in', 'cash out', 'shift open', 'shift close'] },
+      { label: 'Receipts', href: '/admin/pos/receipts', icon: FileText, keywords: ['invoice', 'print bill', 'receipt history', 'tax invoice'] },
     ],
   },
   {
     id: 'back_of_house',
     label: 'Back of House',
     icon: ChefHat,
+    keywords: ['kitchen', 'kds', 'cooking', 'delivery', 'dispatch', 'orders'],
     items: [
-      { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed },
-      { label: 'Deliveries', href: '/admin/deliveries', icon: Truck },
-      { label: 'Drivers (Fleet)', href: '/admin/drivers', icon: Truck },
-      { label: 'All Orders', href: '/admin/orders', icon: ShoppingBag },
+      { label: 'Kitchen (KDS)', href: '/admin/kitchen', icon: UtensilsCrossed, keywords: ['kds', 'cook', 'chef', 'preparation', 'kitchen display', 'tickets'] },
+      { label: 'Deliveries', href: '/admin/deliveries', icon: Truck, keywords: ['dispatch', 'delivery orders', 'rider assignment', 'tracking'] },
+      { label: 'Drivers (Fleet)', href: '/admin/drivers', icon: Truck, keywords: ['riders', 'fleet', 'courier', 'delivery boy', 'driver list'] },
+      { label: 'All Orders', href: '/admin/orders', icon: ShoppingBag, keywords: ['order history', 'all orders', 'sales list', 'online orders'] },
     ],
   },
   {
     id: 'supply_chain',
     label: 'Menu & Inventory',
     icon: Boxes,
+    keywords: ['products', 'pizzas', 'ingredients', 'stock', 'supplies', 'recipes'],
     items: [
-      { label: 'Products', href: '/admin/products', icon: Pizza },
-      { label: 'Recipe BOM & Costing', href: '/admin/recipes', icon: ChefHat },
-      { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes },
-      { label: 'Wastage Tracker', href: '/admin/inventory/wastage', icon: Trash2 },
-      { label: 'Stock Adjustments', href: '/admin/inventory/adjustments', icon: SlidersHorizontal },
-      { label: 'Purchase Orders (GRN)', href: '/admin/purchases', icon: Truck },
-      { label: 'Suppliers & Vendors', href: '/admin/suppliers', icon: Truck },
+      { label: 'Products', href: '/admin/products', icon: Pizza, keywords: ['pizza', 'menu items', 'dishes', 'food catalog', 'beverages', 'sides', 'categories'] },
+      { label: 'Recipe BOM & Costing', href: '/admin/recipes', icon: ChefHat, keywords: ['bom', 'bill of materials', 'cost per slice', 'margins', 'food cost'] },
+      { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes, keywords: ['raw materials', 'cheese', 'flour', 'sauce', 'stock level', 'reorder'] },
+      { label: 'Wastage Tracker', href: '/admin/inventory/wastage', icon: Trash2, keywords: ['spoilage', 'expired', 'damaged dough', 'waste logging'] },
+      { label: 'Stock Adjustments', href: '/admin/inventory/adjustments', icon: SlidersHorizontal, keywords: ['stock count', 'reconciliation', 'audit count', 'variance'] },
+      { label: 'Purchase Orders (GRN)', href: '/admin/purchases', icon: Truck, keywords: ['po', 'grn', 'goods receipt', 'procurement', 'vendor invoices'] },
+      { label: 'Suppliers & Vendors', href: '/admin/suppliers', icon: Truck, keywords: ['vendor list', 'distributors', 'supplier contacts'] },
     ],
   },
   {
     id: 'growth',
     label: 'Growth & Customers',
     icon: Star,
+    keywords: ['marketing', 'crm', 'discounts', 'coupons', 'loyalty', 'reviews'],
     items: [
-      { label: 'Customer CRM', href: '/admin/customers', icon: Contact },
-      { label: 'Loyalty Rewards', href: '/admin/loyalty', icon: Gift },
-      { label: 'Coupons', href: '/admin/coupons', icon: Tag },
-      { label: 'Flash Offers', href: '/admin/offers', icon: Flame },
-      { label: 'Reviews', href: '/admin/reviews', icon: Star },
+      { label: 'Customer CRM', href: '/admin/customers', icon: Contact, keywords: ['crm', 'clients', 'addresses', 'phone numbers', 'user directory'] },
+      { label: 'Loyalty Rewards', href: '/admin/loyalty', icon: Gift, keywords: ['points', 'loyalty tier', 'vip rewards', 'cashback'] },
+      { label: 'Coupons', href: '/admin/coupons', icon: Tag, keywords: ['discount codes', 'promo codes', 'vouchers', 'offers'] },
+      { label: 'Flash Offers', href: '/admin/offers', icon: Flame, keywords: ['flash banner', 'carousel offers', 'home deals', 'hero promo'] },
+      { label: 'Reviews', href: '/admin/reviews', icon: Star, keywords: ['ratings', 'customer feedback', 'google reviews', 'stars'] },
     ],
   },
   {
     id: 'bi_finance',
     label: 'Business Intelligence',
     icon: TrendingUp,
+    keywords: ['analytics', 'finance', 'pnl', 'reports', 'payments', 'gst'],
     items: [
-      { label: 'Payments', href: '/admin/payments', icon: CreditCard },
-      { label: 'Analytics Hub', href: '/admin/analytics?tab=users', icon: Layers },
-      { label: 'Sales by Channel', href: '/admin/reports/sales', icon: TrendingUp },
-      { label: 'Menu Engineering', href: '/admin/reports/menu-engineering', icon: BarChart3 },
-      { label: 'Profit & Loss (P&L)', href: '/admin/reports/pnl', icon: TrendingUp },
-      { label: 'Day-End Z-Report', href: '/admin/reports/z-report', icon: FileText },
-      { label: 'Cashier & Cash', href: '/admin/reports/cashier', icon: Banknote },
-      { label: 'GST Compliance', href: '/admin/compliance', icon: FileText },
+      { label: 'Payments', href: '/admin/payments', icon: CreditCard, keywords: ['razorpay', 'upi', 'cod', 'transactions', 'settlement'] },
+      { label: 'Analytics Hub', href: '/admin/analytics?tab=users', icon: Layers, keywords: ['charts', 'revenue trends', 'user stats', 'performance'] },
+      { label: 'Sales by Channel', href: '/admin/reports/sales', icon: TrendingUp, keywords: ['online vs pos', 'dine in vs takeaway', 'channel breakdown'] },
+      { label: 'Menu Engineering', href: '/admin/reports/menu-engineering', icon: BarChart3, keywords: ['bestsellers', 'dogs', 'plowhorses', 'puzzles', 'profitability'] },
+      { label: 'Profit & Loss (P&L)', href: '/admin/reports/pnl', icon: TrendingUp, keywords: ['pnl', 'income', 'expenses', 'ebitda', 'profit margin'] },
+      { label: 'Day-End Z-Report', href: '/admin/reports/z-report', icon: FileText, keywords: ['z report', 'closing balance', 'day end register', 'eod'] },
+      { label: 'Cashier & Cash', href: '/admin/reports/cashier', icon: Banknote, keywords: ['cash tally', 'shortage', 'drawer count', 'shift summary'] },
+      { label: 'GST Compliance', href: '/admin/compliance', icon: FileText, keywords: ['gstr1', 'gstr3b', 'tax return', 'hsn summary', 'gst summary'] },
     ],
   },
   {
     id: 'administration',
     label: 'Administration & Settings',
     icon: Settings,
+    keywords: ['admin', 'config', 'staff', 'rbac', 'taxes', 'email templates', 'theme'],
     items: [
-      { label: 'User Management (RBAC)', href: '/admin/users', icon: ShieldCheck },
-      { label: 'Staff Roster', href: '/admin/staff', icon: Users },
-      { label: 'General Settings', href: '/admin/settings', icon: Settings },
-      { label: 'Tax Engine & GST', href: '/admin/settings/taxes', icon: Percent },
-      { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette },
-      { label: 'Audit Log', href: '/admin/audit-log', icon: History },
+      { label: 'User Management (RBAC)', href: '/admin/users', icon: ShieldCheck, keywords: ['roles', 'permissions', 'super admin', 'access control'] },
+      { label: 'Staff Roster', href: '/admin/staff', icon: Users, keywords: ['employees', 'staff members', 'cashier logins', 'schedule'] },
+      { label: 'General Settings', href: '/admin/settings', icon: Settings, keywords: ['store details', 'logo', 'business name', 'operating hours', 'contact'] },
+      { label: 'Email Templates', href: '/admin/settings?tab=emails', icon: Mail, keywords: ['email templates', 'mail notifications', 'resend', 'receipt template', 'alerts'] },
+      { label: 'Tax Engine & GST', href: '/admin/settings/taxes', icon: Percent, keywords: ['gst rate', 'tax slab', 'fssai', 'gstin number'] },
+      { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette, keywords: ['colors', 'styling', 'hero editor', 'fonts', 'branding'] },
+      { label: 'Audit Log', href: '/admin/audit-log', icon: History, keywords: ['security logs', 'activity history', 'audit trail'] },
     ],
   },
 ]
@@ -123,6 +134,8 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: AdminSidebarProps) {
   const pathname = usePathname()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [activeQueryTab, setActiveQueryTab] = useState<string>('users')
   const [role, setRole] = useState<string | null>(null)
   
@@ -142,11 +155,31 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
     return () => window.removeEventListener('popstate', syncActiveTabFromUrl)
   }, [pathname, syncActiveTabFromUrl])
 
+  // Global Keyboard Shortcut: Press '/' or 'Ctrl+K' / 'Cmd+K' to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      } else if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      } else if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        setSearchQuery('')
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   // Check if a link is active considering query params for tabs
   const checkIsActive = (href: string) => {
     if (href.includes('?tab=')) {
-      const targetTab = href.split('?tab=')[1]
-      return pathname === '/admin/analytics' && activeQueryTab === targetTab
+      const parts = href.split('?tab=')
+      const targetPath = parts[0]
+      const targetTab = parts[1]
+      return pathname === targetPath && activeQueryTab === targetTab
     }
     return pathname === href
   }
@@ -229,6 +262,55 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
     window.location.href = '/admin/login'
   }
 
+  // ── Flatten & filter search items across all nav groups ──
+  const cleanQuery = searchQuery.trim().toLowerCase()
+  const isSearching = cleanQuery.length > 0
+
+  const searchResults: Array<{
+    groupLabel: string
+    label: string
+    href: string
+    icon: any
+  }> = []
+
+  if (isSearching) {
+    ADMIN_NAV_GROUPS.forEach((group) => {
+      // Standalone group link match
+      if (group.href && isLinkAllowed(group.href)) {
+        const matchesGroup =
+          group.label.toLowerCase().includes(cleanQuery) ||
+          group.keywords?.some((k) => k.toLowerCase().includes(cleanQuery))
+        if (matchesGroup) {
+          searchResults.push({
+            groupLabel: 'Overview',
+            label: group.label,
+            href: group.href,
+            icon: group.icon,
+          })
+        }
+      }
+
+      // Sub items match
+      group.items?.forEach((item) => {
+        if (!isLinkAllowed(item.href)) return
+        const matchesItem =
+          item.label.toLowerCase().includes(cleanQuery) ||
+          group.label.toLowerCase().includes(cleanQuery) ||
+          item.keywords?.some((k) => k.toLowerCase().includes(cleanQuery)) ||
+          group.keywords?.some((k) => k.toLowerCase().includes(cleanQuery))
+
+        if (matchesItem) {
+          searchResults.push({
+            groupLabel: group.label,
+            label: item.label,
+            href: item.href,
+            icon: item.icon,
+          })
+        }
+      })
+    })
+  }
+
   return (
     <>
       {/* Mobile Backdrop */}
@@ -246,10 +328,10 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Sidebar Header */}
-        <div className="h-16 px-5 flex items-center justify-between border-b border-[#292524]">
+        {/* Sidebar Header: Brand Logo */}
+        <div className="h-16 px-5 flex items-center justify-between border-b border-[#292524] shrink-0">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center font-bold text-lg font-serif">
+            <div className="w-8 h-8 rounded-lg bg-[#B91C1C] text-white flex items-center justify-center font-bold text-lg font-serif shadow-xs">
               🍕
             </div>
             <div>
@@ -266,109 +348,212 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
           <button
             onClick={() => setMobileOpen?.(false)}
             className="lg:hidden text-[#A8A29E] hover:text-white p-1"
+            aria-label="Close Sidebar"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Grouped Navigation Links */}
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {ADMIN_NAV_GROUPS.map((group) => {
-            const GroupIcon = group.icon
+        {/* ── TOP SEARCH BOX ── */}
+        <div className="p-3 border-b border-[#292524] bg-[#161412]/50 shrink-0">
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-3 text-[#78716C] pointer-events-none" />
+            <input
+              type="text"
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search menu... (Ctrl+K)"
+              className="w-full bg-[#24211E] hover:bg-[#2A2724] focus:bg-[#2E2A27] border border-[#3A3531] focus:border-[#B91C1C] rounded-xl pl-8 pr-7 py-2 text-xs text-white placeholder-[#78716C] focus:outline-none transition-all shadow-inner"
+            />
+            {searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  searchInputRef.current?.focus()
+                }}
+                className="absolute right-2 text-[#A8A29E] hover:text-white p-0.5 rounded-full hover:bg-white/10"
+                aria-label="Clear Search"
+              >
+                <X size={13} />
+              </button>
+            ) : (
+              <kbd className="hidden sm:inline-flex absolute right-2.5 px-1.5 py-0.5 text-[9px] font-mono text-[#78716C] bg-[#1C1917] border border-[#3A3531] rounded">
+                /
+              </kbd>
+            )}
+          </div>
+        </div>
 
-            // Standalone Link
-            if (group.href) {
-              if (!isLinkAllowed(group.href)) return null
-              const isActive = checkIsActive(group.href)
+        {/* ── SEARCH RESULTS OR GROUPED NAVIGATION ── */}
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+          {isSearching ? (
+            /* Search Results View */
+            <div className="space-y-1">
+              <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-[#A8A29E] uppercase tracking-wider">
+                <span>Results ({searchResults.length})</span>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-[10px] text-[#B91C1C] hover:underline cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+
+              {searchResults.length === 0 ? (
+                <div className="p-6 text-center text-xs text-[#78716C] space-y-2">
+                  <p>No menu items found for &quot;{searchQuery}&quot;</p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="text-[11px] font-bold text-[#B91C1C] hover:underline"
+                  >
+                    Reset Search
+                  </button>
+                </div>
+              ) : (
+                searchResults.map((item) => {
+                  const ItemIcon = item.icon
+                  const isActive = checkIsActive(item.href)
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => {
+                        if (item.href.includes('?tab=')) {
+                          const targetTab = item.href.split('?tab=')[1]
+                          setActiveQueryTab(targetTab)
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('analytics-tab-change', { detail: targetTab }))
+                          }
+                        }
+                        setSearchQuery('')
+                        setMobileOpen?.(false)
+                      }}
+                      className={cn(
+                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all group',
+                        isActive
+                          ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
+                          : 'text-[#E7E0D8] hover:bg-[#292524] hover:text-white'
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/20' : 'bg-white/5 text-[#A8A29E] group-hover:text-white'}`}>
+                          <ItemIcon size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block truncate font-semibold">{item.label}</span>
+                          <span className="block text-[10px] text-[#78716C] group-hover:text-[#A8A29E] truncate">
+                            {item.groupLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowUpRight size={13} className="text-[#78716C] group-hover:text-white shrink-0 ml-1 opacity-60 group-hover:opacity-100" />
+                    </Link>
+                  )
+                })
+              )}
+            </div>
+          ) : (
+            /* Regular Grouped Navigation */
+            ADMIN_NAV_GROUPS.map((group) => {
+              const GroupIcon = group.icon
+
+              // Standalone Link
+              if (group.href) {
+                if (!isLinkAllowed(group.href)) return null
+                const isActive = checkIsActive(group.href)
+
+                return (
+                  <Link
+                    key={group.id}
+                    href={group.href}
+                    onClick={() => setMobileOpen?.(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all',
+                      isActive
+                        ? 'bg-[#B91C1C] text-white shadow-xs'
+                        : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
+                    )}
+                  >
+                    <GroupIcon size={16} />
+                    <span>{group.label}</span>
+                  </Link>
+                )
+              }
+
+              // Collapsible Group
+              const visibleItems = group.items?.filter((i) => isLinkAllowed(i.href)) || []
+              if (visibleItems.length === 0) return null
+
+              const isChildActive = visibleItems.some((i) => checkIsActive(i.href))
+              const isOpen = Boolean(openGroups[group.id])
 
               return (
-                <Link
-                  key={group.id}
-                  href={group.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-all',
-                    isActive
-                      ? 'bg-[#B91C1C] text-white shadow-xs'
-                      : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
-                  )}
-                >
-                  <GroupIcon size={16} />
-                  <span>{group.label}</span>
-                </Link>
-              )
-            }
+                <div key={group.id} className="space-y-1 pt-1">
+                  {/* Group Header Button */}
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                      isChildActive
+                        ? 'text-white bg-[#292524]'
+                        : 'text-[#A8A29E] hover:bg-[#292524]/60 hover:text-white'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <GroupIcon size={16} className={isChildActive ? 'text-[#B91C1C]' : ''} />
+                      <span>{group.label}</span>
+                    </div>
+                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
 
-            // Collapsible Group
-            const visibleItems = group.items?.filter((i) => isLinkAllowed(i.href)) || []
-            if (visibleItems.length === 0) return null
+                  {/* Collapsible Submenu */}
+                  {isOpen && (
+                    <div className="pl-4 space-y-1 border-l border-[#292524] ml-4 my-1">
+                      {visibleItems.map((item) => {
+                        const ItemIcon = item.icon
+                        const isActive = checkIsActive(item.href)
 
-            const isChildActive = visibleItems.some((i) => checkIsActive(i.href))
-            const isOpen = Boolean(openGroups[group.id])
-
-            return (
-              <div key={group.id} className="space-y-1 pt-1">
-                {/* Group Header Button */}
-                <button
-                  onClick={() => toggleGroup(group.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all',
-                    isChildActive
-                      ? 'text-white bg-[#292524]'
-                      : 'text-[#A8A29E] hover:bg-[#292524]/60 hover:text-white'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <GroupIcon size={16} className={isChildActive ? 'text-[#B91C1C]' : ''} />
-                    <span>{group.label}</span>
-                  </div>
-                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </button>
-
-                {/* Collapsible Submenu */}
-                {isOpen && (
-                  <div className="pl-4 space-y-1 border-l border-[#292524] ml-4 my-1">
-                    {visibleItems.map((item) => {
-                      const ItemIcon = item.icon
-                      const isActive = checkIsActive(item.href)
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => {
-                            if (item.href.includes('?tab=')) {
-                              const targetTab = item.href.split('?tab=')[1]
-                              setActiveQueryTab(targetTab)
-                              if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('analytics-tab-change', { detail: targetTab }))
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => {
+                              if (item.href.includes('?tab=')) {
+                                const targetTab = item.href.split('?tab=')[1]
+                                setActiveQueryTab(targetTab)
+                                if (typeof window !== 'undefined') {
+                                  window.dispatchEvent(new CustomEvent('analytics-tab-change', { detail: targetTab }))
+                                }
                               }
-                            }
-                            setMobileOpen?.(false)
-                          }}
-                          className={cn(
-                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all',
-                            isActive
-                              ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
-                              : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium'
-                          )}
-                        >
-                          <ItemIcon size={14} className={isActive ? 'text-white' : 'text-[#A8A29E]'} />
-                          <span>{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                              setMobileOpen?.(false)
+                            }}
+                            className={cn(
+                              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all',
+                              isActive
+                                ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
+                                : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium'
+                            )}
+                          >
+                            <ItemIcon size={14} className={isActive ? 'text-white' : 'text-[#A8A29E]'} />
+                            <span>{item.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-[#292524] space-y-2">
+        <div className="p-3 border-t border-[#292524] space-y-2 shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-[#A8A29E] hover:bg-[#292524] hover:text-red-400 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-[#A8A29E] hover:bg-[#292524] hover:text-red-400 transition-all cursor-pointer"
           >
             <LogOut size={16} />
             <span>Sign Out</span>
