@@ -6,6 +6,7 @@ import FloatingCartButton from '@/components/shared/FloatingCartButton'
 import CartDrawer from '@/components/cart/CartDrawer'
 import CustomerRealtimeNotifier from '@/components/notifications/CustomerRealtimeNotifier'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
+import DynamicStoreMeta from '@/components/layout/DynamicStoreMeta'
 import { PostHogProvider } from '@/components/providers/PostHogProvider'
 
 export const metadata: Metadata = {
@@ -58,6 +59,7 @@ export default function RootLayout({
           >
             Skip to main content
           </a>
+          <DynamicStoreMeta />
           {children}
           <CustomerRealtimeNotifier />
           <FloatingCartButton />

@@ -1,13 +1,22 @@
-import type { Metadata } from 'next'
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Heart, ShieldCheck } from 'lucide-react'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
-
-export const metadata: Metadata = {
-  title: 'About Us | Pizza Expert Prayagraj',
-  description: 'Learn about Pizza Expert Prayagraj. Founded in Allapur with a mission to serve fresh, handcrafted wood-fired pizzas with love. Rated 4.9★ on Google.',
-}
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 
 export default function AboutPage() {
+  const [mounted, setMounted] = useState(false)
+  const store = useSettingsStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const storeName = mounted && store.businessName ? store.businessName : 'Pizza Expert Prayagraj'
+  const aboutHeading = mounted && store.aboutHeading ? store.aboutHeading : 'Crafted With Passion. Baked With Love.'
+  const aboutParagraph = mounted && store.aboutParagraph ? store.aboutParagraph : `At ${storeName}, our mission is simple: to bring authentic pizza culture to Prayagraj. Every crust is hand-tossed every morning, sauces are simmered with organic tomatoes, and every topping is freshly prepared to ensure flavor in every single bite.`
+
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
       <div className="container-custom">
@@ -16,7 +25,7 @@ export default function AboutPage() {
         <div className="relative rounded-xl overflow-hidden shadow-md mb-12 min-h-[300px] sm:min-h-[380px] flex items-center justify-center text-center p-6 sm:p-12 border border-[#E7E0D8]">
           <img
             src={FOOD_IMAGES['store-ambiance']}
-            alt="Pizza Expert Prayagraj Ambiance & Kitchen"
+            alt={`${storeName} Ambiance & Kitchen`}
             className="absolute inset-0 w-full h-full object-cover filter brightness-[0.35]"
           />
           <div className="relative z-10 max-w-2xl space-y-3">
@@ -24,7 +33,7 @@ export default function AboutPage() {
               Handcrafted in Prayagraj Since 2018
             </span>
             <h1 className="text-3xl sm:text-5xl font-serif font-bold text-white tracking-tight leading-tight">
-              Crafted With Passion. Baked With Love.
+              {aboutHeading}
             </h1>
             <p className="text-[#E7E0D8] text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
               Serving Allapur and Prayagraj with authentic wood-fired style pizzas, 100% real mozzarella, and locally sourced ingredients.
@@ -42,7 +51,7 @@ export default function AboutPage() {
               Our Passion & Heritage
             </h2>
             <p className="text-[#57534E] text-xs sm:text-sm leading-relaxed">
-              At Pizza Expert Prayagraj, our mission is simple: to bring authentic pizza culture to Prayagraj. Every crust is hand-tossed every morning, sauces are simmered with organic tomatoes, and every topping is freshly prepared to ensure flavor in every single bite.
+              {aboutParagraph}
             </p>
           </div>
 

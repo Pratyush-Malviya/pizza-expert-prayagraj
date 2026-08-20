@@ -30,6 +30,7 @@ export default function Header() {
   const itemCount = useCartStore((s) => s.getItemCount())
   const toggleCart = useCartStore((s) => s.toggleCart)
   const logoDataUrl = useSettingsStore((state) => state.logoDataUrl)
+  const businessName = useSettingsStore((state) => state.businessName)
 
   useEffect(() => {
     setMounted(true)
@@ -87,7 +88,7 @@ export default function Header() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-[#FF3B00] group-hover:text-white transition-colors">
-                    PIZZA EXPERT
+                    {mounted && businessName ? businessName.toUpperCase() : 'PIZZA EXPERT'}
                   </span>
                   <span className="bg-[#FF3B00]/15 text-[#FF3B00] border border-[#FF3B00]/30 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md hidden sm:inline-block">
                     PRO

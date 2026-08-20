@@ -1,10 +1,18 @@
-import type { Metadata } from 'next'
+'use client'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | Pizza Expert Prayagraj',
-}
+import { useState, useEffect } from 'react'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 
 export default function PrivacyPage() {
+  const [mounted, setMounted] = useState(false)
+  const store = useSettingsStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const storeName = mounted && store.businessName ? store.businessName : 'Pizza Expert Prayagraj'
+
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
       <div className="container-custom max-w-3xl bg-white rounded-xl p-8 sm:p-12 border border-[#E7E0D8] shadow-xs space-y-6">
@@ -16,7 +24,7 @@ export default function PrivacyPage() {
         <section className="space-y-2 text-xs sm:text-sm text-[#57534E] leading-relaxed">
           <h2 className="font-serif font-bold text-[#1C1917] text-base">1. Information We Collect</h2>
           <p>
-            When you order online from Pizza Expert Prayagraj, we collect necessary personal details to process your order: name, delivery address, phone number, and email address. We do not store sensitive payment details like credit card numbers or UPI PINs; all transactions are securely processed by Razorpay and Cashfree.
+            When you order online from {storeName}, we collect necessary personal details to process your order: name, delivery address, phone number, and email address. We do not store sensitive payment details like credit card numbers or UPI PINs; all transactions are securely processed by Razorpay and Cashfree.
           </p>
         </section>
 
