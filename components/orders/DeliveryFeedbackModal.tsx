@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Star,
@@ -14,6 +15,9 @@ import {
   ExternalLink,
   Heart,
   Loader2,
+  Home,
+  ArrowRight,
+  ShoppingBag,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -55,6 +59,7 @@ export default function DeliveryFeedbackModal({
   orderTotal,
   onSubmitted,
 }: DeliveryFeedbackModalProps) {
+  const router = useRouter()
   const [foodRating, setFoodRating] = useState<number>(5)
   const [deliveryRating, setDeliveryRating] = useState<number>(5)
   const [selectedTags, setSelectedTags] = useState<string[]>([
@@ -64,6 +69,7 @@ export default function DeliveryFeedbackModal({
   const [comment, setComment] = useState<string>('')
   const [submitting, setSubmitting] = useState<boolean>(false)
   const [isSuccess, setIsSuccess] = useState<boolean>(false)
+  const [countdown, setCountdown] = useState<number>(6)
   const [hoverFood, setHoverFood] = useState<number | null>(null)
   const [hoverDelivery, setHoverDelivery] = useState<number | null>(null)
 
@@ -78,13 +84,42 @@ export default function DeliveryFeedbackModal({
       setDeliveryRating(5)
       setSelectedTags(['🔥 Hot & Fresh', '⚡ Super Fast Delivery'])
       setComment('')
+      setCountdown(6)
     }
   }, [isOpen, orderId])
+
+  // Countdown timer on success to redirect to home
+  useEffect(() => {
+    if (!isSuccess || !isOpen) return
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          handleGoHome()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isSuccess, isOpen])
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     )
+  }
+
+  const handleGoHome = () => {
+    onClose()
+    router.push('/')
+  }
+
+  const handleGoMenu = () => {
+    onClose()
+    router.push('/menu')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +163,7 @@ export default function DeliveryFeedbackModal({
       }
 
       setIsSuccess(true)
-      toast.success('Thank you! Your feedback helps us bake better pizzas.')
+      toast.success('Thank you! Your feedback has been recorded.')
       if (onSubmitted) onSubmitted()
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit review. Thank you anyway!')
@@ -152,7 +187,7 @@ export default function DeliveryFeedbackModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md"
         />
 
         {/* Modal Dialog */}
@@ -309,7 +344,7 @@ export default function DeliveryFeedbackModal({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-[#FF3B00] to-[#E03400] hover:from-[#E03400] hover:to-[#C02B00] text-white py-3 px-5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#FF3B00]/30 transition-all disabled:opacity-50"
+                  className="w-full sm:flex-1 bg-gradient-to-r from-[#FF3B00] to-[#E03400] hover:from-[#E03400] hover:to-[#C02B00] text-white py-3 px-5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#FF3B00]/30 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? (
                     <>
@@ -326,59 +361,93 @@ export default function DeliveryFeedbackModal({
 
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="w-full sm:w-auto py-3 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-bold transition-colors"
+                  onClick={handleGoHome}
+                  className="w-full sm:w-auto py-3 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
                 >
-                  Maybe Later
+                  Skip & Go Home
                 </button>
               </div>
             </form>
           ) : (
-            /* Success State */
-            <div className="py-6 text-center space-y-5">
-              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
-                <CheckCircle2 size={36} />
+            /* Post-Review Popup: Go Back to Home Page */
+            <div className="py-4 text-center space-y-6">
+              {/* Success Badge */}
+              <div className="relative inline-flex items-center justify-center">
+                <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 size={44} />
+                </div>
+                <span className="absolute -top-1 -right-1 text-2xl animate-bounce">🍕</span>
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-2xl font-serif font-black text-white">
-                  Thank You for Your Feedback! 🍕
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-extrabold uppercase font-mono tracking-wider">
+                  Review Received!
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-serif font-black text-white">
+                  Thank You for Your Feedback!
                 </h3>
-                <p className="text-xs text-zinc-300 max-w-sm mx-auto">
-                  Your review has been captured. We look forward to baking your next hot meal!
+                <p className="text-xs text-zinc-300 max-w-sm mx-auto leading-relaxed">
+                  Your rating helps our kitchen in Allapur bake better pizzas every day. We hope you enjoyed every bite!
                 </p>
               </div>
 
               {/* Google Reviews Boost for 4-5 stars */}
               {foodRating >= 4 && googleReviewsLink && (
-                <div className="bg-gradient-to-br from-[#FF3B00]/15 to-[#FFC01D]/15 border border-[#FF3B00]/30 rounded-2xl p-4 text-left space-y-3">
+                <div className="bg-gradient-to-br from-[#FF3B00]/15 to-[#FFC01D]/15 border border-[#FF3B00]/30 rounded-2xl p-4 text-left space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <Heart size={18} className="text-[#FF3B00] fill-[#FF3B00]" />
+                    <Heart size={16} className="text-[#FF3B00] fill-[#FF3B00]" />
                     <span className="text-xs font-bold text-white">
                       Loved your pizza from {businessName}?
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-300">
-                    It would mean the world to our team if you shared a quick 5-star rating on Google Reviews!
+                  <p className="text-[11px] text-zinc-300">
+                    Help other pizza lovers in Prayagraj find us with a quick 5-star Google Review!
                   </p>
                   <a
                     href={googleReviewsLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF3B00] hover:bg-[#E03400] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FF3B00] hover:bg-[#E03400] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition-colors"
                   >
-                    <span>Post on Google Reviews</span>
-                    <ExternalLink size={13} />
+                    <span>Post to Google Reviews</span>
+                    <ExternalLink size={12} />
                   </a>
                 </div>
               )}
 
-              <button
-                onClick={onClose}
-                className="w-full bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
-              >
-                Done
-              </button>
+              {/* Navigation Action Buttons to Home / Menu */}
+              <div className="space-y-2.5 pt-2">
+                <button
+                  onClick={handleGoHome}
+                  className="w-full bg-gradient-to-r from-[#FF3B00] to-[#E03400] hover:from-[#E03400] hover:to-[#C02B00] text-white py-3.5 px-5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#FF3B00]/25 transition-all cursor-pointer group"
+                >
+                  <Home size={16} className="group-hover:scale-110 transition-transform" />
+                  <span>Back to Home Page</span>
+                  <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleGoMenu}
+                    className="flex-1 py-2.5 px-4 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-200 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ShoppingBag size={14} />
+                    <span>Explore Menu</span>
+                  </button>
+
+                  <button
+                    onClick={onClose}
+                    className="py-2.5 px-4 rounded-xl border border-white/10 text-zinc-400 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Stay on This Page
+                  </button>
+                </div>
+              </div>
+
+              {/* Auto-redirect countdown notice */}
+              <p className="text-[11px] font-mono text-zinc-500">
+                Returning to Home Page automatically in <span className="text-[#FFC01D] font-bold">{countdown}s</span>
+              </p>
             </div>
           )}
         </motion.div>
