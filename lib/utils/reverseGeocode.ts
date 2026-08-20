@@ -1,18 +1,19 @@
 /**
- * reverseGeocode — Converts GPS coordinates into a human-readable address
+ * reverseGeocode — Converts GPS coordinates into a high-precision human-readable address
  *
  * Calls our own Next.js API proxy (/api/geocode/reverse) which in turn
  * fetches from OpenStreetMap Nominatim server-side — avoiding CORS issues.
  */
 
 export interface ReverseGeocodeResult {
-  line1: string         // House number / building / road / street
-  line2: string         // Neighbourhood / locality / suburb / area
+  line1: string         // Specific building / house / street / exact place
+  line2: string         // Locality / suburb / colony / sector / area
   city: string          // City or Town
   state: string         // State
   pincode: string       // 6-digit PIN code
   country: string       // Country
-  displayName: string   // Full formatted address
+  displayName: string   // Full formatted address from OSM
+  landmark?: string     // Specific POI or landmark if available
   raw: Record<string, unknown>
 }
 
@@ -21,7 +22,7 @@ const cache = new Map<string, ReverseGeocodeResult>()
 
 export function parseNominatimAddress(data: any): ReverseGeocodeResult {
   const addr = data?.address || {}
-  const displayName = data?.display_name || ''
+  const displayName: string = data?.display_name || ''
 
   // 1. Extract PIN Code (from addr.postcode or regex from display_name)
   let pincode = addr.postcode || ''
@@ -29,23 +30,20 @@ export function parseNominatimAddress(data: any): ReverseGeocodeResult {
     const pinMatch = displayName.match(/\b([1-9][0-9]{5})\b/)
     if (pinMatch) pincode = pinMatch[1]
   }
-  if (!pincode) pincode = '211006' // Prayagraj default if unresolved
+  if (!pincode) pincode = '211006'
 
-  // 2. Extract City
+  // 2. Extract State & City
+  const state = addr.state || 'Uttar Pradesh'
   const city =
     addr.city ||
     addr.town ||
     addr.city_district ||
     addr.municipality ||
-    addr.subdistrict ||
     addr.district ||
     addr.county ||
     'Prayagraj'
 
-  // 3. Extract State
-  const state = addr.state || 'Uttar Pradesh'
-
-  // 4. Extract Locality / Suburb / Neighbourhood (Line 2)
+  // 3. Extract Locality / Suburb / Colony / Area (Line 2)
   const line2Candidates = [
     addr.neighbourhood,
     addr.suburb,
@@ -56,53 +54,72 @@ export function parseNominatimAddress(data: any): ReverseGeocodeResult {
     addr.village,
     addr.commercial,
     addr.industrial,
+    addr.city_district,
   ].filter(Boolean)
 
-  const line2 = line2Candidates.slice(0, 2).join(', ')
+  let line2 = Array.from(new Set(line2Candidates)).slice(0, 2).join(', ')
 
-  // 5. Extract Road / Building / House / Street (Line 1)
+  // 4. Extract Specific Road / Street / Building / House / POI (Line 1)
   const line1Candidates = [
     addr.house_number,
-    addr.building || addr.amenity || addr.shop || addr.office,
+    addr.building || addr.amenity || addr.shop || addr.office || addr.tourism || addr.leisure || addr.historic,
     addr.road || addr.street || addr.pedestrian || addr.path || addr.footway,
   ].filter(Boolean)
 
-  let line1 = line1Candidates.join(', ')
+  let line1 = Array.from(new Set(line1Candidates)).join(', ')
 
-  // Fallback: If line1 is empty, extract the first 2-3 segments from display_name
-  if (!line1 && displayName) {
-    const segments = displayName
-      .split(',')
-      .map((s: string) => s.trim())
-      .filter((s: string) => {
-        // Exclude city, state, country, pincode from line1 segments
-        const lower = s.toLowerCase()
-        return (
-          lower !== 'india' &&
-          lower !== state.toLowerCase() &&
-          lower !== city.toLowerCase() &&
-          !s.match(/^\d{6}$/)
-        )
-      })
+  // 5. High-Precision Fallback from OSM Display Name
+  // Display name is ordered from most specific place to country
+  if (displayName) {
+    const rawSegments = displayName.split(',').map((s) => s.trim()).filter(Boolean)
 
-    if (segments.length > 0) {
-      line1 = segments.slice(0, 2).join(', ')
+    // Filter out generic broad entities
+    const specificSegments = rawSegments.filter((seg) => {
+      const lower = seg.toLowerCase()
+      return (
+        lower !== 'india' &&
+        lower !== state.toLowerCase() &&
+        lower !== city.toLowerCase() &&
+        lower !== 'allahabad district' &&
+        lower !== 'prayagraj district' &&
+        !seg.match(/^\d{6}$/)
+      )
+    })
+
+    if (!line1 && specificSegments.length > 0) {
+      // Use the first 1-2 most specific segments for Line 1
+      line1 = specificSegments.slice(0, Math.min(2, specificSegments.length)).join(', ')
+    }
+
+    if (!line2 && specificSegments.length > 1) {
+      // Use the subsequent segment for Line 2
+      line2 = specificSegments[specificSegments.length - 1]
     }
   }
 
-  // If still empty, use a clean locality fallback
-  if (!line1) {
-    line1 = line2 ? `Near ${line2}` : 'Prayagraj Central'
+  // If line1 is still identical to line2 or empty, use the leading segment from displayName
+  if (!line1 || line1.toLowerCase() === line2.toLowerCase()) {
+    if (displayName) {
+      const firstPart = displayName.split(',')[0]?.trim()
+      if (firstPart) line1 = firstPart
+    }
   }
+
+  // Fallback default
+  if (!line1) line1 = line2 ? line2 : 'Prayagraj'
+  if (!line2) line2 = city
+
+  const landmark = addr.amenity || addr.building || addr.shop || addr.office || addr.tourism || ''
 
   return {
     line1,
-    line2: line2 || 'Prayagraj',
+    line2,
     city,
     state,
     pincode,
     country: addr.country || 'India',
     displayName,
+    landmark: landmark || undefined,
     raw: data,
   }
 }
@@ -111,7 +128,7 @@ export async function reverseGeocode(
   lat: number,
   lng: number
 ): Promise<ReverseGeocodeResult> {
-  const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`
+  const cacheKey = `${lat.toFixed(5)},${lng.toFixed(5)}`
 
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey)!

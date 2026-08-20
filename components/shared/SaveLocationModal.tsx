@@ -191,19 +191,19 @@ export default function SaveLocationModal({
 
           {/* Custom Label */}
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Custom Label</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Custom Label</label>
             <input
               type="text"
               value={form.label}
               onChange={(e) => set('label', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
               placeholder="e.g. Mom's House"
             />
           </div>
 
           {/* Address Line 1 */}
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">
               Address Line 1 <span className="text-[#B91C1C]">*</span>
             </label>
             <input
@@ -211,21 +211,21 @@ export default function SaveLocationModal({
               required
               value={form.line1}
               onChange={(e) => set('line1', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
-              placeholder="House / Flat / Building"
+              className="input-field-light text-black font-semibold text-sm"
+              placeholder="House / Flat / Building / Street"
             />
           </div>
 
           {/* Address Line 2 */}
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">
               Address Line 2 <span className="text-[#A8A29E] font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={form.line2}
               onChange={(e) => set('line2', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
               placeholder="Locality / Area / Colony"
             />
           </div>
@@ -233,32 +233,32 @@ export default function SaveLocationModal({
           {/* City / State / Pincode */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">City</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">City</label>
               <input
                 type="text"
                 required
                 value={form.city}
                 onChange={(e) => set('city', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="input-field-light text-black font-semibold text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">State</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">State</label>
               <input
                 type="text"
                 required
                 value={form.state}
                 onChange={(e) => set('state', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="input-field-light text-black font-semibold text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Pincode</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Pincode</label>
               <input
                 type="text"
                 value={form.pincode}
                 onChange={(e) => set('pincode', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="input-field-light text-black font-semibold text-sm font-mono"
                 maxLength={6}
               />
             </div>
@@ -266,28 +266,28 @@ export default function SaveLocationModal({
 
           {/* Landmark */}
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1 flex items-center gap-1">
-              <Landmark size={12} /> Landmark <span className="font-normal">(optional)</span>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1 flex items-center gap-1">
+              <Landmark size={12} /> Landmark <span className="text-[#A8A29E] font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={form.landmark}
               onChange={(e) => set('landmark', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
               placeholder="Near Allahabad High Court, etc."
             />
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1 flex items-center gap-1">
-              <Phone size={12} /> Alternate Phone <span className="font-normal">(optional)</span>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1 flex items-center gap-1">
+              <Phone size={12} /> Alternate Phone <span className="text-[#A8A29E] font-normal">(optional)</span>
             </label>
             <input
               type="tel"
               value={form.phone}
               onChange={(e) => set('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
               placeholder="+91 98765 43210"
             />
           </div>

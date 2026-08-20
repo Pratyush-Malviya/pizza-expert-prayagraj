@@ -191,72 +191,74 @@ function EditAddressModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Label</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Label</label>
               <input
                 type="text"
                 value={form.label}
                 onChange={(e) => set('label', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="input-field-light text-black font-semibold text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Pincode</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Pincode</label>
               <input
                 type="text"
                 value={form.pincode}
                 onChange={(e) => set('pincode', e.target.value)}
                 maxLength={6}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+                className="input-field-light text-black font-semibold text-sm font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Address Line 1 *</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Address Line 1 *</label>
             <input
               type="text"
               required
               value={form.line1}
               onChange={(e) => set('line1', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
+              placeholder="House / Flat / Building / Street"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Address Line 2</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Address Line 2</label>
             <input
               type="text"
               value={form.line2}
               onChange={(e) => set('line2', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none"
+              className="input-field-light text-black font-semibold text-sm"
+              placeholder="Locality / Area / Colony"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">City</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">City</label>
               <input type="text" required value={form.city} onChange={(e) => set('city', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+                className="input-field-light text-black font-semibold text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#A8A29E] mb-1">State</label>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">State</label>
               <input type="text" required value={form.state} onChange={(e) => set('state', e.target.value)}
-                className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+                className="input-field-light text-black font-semibold text-sm" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Landmark (optional)</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Landmark (optional)</label>
             <input type="text" value={form.landmark} onChange={(e) => set('landmark', e.target.value)}
               placeholder="Near station, etc."
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Alternate Phone (optional)</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Alternate Phone (optional)</label>
             <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)}
               placeholder="+91 98765 43210"
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm" />
           </div>
         </form>
 
@@ -278,7 +280,7 @@ function EditAddressModal({
   )
 }
 
-// ─── Add Address Form ─────────────────────────────────────────────────────────
+// ─── Add Address Panel ────────────────────────────────────────────────────────
 
 function AddAddressPanel({
   userId,
@@ -286,7 +288,7 @@ function AddAddressPanel({
   onCancel,
 }: {
   userId: string
-  onSaved: (addr: Address) => void
+  onSaved: (address: Address) => void
   onCancel: () => void
 }) {
   const [form, setForm] = useState({
@@ -362,49 +364,49 @@ function AddAddressPanel({
       <form onSubmit={handleSave} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Label</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Label</label>
             <input type="text" value={form.label} onChange={(e) => set('label', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Pincode</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Pincode</label>
             <input type="text" value={form.pincode} onChange={(e) => set('pincode', e.target.value)} maxLength={6}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm font-mono" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Address Line 1 *</label>
+          <label className="block text-xs font-bold text-[#1C1917] mb-1">Address Line 1 *</label>
           <input type="text" required value={form.line1} onChange={(e) => set('line1', e.target.value)}
-            placeholder="House / Flat / Building"
-            className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+            placeholder="House / Flat / Building / Street"
+            className="input-field-light text-black font-semibold text-sm" />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Address Line 2</label>
+          <label className="block text-xs font-bold text-[#1C1917] mb-1">Address Line 2</label>
           <input type="text" value={form.line2} onChange={(e) => set('line2', e.target.value)}
             placeholder="Locality / Colony (optional)"
-            className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+            className="input-field-light text-black font-semibold text-sm" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">City</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">City</label>
             <input type="text" required value={form.city} onChange={(e) => set('city', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#A8A29E] mb-1">State</label>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">State</label>
             <input type="text" required value={form.state} onChange={(e) => set('state', e.target.value)}
-              className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+              className="input-field-light text-black font-semibold text-sm" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-[#A8A29E] mb-1">Landmark (optional)</label>
+          <label className="block text-xs font-bold text-[#1C1917] mb-1">Landmark (optional)</label>
           <input type="text" value={form.landmark} onChange={(e) => set('landmark', e.target.value)}
             placeholder="Near station, temple, etc."
-            className="w-full px-3 py-2 border border-[#E7E0D8] rounded-lg text-sm focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] outline-none" />
+            className="input-field-light text-black font-semibold text-sm" />
         </div>
 
         {/* Set as primary toggle */}

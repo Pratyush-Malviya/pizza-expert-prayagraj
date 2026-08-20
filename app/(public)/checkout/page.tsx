@@ -527,7 +527,7 @@ export default function CheckoutPage() {
                     value={contactInfo.name}
                     onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
                     placeholder="Rahul Sharma"
-                    className="input-field text-xs sm:text-sm"
+                    className="input-field-light text-xs sm:text-sm"
                   />
                 </div>
 
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
                     value={contactInfo.phone}
                     onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
                     placeholder="+91 98765 43210"
-                    className="input-field text-xs sm:text-sm"
+                    className="input-field-light text-xs sm:text-sm"
                   />
                 </div>
 
@@ -554,7 +554,7 @@ export default function CheckoutPage() {
                     value={contactInfo.email}
                     onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
                     placeholder="rahul@example.com"
-                    className="input-field text-xs sm:text-sm bg-gray-50"
+                    className="input-field-light text-xs sm:text-sm"
                   />
                 </div>
               </div>
@@ -665,9 +665,9 @@ export default function CheckoutPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-[#57534E] leading-snug">{addr.line1}</p>
-                            {addr.line2 && <p className="text-xs text-[#A8A29E]">{addr.line2}</p>}
-                            <p className="text-xs text-[#A8A29E]">{addr.city} {addr.pincode}</p>
+                            <p className="text-xs text-[#1C1917] font-semibold leading-snug">{addr.line1}</p>
+                            {addr.line2 && <p className="text-xs text-[#57534E] font-medium">{addr.line2}</p>}
+                            <p className="text-xs text-[#78716C]">{addr.city} {addr.pincode}</p>
                             {isSelected && (
                               <div className="flex items-center gap-1 text-[#B91C1C] mt-2 text-[10px] font-bold">
                                 <CheckCircle2 size={12} /> Delivering here
@@ -692,7 +692,7 @@ export default function CheckoutPage() {
                           value={addressInfo.line1}
                           onChange={(e) => setAddressInfo({ ...addressInfo, line1: e.target.value })}
                           placeholder="Flat 302, Green Valley Apartments, Allapur"
-                          className="input-field text-xs sm:text-sm w-full"
+                          className="input-field-light text-xs sm:text-sm w-full font-semibold"
                         />
                       </div>
 
@@ -705,7 +705,7 @@ export default function CheckoutPage() {
                           value={addressInfo.line2}
                           onChange={(e) => setAddressInfo({ ...addressInfo, line2: e.target.value })}
                           placeholder="Near Allapur Water Tank"
-                          className="input-field text-xs sm:text-sm w-full"
+                          className="input-field-light text-xs sm:text-sm w-full font-semibold"
                         />
                       </div>
 
@@ -713,14 +713,14 @@ export default function CheckoutPage() {
                         <div>
                           <label className="block text-xs font-semibold text-[#1C1917] mb-1">City</label>
                           <input type="text" disabled value={addressInfo.city}
-                            className="input-field text-xs sm:text-sm bg-[#F4EFEA] font-semibold text-[#57534E] w-full" />
+                            className="input-field-light text-xs sm:text-sm bg-[#F5F5F4] font-bold text-[#1C1917] w-full" />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-[#1C1917] mb-1">Pincode</label>
                           <input type="text"
                             value={addressInfo.pincode}
                             onChange={(e) => setAddressInfo({ ...addressInfo, pincode: e.target.value })}
-                            className="input-field text-xs sm:text-sm font-mono w-full" />
+                            className="input-field-light text-xs sm:text-sm font-mono font-bold text-[#1C1917] w-full" />
                         </div>
                       </div>
                     </div>
@@ -736,7 +736,7 @@ export default function CheckoutPage() {
                       value={addressInfo.notes}
                       onChange={(e) => setAddressInfo({ ...addressInfo, notes: e.target.value })}
                       placeholder="Ring the bell twice / leave at security gate…"
-                      className="input-field text-xs sm:text-sm resize-none w-full"
+                      className="input-field-light text-xs sm:text-sm resize-none w-full font-medium"
                     />
                   </div>
 
