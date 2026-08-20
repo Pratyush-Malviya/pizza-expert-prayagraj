@@ -317,12 +317,19 @@ function AddAddressPanel({
     setSaving(true)
     try {
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const targetUserId = user?.id || userId
+
+      if (!targetUserId) {
+        throw new Error('Please log in to add addresses.')
+      }
+
       if (form.is_default) {
-        await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId)
+        await supabase.from('addresses').update({ is_default: false }).eq('user_id', targetUserId)
       }
       const { data, error } = await supabase
         .from('addresses')
-        .insert({ user_id: userId, ...form, line2: form.line2 || null, landmark: form.landmark || null, phone: form.phone || null })
+        .insert({ user_id: targetUserId, ...form, line2: form.line2 || null, landmark: form.landmark || null, phone: form.phone || null })
         .select()
         .single()
 

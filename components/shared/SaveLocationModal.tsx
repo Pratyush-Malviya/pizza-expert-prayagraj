@@ -84,19 +84,25 @@ export default function SaveLocationModal({
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const targetUserId = user?.id || userId
+
+      if (!targetUserId) {
+        throw new Error('Please log in to save this address to your account.')
+      }
 
       // If setting as default, clear existing defaults first
       if (form.is_default) {
         await supabase
           .from('addresses')
           .update({ is_default: false })
-          .eq('user_id', userId)
+          .eq('user_id', targetUserId)
       }
 
       const { data, error } = await supabase
         .from('addresses')
         .insert({
-          user_id: userId,
+          user_id: targetUserId,
           label: form.label,
           line1: form.line1,
           line2: form.line2 || null,
