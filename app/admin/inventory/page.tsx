@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useStoreStore } from '@/lib/store/useStoreStore'
 import { Ingredient, Product, RecipeItem } from '@/types'
 
 // Mock seed ingredients for initial display if DB table is fresh
@@ -20,6 +21,7 @@ const INITIAL_INGREDIENTS: Ingredient[] = [
 ]
 
 export default function AdminInventoryPage() {
+  const { activeStoreId } = useStoreStore()
   const [activeTab, setActiveTab] = useState<'stock' | 'recipe' | 'alerts'>('stock')
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS)
   const [products, setProducts] = useState<Product[]>([])
@@ -54,20 +56,32 @@ export default function AdminInventoryPage() {
       const supabase = createClient()
       
       // Fetch Ingredients
-      const { data: ingData, error: ingErr } = await supabase
+      let ingQuery = supabase
         .from('ingredients')
         .select('*')
         .order('name')
+        
+      if (activeStoreId) {
+        ingQuery = ingQuery.eq('store_id', activeStoreId)
+      }
+
+      const { data: ingData, error: ingErr } = await ingQuery
 
       if (!ingErr && ingData && ingData.length > 0) {
         setIngredients(ingData)
       }
 
       // Fetch Products
-      const { data: prodData, error: prodErr } = await supabase
+      let prodQuery = supabase
         .from('products')
         .select('*')
         .order('name')
+
+      if (activeStoreId) {
+        prodQuery = prodQuery.eq('store_id', activeStoreId)
+      }
+
+      const { data: prodData, error: prodErr } = await prodQuery
 
       if (!prodErr && prodData && prodData.length > 0) {
         setProducts(prodData)
@@ -101,7 +115,7 @@ export default function AdminInventoryPage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [activeStoreId])
 
   useEffect(() => {
     if (selectedProductId) {
@@ -136,7 +150,7 @@ export default function AdminInventoryPage() {
   const handleCreateIngredient = async () => {
     if (!newIng.name) return
     const newId = String(Date.now())
-    const createdItem: Ingredient = {
+    const createdItem: any = {
       id: newId,
       name: newIng.name,
       unit: newIng.unit,
@@ -145,6 +159,7 @@ export default function AdminInventoryPage() {
       cost_per_unit: Number(newIng.cost_per_unit),
       expiry_date: newIng.expiry_date || null,
       supplier_id: null,
+      store_id: activeStoreId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }

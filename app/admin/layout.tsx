@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminNotificationDropdown from '@/components/layout/AdminNotificationDropdown'
+import StoreSwitcher from '@/components/layout/StoreSwitcher'
 import { Menu, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
@@ -167,6 +168,8 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
+            <StoreSwitcher />
+
             <Link
               href="/"
               target="_blank"

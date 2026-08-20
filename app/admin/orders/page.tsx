@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { useStoreStore } from '@/lib/store/useStoreStore'
 import { handlePrintInvoice } from '@/lib/utils/printInvoice'
 import { syncOrderStatus } from '@/lib/utils/orderSync'
 import {
@@ -62,6 +63,7 @@ export interface AdminOrder {
 }
 
 export default function AdminOrdersPage() {
+  const { activeStoreId } = useStoreStore()
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -150,10 +152,16 @@ export default function AdminOrdersPage() {
 
     async function fetchOrders() {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('orders')
           .select('*, order_items(*, products(name))')
           .order('created_at', { ascending: false })
+
+        if (activeStoreId) {
+          query = query.eq('store_id', activeStoreId)
+        }
+
+        const { data, error } = await query
 
         if (!error && data && data.length > 0) {
           const mappedOrders: AdminOrder[] = data.map((o: any) => {
@@ -227,7 +235,7 @@ export default function AdminOrdersPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [activeStoreId])
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     setOrders((prev) =>

@@ -20,6 +20,7 @@ import {
   purgeOldDeliveryActivities,
   fetchAvailableDrivers
 } from '@/app/actions/deliveries'
+import { useStoreStore } from '@/lib/store/useStoreStore'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
   ssr: false,
@@ -65,6 +66,7 @@ export interface KitchenSyncOrder {
 }
 
 export default function AdminDeliveriesPage() {
+  const { activeStoreId } = useStoreStore()
   const [activeTab, setActiveTab] = useState<'radar' | 'dispatch_queue' | 'kitchen_sync' | 'active_trips'>('radar')
   const [drivers, setDrivers] = useState<DeliveryRiderItem[]>([])
   const [allOrdersList, setAllOrdersList] = useState<any[]>([])
@@ -102,9 +104,13 @@ export default function AdminDeliveriesPage() {
         .order('created_at', { ascending: false })
 
       // 2. Fetch Drivers live table for GPS coordinates & busy states
-      const { data: liveDriversTable } = await supabase
+      let liveDriversQuery = supabase
         .from('drivers')
-        .select('id, name, phone, vehicle_type, vehicle_number, is_online, is_busy, current_lat, current_lng')
+        .select('id, name, phone, vehicle_type, vehicle_number, is_online, is_busy, current_lat, current_lng, store_id')
+      if (activeStoreId) {
+        liveDriversQuery = liveDriversQuery.eq('store_id', activeStoreId)
+      }
+      const { data: liveDriversTable } = await liveDriversQuery
 
       const liveDriversMap: Record<string, any> = {}
       if (liveDriversTable) {
@@ -114,6 +120,9 @@ export default function AdminDeliveriesPage() {
       }
 
       // 3. Fetch Deliveries table records
+      // Since deliveries table might not have store_id directly, we filter orders later,
+      // or if it has store_id we can filter it. Assuming it does not for now, 
+      // we just filter orders.
       const { data: deliveriesData } = await supabase
         .from('deliveries')
         .select('*, driver:drivers(*)')
@@ -129,12 +138,16 @@ export default function AdminDeliveriesPage() {
         })
       }
 
-      // 4. Fetch Orders from Database (and localStorage demo orders if any)
-      const { data: allOrders } = await supabase
+      // 4. Fetch Orders from Database
+      let ordersQuery = supabase
         .from('orders')
         .select('*, order_items(*, products(name))')
         .order('created_at', { ascending: false })
         .limit(100)
+      if (activeStoreId) {
+        ordersQuery = ordersQuery.eq('store_id', activeStoreId)
+      }
+      const { data: allOrders } = await ordersQuery
 
       let ordersList: any[] = allOrders || []
 
@@ -323,7 +336,7 @@ export default function AdminDeliveriesPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedRider])
+  }, [selectedRider, activeStoreId])
 
   useEffect(() => {
     fetchFleetAndOrders()

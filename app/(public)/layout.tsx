@@ -4,6 +4,7 @@ import AnnouncementBanner from '@/components/layout/AnnouncementBanner'
 import WhatsAppButton from '@/components/shared/WhatsAppButton'
 import CartDrawer from '@/components/cart/CartDrawer'
 import LocationPermissionBanner from '@/components/shared/LocationPermissionBanner'
+import AIChatWidget from '@/components/ai/AIChatWidget'
 
 export default function PublicLayout({
   children,
@@ -21,6 +22,7 @@ export default function PublicLayout({
       <Footer />
       <WhatsAppButton />
       <CartDrawer />
+      <AIChatWidget />
     </>
   )
 }

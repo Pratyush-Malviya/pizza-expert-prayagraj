@@ -9,9 +9,9 @@ import {
   Smartphone, Globe, BarChart3, Zap, Star, Package,
   Clock, TrendingDown, Bell, X, ChevronRight, Send,
   Play, UserCheck, AlertTriangle, Info
-} from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useStoreStore } from '@/lib/store/useStoreStore'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Legend, PieChart,
@@ -156,8 +156,8 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`bg-[#F5F2EC] rounded animate-pulse ${className}`} />
 }
 
-// ─── Main Component ───────────────────────────────────────────
 export default function AdminAnalyticsPage() {
+  const { activeStoreId } = useStoreStore()
   type TabId = 'users' | 'funnel' | 'financials' | 'operations' | 'insights' | 'engine_hub'
   const [activeTab, setActiveTab] = useState<TabId>('users')
 
@@ -255,9 +255,12 @@ export default function AdminAnalyticsPage() {
       const supabase = createClient()
 
       // User list (client-side Supabase for speed)
+      let ordersQ = supabase.from('orders').select('id, user_id, total, status, created_at').order('created_at', { ascending: false }).limit(200)
+      if (activeStoreId) ordersQ = ordersQ.eq('store_id', activeStoreId)
+
       const [{ data: profiles }, { data: orders }] = await Promise.all([
         supabase.from('profiles').select('*').limit(50),
-        supabase.from('orders').select('id, user_id, total, status, created_at').order('created_at', { ascending: false }).limit(200),
+        ordersQ,
       ])
 
       if (profiles && profiles.length > 0) {
@@ -295,17 +298,17 @@ export default function AdminAnalyticsPage() {
 
       // All server actions in parallel
       const [dbMetrics, phMetrics, prodPerf, catDist, heatmap, segs, ordStatus, payMethods, coupons, reviews, wowRev, revSeries, devices, pages, utm, anomalies, engine] = await Promise.all([
-        fetchSupabaseMetrics(),
+        fetchSupabaseMetrics(activeStoreId || undefined),
         fetchPostHogMetrics(),
         fetchProductPerformance(),
         fetchCategoryDistribution(),
-        fetchHourlySalesHeatmap(daysDays),
-        fetchCustomerSegments(),
-        fetchOrderStatusBreakdown(),
+        fetchHourlySalesHeatmap(daysDays, activeStoreId || undefined),
+        fetchCustomerSegments(activeStoreId || undefined),
+        fetchOrderStatusBreakdown(activeStoreId || undefined),
         fetchPaymentMethodBreakdown(),
         fetchCouponROI(),
         fetchReviewSentiment(),
-        fetchWeekOverWeekRevenue(),
+        fetchWeekOverWeekRevenue(activeStoreId || undefined),
         fetchRevenueSeries(daysDays),
         fetchPostHogDevices(),
         fetchPostHogTopPages(),
@@ -356,7 +359,7 @@ export default function AdminAnalyticsPage() {
     } finally {
       setLoading(false); setRefreshing(false)
     }
-  }, [daysDays])
+  }, [daysDays, activeStoreId])
 
   useEffect(() => { fetchAllData() }, [fetchAllData])
 

@@ -62,11 +62,13 @@ export interface RealMetrics {
   couponDiscountSpend: number
 }
 
-export async function fetchSupabaseMetrics(): Promise<RealMetrics> {
+export async function fetchSupabaseMetrics(storeId?: string): Promise<RealMetrics> {
   const zero: RealMetrics = { totalRevenue: 0, totalOrders: 0, aov: 0, totalRegisteredUsers: 0, newUsersThisWeek: 0, couponDiscountSpend: 0 }
   try {
     const supabase = await createAdminClient()
-    const { data: ordersData } = await supabase.from('orders').select('total, discount').in('status', ['delivered', 'completed', 'out_for_delivery', 'preparing', 'confirmed'])
+    let q = supabase.from('orders').select('total, discount').in('status', ['delivered', 'completed', 'out_for_delivery', 'preparing', 'confirmed'])
+    if (storeId) q = q.eq('store_id', storeId)
+    const { data: ordersData } = await q
     const totalRevenue = (ordersData || []).reduce((s, o) => s + Number(o.total || 0), 0)
     const totalOrders = (ordersData || []).length
     const couponDiscountSpend = (ordersData || []).reduce((s, o) => s + Number((o as any).discount || 0), 0)
@@ -144,11 +146,13 @@ export interface HeatmapCell {
   revenue: number
 }
 
-export async function fetchHourlySalesHeatmap(days = 30): Promise<HeatmapCell[]> {
+export async function fetchHourlySalesHeatmap(days = 30, storeId?: string): Promise<HeatmapCell[]> {
   try {
     const supabase = await createAdminClient()
     const since = new Date(Date.now() - days * 86400000).toISOString()
-    const { data } = await supabase.from('orders').select('created_at, total').neq('status', 'cancelled').gte('created_at', since)
+    let q = supabase.from('orders').select('created_at, total').neq('status', 'cancelled').gte('created_at', since)
+    if (storeId) q = q.eq('store_id', storeId)
+    const { data } = await q
     if (!data || data.length === 0) return []
     const cells: Record<string, HeatmapCell> = {}
     for (const ord of data) {
@@ -175,13 +179,15 @@ export interface CustomerSegments {
   churnRiskCount: number
 }
 
-export async function fetchCustomerSegments(): Promise<CustomerSegments> {
+export async function fetchCustomerSegments(storeId?: string): Promise<CustomerSegments> {
   const zero: CustomerSegments = { vip: 0, regular: 0, oneTime: 0, dormant: 0, totalWithOrders: 0, repeatRate: 0, avgLTVVip: 0, avgLTVRegular: 0, churnRiskCount: 0 }
   try {
     const supabase = await createAdminClient()
+    let oq = supabase.from('orders').select('user_id, total, created_at').neq('status', 'cancelled').not('user_id', 'is', null)
+    if (storeId) oq = oq.eq('store_id', storeId)
     const [{ data: profiles }, { data: orders }] = await Promise.all([
       supabase.from('profiles').select('id').neq('role', 'staff').neq('role', 'driver').neq('role', 'super_admin').neq('role', 'manager'),
-      supabase.from('orders').select('user_id, total, created_at').neq('status', 'cancelled').not('user_id', 'is', null),
+      oq,
     ])
     if (!profiles || !orders) return zero
     const userMap: Record<string, { count: number; total: number; lastDate: number }> = {}
@@ -221,10 +227,12 @@ export interface OrderStatusStat {
   revenue: number
 }
 
-export async function fetchOrderStatusBreakdown(): Promise<OrderStatusStat[]> {
+export async function fetchOrderStatusBreakdown(storeId?: string): Promise<OrderStatusStat[]> {
   try {
     const supabase = await createAdminClient()
-    const { data } = await supabase.from('orders').select('status, total')
+    let q = supabase.from('orders').select('status, total')
+    if (storeId) q = q.eq('store_id', storeId)
+    const { data } = await q
     if (!data) return []
     const map: Record<string, { count: number; revenue: number }> = {}
     for (const ord of data as any[]) {
@@ -344,11 +352,13 @@ export interface WeekOverWeekDay {
   orders: number
 }
 
-export async function fetchWeekOverWeekRevenue(): Promise<WeekOverWeekDay[]> {
+export async function fetchWeekOverWeekRevenue(storeId?: string): Promise<WeekOverWeekDay[]> {
   try {
     const supabase = await createAdminClient()
     const since = new Date(Date.now() - 14 * 86400000).toISOString()
-    const { data } = await supabase.from('orders').select('created_at, total').neq('status', 'cancelled').gte('created_at', since)
+    let q = supabase.from('orders').select('created_at, total').neq('status', 'cancelled').gte('created_at', since)
+    if (storeId) q = q.eq('store_id', storeId)
+    const { data } = await q
     if (!data) return []
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const thisW: Record<number, { rev: number; ord: number }> = {}
