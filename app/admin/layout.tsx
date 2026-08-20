@@ -6,7 +6,7 @@ import Link from 'next/link'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminNotificationDropdown from '@/components/layout/AdminNotificationDropdown'
 import StoreSwitcher from '@/components/layout/StoreSwitcher'
-import { Menu, ExternalLink } from 'lucide-react'
+import { Menu, ExternalLink, LogOut, Loader2, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -19,6 +19,8 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const pathname = usePathname()
   
   // Render login page full-bleed without sidebar or header
@@ -31,6 +33,16 @@ export default function AdminLayout({
   const adminName = useSettingsStore((state) => state.adminName)
   const adminEmail = useSettingsStore((state) => state.adminEmail)
   const adminAvatarUrl = useSettingsStore((state) => state.adminAvatarUrl)
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    if (typeof document !== 'undefined') {
+      document.cookie = 'simple_admin=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    }
+    window.location.href = '/admin/login'
+  }
 
   // Auto-close mobile sidebar when navigating
   useEffect(() => {
@@ -181,7 +193,11 @@ export default function AdminLayout({
 
             <AdminNotificationDropdown />
 
-            <div className="flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8]">
+            <div
+              className="relative flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8] cursor-pointer select-none"
+              onMouseEnter={() => setUserMenuOpen(true)}
+              onMouseLeave={() => setUserMenuOpen(false)}
+            >
               {adminAvatarUrl ? (
                 <img
                   src={adminAvatarUrl}
@@ -201,6 +217,28 @@ export default function AdminLayout({
                   {adminEmail || 'malviya.pratyush26@gmail.com'}
                 </span>
               </div>
+              <ChevronDown size={14} className={`text-[#A8A29E] transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-[#E7E0D8] shadow-xl overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-[#E7E0D8]">
+                    <span className="block text-sm font-bold text-[#1C1917] truncate">
+                      {adminName || 'Pratyush Malviya'}
+                    </span>
+                    <span className="block text-[11px] text-[#A8A29E] truncate">
+                      {adminEmail || 'malviya.pratyush26@gmail.com'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm font-bold text-[#B91C1C] hover:bg-[#FEF2F2] transition-colors disabled:opacity-70"
+                  >
+                    {isSigningOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
