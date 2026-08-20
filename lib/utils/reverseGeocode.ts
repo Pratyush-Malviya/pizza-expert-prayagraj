@@ -1,23 +1,22 @@
 /**
  * reverseGeocode — Converts GPS coordinates into a human-readable address
- * Uses OpenStreetMap Nominatim API (free, no API key required)
- * 
- * Rate limit: 1 request/second (sufficient for user-triggered calls)
- * Terms: Must include User-Agent header with app info
+ *
+ * Calls our own Next.js API proxy (/api/geocode/reverse) which in turn
+ * fetches from OpenStreetMap Nominatim server-side — avoiding CORS issues.
  */
 
 export interface ReverseGeocodeResult {
-  line1: string          // House number + road
-  line2: string          // Neighbourhood / suburb
+  line1: string         // House number + road
+  line2: string         // Neighbourhood / suburb
   city: string
   state: string
   pincode: string
   country: string
-  displayName: string    // Full formatted address
-  raw: Record<string, unknown>  // Raw Nominatim response for debugging
+  displayName: string   // Full formatted address
+  raw: Record<string, unknown>
 }
 
-// In-memory cache to avoid duplicate API calls (keyed by "lat,lng")
+// In-memory cache keyed by "lat,lng" (4 decimal places ≈ ~11m accuracy)
 const cache = new Map<string, ReverseGeocodeResult>()
 
 export async function reverseGeocode(
@@ -30,23 +29,14 @@ export async function reverseGeocode(
     return cache.get(cacheKey)!
   }
 
-  const url = new URL('https://nominatim.openstreetmap.org/reverse')
-  url.searchParams.set('lat', lat.toString())
-  url.searchParams.set('lon', lng.toString())
-  url.searchParams.set('format', 'json')
-  url.searchParams.set('addressdetails', '1')
-  url.searchParams.set('zoom', '18') // House-level detail
+  // Call our server-side proxy to avoid CORS with Nominatim
+  const url = `/api/geocode/reverse?lat=${lat}&lng=${lng}`
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      // Required by Nominatim usage policy
-      'User-Agent': 'PizzaExpertPrayagraj/1.0 (contact@pizzaexpert.in)',
-      'Accept-Language': 'en',
-    },
-  })
+  const response = await fetch(url)
 
   if (!response.ok) {
-    throw new Error(`Nominatim API error: ${response.status} ${response.statusText}`)
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.error || `Geocode API error: ${response.status}`)
   }
 
   const data = await response.json()
@@ -72,7 +62,11 @@ export async function reverseGeocode(
   ].filter(Boolean)
 
   const result: ReverseGeocodeResult = {
-    line1: line1Parts.join(', ') || addr.amenity || addr.building || 'Near ' + (addr.road || 'your location'),
+    line1:
+      line1Parts.join(', ') ||
+      addr.amenity ||
+      addr.building ||
+      'Near ' + (addr.road || 'your location'),
     line2: line2Parts.slice(0, 2).join(', '),
     city:
       addr.city ||
