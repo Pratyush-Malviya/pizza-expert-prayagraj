@@ -76,63 +76,40 @@ export default function HeaderLocationPicker({ className }: { className?: string
 
   const zone = checkDeliveryDistance(currentLocation?.lat, currentLocation?.lng)
   const isDeliverable = zone.isDeliverable
-
   const displayTitle = currentLocation?.line2 || currentLocation?.city || 'Prayagraj'
-  const displaySubtitle = !isDeliverable && zone.distanceKm
-    ? `Unavailable • ${zone.distanceKm}km away`
-    : currentLocation?.line1 || (currentLocation ? `${currentLocation.city}, ${currentLocation.pincode}` : 'Tap to detect live location')
 
   return (
     <button
       onClick={detectLocation}
       disabled={isDetecting}
       className={cn(
-        'items-center gap-2 px-3 py-1.5 rounded-full border text-left transition-colors group cursor-pointer',
+        'items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer shrink-0',
         isDeliverable
-          ? 'bg-white/5 hover:bg-white/10 border-white/10'
-          : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30',
-        className || 'hidden md:flex max-w-[210px] lg:max-w-[260px]'
+          ? 'bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10'
+          : 'bg-red-500/15 hover:bg-red-500/25 text-red-300 border-red-500/30',
+        className
       )}
-      title={isDeliverable ? 'Click to update live delivery location' : `Location is ${zone.distanceKm}km away. We deliver within 15km.`}
+      title={isDeliverable ? 'Click to detect or change live delivery location' : `Location is ${zone.distanceKm}km away. We deliver within 15km.`}
     >
-      <div className={`relative flex items-center justify-center w-7 h-7 rounded-full transition-transform shrink-0 ${
-        isDeliverable
-          ? 'bg-[#FF3B00]/15 text-[#FF3B00] group-hover:scale-110'
-          : 'bg-red-500/20 text-red-400'
+      {isDetecting ? (
+        <Loader2 size={13} className="animate-spin text-[#FF3B00]" />
+      ) : !isDeliverable ? (
+        <AlertTriangle size={13} className="text-red-400 shrink-0" />
+      ) : (
+        <MapPin size={13} className="text-[#FF3B00] shrink-0" />
+      )}
+
+      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+        {currentLocation ? (isDeliverable ? 'Deliver to:' : 'Out of Zone:') : 'Location:'}
+      </span>
+
+      <span className={`text-[11px] font-bold truncate max-w-[140px] ${
+        isDeliverable ? 'text-white' : 'text-red-200'
       }`}>
-        {isDetecting ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : !isDeliverable ? (
-          <AlertTriangle size={14} />
-        ) : (
-          <MapPin size={14} />
-        )}
-        {currentLocation && (
-          <span className={`absolute top-0 right-0 w-2 h-2 rounded-full ${
-            isDeliverable ? 'bg-[#10B981]' : 'bg-red-500'
-          }`} />
-        )}
-      </div>
+        {currentLocation ? displayTitle : 'Prayagraj (Detect GPS)'}
+      </span>
 
-      <div className="flex flex-col min-w-0 pr-1">
-        <div className="flex items-center gap-1">
-          <span className={`text-[10px] font-black uppercase tracking-wider ${
-            isDeliverable ? 'text-zinc-400' : 'text-red-400'
-          }`}>
-            {currentLocation ? (isDeliverable ? 'Deliver to' : 'Out of Zone') : 'Set Location'}
-          </span>
-          <span className="text-[11px] font-bold text-white truncate max-w-[90px] lg:max-w-[120px]">
-            {displayTitle}
-          </span>
-        </div>
-        <span className={`text-[10px] truncate max-w-[130px] lg:max-w-[170px] leading-tight ${
-          isDeliverable ? 'text-zinc-400' : 'text-red-300 font-semibold'
-        }`}>
-          {displaySubtitle}
-        </span>
-      </div>
-
-      <ChevronDown size={12} className="text-zinc-500 group-hover:text-white shrink-0 ml-auto" />
+      <ChevronDown size={12} className="text-zinc-400 group-hover:text-white shrink-0 ml-0.5" />
     </button>
   )
 }

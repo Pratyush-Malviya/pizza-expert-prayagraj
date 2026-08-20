@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingBag, User, Menu, X, Flame, Sparkles } from 'lucide-react'
+import { ShoppingBag, User, Menu, X, Sparkles } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createClient } from '@/lib/supabase/client'
@@ -61,18 +61,23 @@ export default function Header() {
 
   return (
     <>
-      {/* Top Banner Alert Strip */}
-      <div className="bg-gradient-to-r from-[#FF3B00] via-[#E03400] to-[#FFC01D] text-black font-extrabold text-[10px] sm:text-[11px] py-1.5 px-3 sm:px-4 text-center tracking-wider uppercase flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden w-full">
-        <Sparkles size={13} className="animate-spin shrink-0" />
-        <span className="truncate max-w-[90vw] sm:max-w-none">
-          ⚡ FREE Delivery on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj
-        </span>
+      {/* Top Utility & Delivery Location Bar */}
+      <div className="bg-[#09090D] border-b border-white/10 text-xs py-1.5 px-4 sm:px-8 text-zinc-300 flex items-center justify-between gap-3 overflow-hidden">
+        <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-300 truncate">
+          <Sparkles size={12} className="text-[#FFC01D] animate-spin shrink-0" />
+          <span className="truncate">
+            ⚡ <strong className="text-white">FREE Delivery</strong> on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj
+          </span>
+        </div>
+
+        {/* Location Picker neatly docked in the top utility strip */}
+        <HeaderLocationPicker className="hidden sm:flex" />
       </div>
 
       {/* Main Sticky Header */}
       <header
         className={cn(
-          'sticky top-0 z-40 bg-[#0D0D11]/90 backdrop-blur-xl border-b border-white/10 transition-all duration-300',
+          'sticky top-0 z-40 bg-[#0D0D11]/95 backdrop-blur-xl border-b border-white/10 transition-all duration-300',
           isScrolled ? 'py-3 shadow-[0_10px_30px_rgba(0,0,0,0.7)]' : 'py-4'
         )}
       >
@@ -102,11 +107,8 @@ export default function Header() {
             )}
           </Link>
 
-          {/* Live Delivery Location Pill */}
-          <HeaderLocationPicker />
-
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8 bg-white/5 border border-white/10 px-6 py-2 rounded-full backdrop-blur-md">
+          {/* Desktop Nav Links (Clean, Centered, Perfectly Balanced) */}
+          <nav className="hidden md:flex items-center gap-8 bg-white/5 border border-white/10 px-7 py-2.5 rounded-full backdrop-blur-md">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href
               return (
@@ -235,4 +237,3 @@ export default function Header() {
     </>
   )
 }
-
