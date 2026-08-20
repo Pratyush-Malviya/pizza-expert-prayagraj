@@ -7,12 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Search, Clock, MapPin, ChefHat, CheckCircle2, Flame,
   Truck, Home, Bell, BellRing, XCircle, AlertCircle,
-  CreditCard, MessageCircle, RefreshCw, Compass, ShieldCheck, KeyRound
+  CreditCard, MessageCircle, RefreshCw, Compass, ShieldCheck, KeyRound, Star
 } from 'lucide-react'
 import { requestNotificationPermission, notifyOrderStatusChange, playNotificationSound } from '@/lib/utils/notifications'
 import LoyaltyBadge from '@/components/profile/LoyaltyBadge'
 import QuickReorderButton from '@/components/orders/QuickReorderButton'
 import DriverInfoCard from '@/components/tracking/DriverInfoCard'
+import DeliveryFeedbackModal from '@/components/orders/DeliveryFeedbackModal'
 import type { GPSLocation, DeliveryPartner } from '@/lib/tracking/types'
 import { STORE_LOCATION, DEFAULT_SAMPLE_DRIVER } from '@/lib/tracking/types'
 
@@ -50,7 +51,23 @@ function TrackOrderContent() {
   const [otpCode, setOtpCode] = useState<string>('1234')
   const [etaMinutes, setEtaMinutes] = useState<number>(18)
   const [distanceKm, setDistanceKm] = useState<number>(2.4)
+  const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false)
+  const [hasReviewed, setHasReviewed] = useState<boolean>(false)
   const supabase = createClient()
+
+  // Auto trigger feedback modal when delivered
+  useEffect(() => {
+    if (typeof window === 'undefined' || !orderId) return
+    const reviewed = localStorage.getItem(`reviewed_order_${orderId}`) === 'true'
+    setHasReviewed(reviewed)
+
+    if (currentStatus === 'delivered' && !reviewed) {
+      const timer = setTimeout(() => {
+        setShowFeedbackModal(true)
+      }, 700)
+      return () => clearTimeout(timer)
+    }
+  }, [currentStatus, orderId])
 
   // Fetch real order and delivery details
   const fetchStatus = useCallback(async () => {
@@ -423,6 +440,35 @@ function TrackOrderContent() {
               status={currentStatus}
             />
 
+            {/* Rate & Review Card on Delivery */}
+            {currentStatus === 'delivered' && (
+              <div className="bg-gradient-to-br from-[#FFFBEB] via-[#FEF3C7] to-[#FDE68A] border border-[#FCD34D] rounded-2xl p-5 text-left flex items-center justify-between flex-wrap gap-4 shadow-sm">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#D97706]/15 text-[#D97706] flex items-center justify-center text-2xl shrink-0 border border-[#D97706]/30">
+                    ⭐
+                  </div>
+                  <div>
+                    <h4 className="font-serif font-bold text-sm text-[#1C1917]">
+                      {hasReviewed ? 'Thank You for Rating Your Order!' : 'How Was Your Delivery Experience?'}
+                    </h4>
+                    <p className="text-xs text-[#78716C]">
+                      {hasReviewed
+                        ? 'Your feedback helps us bake better pizzas.'
+                        : 'Rate your hot pizza & delivery to earn loyalty rewards!'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="px-4 py-2.5 bg-[#D97706] hover:bg-[#B45309] text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
+                >
+                  <Star size={14} className="fill-white" />
+                  <span>{hasReviewed ? 'Update Review' : 'Rate & Review'}</span>
+                </button>
+              </div>
+            )}
+
             {/* ORDER CANCELLED STATE */}
             {isCancelled && (
               <div className="bg-[#FEF2F2] rounded-2xl p-5 border border-[#FCA5A5] space-y-3">
@@ -440,6 +486,16 @@ function TrackOrderContent() {
           </div>
         )}
       </div>
+
+      {/* Review / Feedback Popup Modal */}
+      <DeliveryFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        orderId={orderId}
+        driverName={driver?.name}
+        orderTotal={orderTotal}
+        onSubmitted={() => setHasReviewed(true)}
+      />
     </div>
   )
 }

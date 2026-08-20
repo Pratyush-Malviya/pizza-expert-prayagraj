@@ -3,9 +3,24 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { CheckCircle2, Clock, Truck, MessageCircle, ChefHat, Sparkles, Bike, KeyRound, Phone, ShieldCheck, Copy, Check } from 'lucide-react'
+import {
+  CheckCircle2,
+  Clock,
+  Truck,
+  MessageCircle,
+  ChefHat,
+  Sparkles,
+  Bike,
+  KeyRound,
+  Phone,
+  ShieldCheck,
+  Copy,
+  Check,
+  Star,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { playNotificationSound } from '@/lib/utils/notifications'
+import DeliveryFeedbackModal from '@/components/orders/DeliveryFeedbackModal'
 import { toast } from 'sonner'
 
 export default function OrderConfirmationPage() {
@@ -23,6 +38,8 @@ export default function OrderConfirmationPage() {
   } | null>(null)
   const [copiedOtp, setCopiedOtp] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date())
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [hasReviewed, setHasReviewed] = useState(false)
   const supabase = createClient()
 
   // Realtime & background auto-polling (never requires page refresh)
@@ -129,6 +146,20 @@ export default function OrderConfirmationPage() {
     }
   }, [orderId, supabase])
 
+  // Automatically trigger review popup when delivery is marked as delivered
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const reviewed = localStorage.getItem(`reviewed_order_${orderId}`) === 'true'
+    setHasReviewed(reviewed)
+
+    if (currentStatus === 'delivered' && !reviewed) {
+      const timer = setTimeout(() => {
+        setShowFeedbackModal(true)
+      }, 700)
+      return () => clearTimeout(timer)
+    }
+  }, [currentStatus, orderId])
+
   const handleCopyOtp = () => {
     if (!deliveryOtp) return
     navigator.clipboard.writeText(deliveryOtp)
@@ -159,25 +190,32 @@ export default function OrderConfirmationPage() {
   }
 
   const stepIndex = getStatusStepIndex(currentStatus)
+  const isDelivered = currentStatus === 'delivered'
 
   return (
     <div className="bg-[#FBF9F5] min-h-screen py-12">
       <div className="container-custom max-w-2xl">
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E7E0D8] shadow-md text-center space-y-6">
           {/* Checkmark */}
-          <div className="w-16 h-16 bg-[#F0FDF4] text-[#15803D] rounded-full flex items-center justify-center mx-auto shadow-xs">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-xs ${
+            isDelivered ? 'bg-emerald-100 text-emerald-700' : 'bg-[#F0FDF4] text-[#15803D]'
+          }`}>
             <CheckCircle2 size={36} />
           </div>
 
           <div>
-            <span className="text-xs font-bold tracking-widest text-[#B91C1C] uppercase font-mono">
-              Order Confirmed & In Kitchen
+            <span className={`text-xs font-bold tracking-widest uppercase font-mono ${
+              isDelivered ? 'text-emerald-700' : 'text-[#B91C1C]'
+            }`}>
+              {isDelivered ? 'Order Delivered' : 'Order Confirmed & In Kitchen'}
             </span>
             <h1 className="text-3xl sm:text-4xl font-serif font-black text-[#1C1917] mt-1 mb-2">
-              Thank You For Your Order!
+              {isDelivered ? 'Enjoy Your Fresh Pizza! 🍕' : 'Thank You For Your Order!'}
             </h1>
             <p className="text-[#57534E] text-xs sm:text-sm">
-              We&apos;ve received your order and our wood-fired kitchen in Allapur is preparing it fresh.
+              {isDelivered
+                ? 'Your order has been delivered hot to your doorstep. We hope you love every bite!'
+                : "We've received your order and our wood-fired kitchen in Allapur is preparing it fresh."}
             </p>
           </div>
 
@@ -207,7 +245,9 @@ export default function OrderConfirmationPage() {
 
             <div>
               <span className="text-[10px] text-[#78716C] uppercase font-bold tracking-wider block">Status</span>
-              <span className="font-mono font-bold text-[#B91C1C] text-base capitalize">
+              <span className={`font-mono font-bold text-base capitalize ${
+                isDelivered ? 'text-emerald-700' : 'text-[#B91C1C]'
+              }`}>
                 {currentStatus.replace(/_/g, ' ')}
               </span>
             </div>
@@ -261,7 +301,7 @@ export default function OrderConfirmationPage() {
 
               <div className="relative z-10 flex flex-col items-center gap-2">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  stepIndex >= 4 ? 'bg-[#15803D] text-white' : 'bg-[#E7E0D8] text-[#57534E]'
+                  stepIndex >= 4 ? 'bg-[#15803D] text-white ring-4 ring-emerald-500/20' : 'bg-[#E7E0D8] text-[#57534E]'
                 }`}>
                   {stepIndex >= 4 ? '✓' : '4'}
                 </div>
@@ -270,8 +310,37 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
 
+          {/* Rate & Review Card on Delivery */}
+          {isDelivered && (
+            <div className="bg-gradient-to-br from-[#FFFBEB] via-[#FEF3C7] to-[#FDE68A] border border-[#FCD34D] rounded-2xl p-5 text-left flex items-center justify-between flex-wrap gap-4 shadow-sm animate-pulse-subtle">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#D97706]/15 text-[#D97706] flex items-center justify-center text-2xl shrink-0 border border-[#D97706]/30">
+                  ⭐
+                </div>
+                <div>
+                  <h4 className="font-serif font-bold text-sm text-[#1C1917]">
+                    {hasReviewed ? 'Thank You for Rating Your Order!' : 'How Was Your Delivery Experience?'}
+                  </h4>
+                  <p className="text-xs text-[#78716C]">
+                    {hasReviewed
+                      ? 'Your feedback helps us bake better pizzas.'
+                      : 'Rate your hot pizza & delivery to earn loyalty rewards!'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowFeedbackModal(true)}
+                className="px-4 py-2.5 bg-[#D97706] hover:bg-[#B45309] text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
+              >
+                <Star size={14} className="fill-white" />
+                <span>{hasReviewed ? 'Update Review' : 'Rate & Review'}</span>
+              </button>
+            </div>
+          )}
+
           {/* Delivery OTP & Rider Card */}
-          {deliveryOtp && (
+          {deliveryOtp && !isDelivered && (
             <div className="bg-[#FBF9F5] rounded-2xl p-4 border border-[#E7E0D8] flex items-center justify-between flex-wrap gap-3 text-left">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#B91C1C] flex items-center justify-center flex-shrink-0">
@@ -343,6 +412,16 @@ export default function OrderConfirmationPage() {
           </p>
         </div>
       </div>
+
+      {/* Review / Feedback Popup Modal */}
+      <DeliveryFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        orderId={orderId}
+        driverName={driverInfo?.name}
+        orderTotal={orderTotal}
+        onSubmitted={() => setHasReviewed(true)}
+      />
     </div>
   )
 }
