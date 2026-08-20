@@ -119,7 +119,7 @@ export default function AIChatWidget() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask about our menu..."
-              className="flex-1 px-4 py-2 bg-[#F5F2EC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white transition-all"
+              className="flex-1 px-4 py-2 bg-[#F5F2EC] rounded-xl text-sm text-[#1C1917] placeholder:text-[#A8A29E] caret-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white transition-all"
             />
             <button
               onClick={handleSend}
