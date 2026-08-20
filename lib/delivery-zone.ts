@@ -1,7 +1,8 @@
 /**
  * lib/delivery-zone.ts
- * Haversine-formula delivery zone utility.
- * No external API calls — pure math, runs on client or server.
+ *
+ * India-wide delivery zone and PIN code validation utility.
+ * Allows adding and delivering to any location and address across India.
  */
 
 const EARTH_RADIUS_KM = 6371
@@ -31,27 +32,30 @@ export function haversineDistanceKm(
 }
 
 /**
- * Check if a customer's location is within the restaurant's delivery radius.
- * @returns true if within zone, false if outside
+ * Validates whether a given string is a valid 6-digit Indian postal PIN code.
+ */
+export function isValidIndianPincode(pincode: string): boolean {
+  if (!pincode) return false
+  return /^[1-9][0-9]{5}$/.test(pincode.trim())
+}
+
+/**
+ * Check if a customer's location is deliverable.
+ * Supports all locations across India.
  */
 export function isWithinDeliveryZone(
-  customerLat: number,
-  customerLng: number,
-  restaurantLat: number = 25.4358,
-  restaurantLng: number = 81.8463,
-  radiusKm: number = 8
+  customerLat?: number,
+  customerLng?: number,
+  restaurantLat?: number,
+  restaurantLng?: number,
+  radiusKm?: number
 ): boolean {
-  const distance = haversineDistanceKm(
-    customerLat, customerLng,
-    restaurantLat, restaurantLng
-  )
-  return distance <= radiusKm
+  return true
 }
 
 /**
  * Attempt to geocode an Indian pincode using a free API.
  * Returns { lat, lng } or null if lookup fails.
- * Used as a fallback when Google Places lat/lng is unavailable.
  */
 export async function geocodePincode(pincode: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -70,21 +74,15 @@ export async function geocodePincode(pincode: string): Promise<{ lat: number; ln
   }
 }
 
-/** Known Prayagraj pincodes for fast zone pre-check (no API call needed) */
-const PRAYAGRAJ_PINCODES = new Set([
-  '211001', '211002', '211003', '211004', '211005',
-  '211006', '211007', '211008', '211009', '211010',
-  '211011', '211012', '211013', '211014', '211015',
-  '211016', '211017', '211018', '211019', '211021',
-  '212107', '212301',
-])
-
 /**
- * Fast pre-check: is a pincode likely within delivery range?
- * Returns true = definitely in zone, false = needs GPS verification, null = unknown
+ * Checks if a PIN code is deliverable.
+ * Returns true for any valid Indian PIN code (or null if empty/incomplete).
  */
 export function isPincodeInPrayagraj(pincode: string): boolean | null {
-  if (PRAYAGRAJ_PINCODES.has(pincode.trim())) return true
-  if (pincode.startsWith('211') || pincode.startsWith('212')) return null // maybe, verify
-  return false
+  if (!pincode || pincode.trim().length < 6) return null
+  return isValidIndianPincode(pincode)
+}
+
+export function isDeliverablePincode(pincode: string): boolean {
+  return isValidIndianPincode(pincode)
 }

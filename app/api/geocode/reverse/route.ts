@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 /**
  * GET /api/geocode/reverse?lat=xx&lng=xx
  *
- * Multi-provider reverse geocoding:
+ * Multi-provider reverse geocoding for ANY location across India:
  * 1. Google Maps Geocoding API (if API Key is configured)
  * 2. High-precision OpenStreetMap Nominatim (jsonv2) + BigDataCloud (in parallel)
  */
@@ -52,15 +52,15 @@ export async function GET(request: NextRequest) {
           const route = getComp(['route', 'street_address'])
           const subloc2 = getComp(['sublocality_level_2', 'neighborhood'])
           const subloc1 = getComp(['sublocality_level_1', 'sublocality'])
-          const city = getComp(['locality', 'administrative_area_level_2']) || 'Prayagraj'
-          const state = getComp(['administrative_area_level_1']) || 'Uttar Pradesh'
-          const pincode = getComp(['postal_code']) || '211006'
+          const city = getComp(['locality', 'administrative_area_level_2', 'administrative_area_level_3']) || ''
+          const state = getComp(['administrative_area_level_1']) || ''
+          const pincode = getComp(['postal_code']) || ''
 
           const line1Parts = [premise, route].filter(Boolean)
           const line2Parts = [subloc2, subloc1].filter(Boolean)
 
-          const line1 = line1Parts.join(', ') || (topResult.formatted_address.split(',')[0] || 'Local Street')
-          const line2 = line2Parts.join(', ') || (line1Parts.length > 0 ? subloc1 : 'Prayagraj')
+          const line1 = line1Parts.join(', ') || (topResult.formatted_address.split(',')[0] || 'Current Location')
+          const line2 = line2Parts.join(', ') || (line1Parts.length > 0 ? subloc1 : city)
 
           return NextResponse.json({
             line1,
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     const [nominatimRes, bdcRes] = await Promise.allSettled([
       fetch(nominatimUrl.toString(), {
         headers: {
-          'User-Agent': 'PizzaExpertPrayagraj/2.0 (contact@pizzaexpert.in)',
+          'User-Agent': 'PizzaExpertIndia/2.0 (contact@pizzaexpert.in)',
           'Accept-Language': 'en',
           Accept: 'application/json',
         },
@@ -132,7 +132,6 @@ export async function GET(request: NextRequest) {
       const pinMatch = displayName.match(/\b([1-9][0-9]{5})\b/)
       if (pinMatch) pincode = pinMatch[1]
     }
-    if (!pincode) pincode = '211006'
 
     const city =
       addr.city ||
@@ -141,9 +140,9 @@ export async function GET(request: NextRequest) {
       addr.city_district ||
       bdcData?.city ||
       bdcData?.locality ||
-      'Prayagraj'
+      ''
 
-    const state = addr.state || bdcData?.principalSubdivision || 'Uttar Pradesh'
+    const state = addr.state || bdcData?.principalSubdivision || ''
 
     const streetParts: string[] = []
     if (addr.house_number) streetParts.push(addr.house_number)
@@ -193,8 +192,8 @@ export async function GET(request: NextRequest) {
           lower !== 'india' &&
           lower !== state.toLowerCase() &&
           lower !== city.toLowerCase() &&
-          lower !== 'allahabad district' &&
-          lower !== 'prayagraj district' &&
+          !lower.includes('district') &&
+          !lower.includes('division') &&
           !seg.match(/^\d{6}$/)
         )
       })
@@ -231,11 +230,11 @@ export async function GET(request: NextRequest) {
     let line2 = localityParts.slice(0, 2).join(', ')
 
     if (!line1) {
-      line1 = line2 ? `Near ${line2}` : (nomData?.name || 'Local Street')
+      line1 = line2 ? `Near ${line2}` : (nomData?.name || 'Current Location')
     }
 
     if (!line2) {
-      line2 = bdcData?.locality || 'Prayagraj'
+      line2 = bdcData?.locality || city || ''
     }
 
     const landmark = buildingName || addr.amenity || ''
@@ -247,7 +246,7 @@ export async function GET(request: NextRequest) {
       state,
       pincode,
       country: addr.country || 'India',
-      displayName: displayName || `${line1}, ${line2}, ${city}, ${state} ${pincode}`,
+      displayName: displayName || `${line1}, ${line2}, ${city}, ${state} ${pincode}`.replace(/,\s*,/g, ',').trim(),
       landmark: landmark || undefined,
       provider: 'osm+bdc',
       address: addr,

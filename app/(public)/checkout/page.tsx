@@ -65,9 +65,9 @@ export default function CheckoutPage() {
   const [addressInfo, setAddressInfo] = useState({
     line1: '',
     line2: '',
-    city: 'Prayagraj',
-    state: 'Uttar Pradesh',
-    pincode: '211006',
+    city: '',
+    state: '',
+    pincode: '',
     notes: '',
   })
 
@@ -189,9 +189,9 @@ export default function CheckoutPage() {
       ...prev,
       line1: geocode.line1 || geocode.displayName || prev.line1,
       line2: geocode.line2 || prev.line2,
-      city: geocode.city || 'Prayagraj',
-      state: geocode.state || 'Uttar Pradesh',
-      pincode: geocode.pincode || '211006',
+      city: geocode.city || prev.city,
+      state: geocode.state || prev.state,
+      pincode: geocode.pincode || prev.pincode,
     }))
 
     // Switch to manual view so user immediately sees their auto-populated fields
@@ -222,13 +222,11 @@ export default function CheckoutPage() {
   const tax = Math.round(subtotal * 0.05)
   const grandTotal = Math.max(0, subtotal + tax + deliveryFee)
 
-  // ─── Delivery Zone & Min Order Validation ───────────────────────────
+  // ─── Delivery Zone & Min Order Validation (All India Support) ────────
   const MIN_DELIVERY_ORDER = 149
-  const zoneCheck = addressInfo.pincode.length >= 6
-    ? isPincodeInPrayagraj(addressInfo.pincode)
-    : null // null = unknown (no pincode entered yet)
-  const zoneError = zoneCheck === false
-    ? `We currently only deliver within Prayagraj. Pin ${addressInfo.pincode} appears to be outside our delivery area.`
+  const isPinValid = addressInfo.pincode.length === 6 ? /^[1-9][0-9]{5}$/.test(addressInfo.pincode.trim()) : true
+  const zoneError = !isPinValid && addressInfo.pincode.length >= 6
+    ? `Please enter a valid 6-digit Indian PIN code.`
     : null
   const minOrderError = subtotal > 0 && subtotal < MIN_DELIVERY_ORDER
     ? `Minimum order for delivery is ₹${MIN_DELIVERY_ORDER}. Add ₹${MIN_DELIVERY_ORDER - subtotal} more to proceed.`

@@ -44,8 +44,8 @@ export default function SaveLocationModal({
     label: 'Home',
     line1: '',
     line2: '',
-    city: 'Prayagraj',
-    state: 'Uttar Pradesh',
+    city: '',
+    state: '',
     pincode: '',
     landmark: '',
     phone: '',
@@ -61,9 +61,9 @@ export default function SaveLocationModal({
       ...f,
       line1: geocodeResult.line1 || geocodeResult.displayName || '',
       line2: geocodeResult.line2 || '',
-      city: geocodeResult.city || 'Prayagraj',
-      state: geocodeResult.state || 'Uttar Pradesh',
-      pincode: geocodeResult.pincode || '211006',
+      city: geocodeResult.city || '',
+      state: geocodeResult.state || '',
+      pincode: geocodeResult.pincode || '',
     }))
   }, [geocodeResult, isOpen])
 
