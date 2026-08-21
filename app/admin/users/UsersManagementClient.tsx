@@ -17,7 +17,6 @@ import {
   deleteManagedUser
 } from '@/app/actions/users'
 import { inviteStaffMember } from '@/app/actions/staff'
-import { onboardDriverDirect } from '@/app/actions/drivers'
 import {
   ROLE_DEFINITIONS,
   ALL_PERMISSIONS,
@@ -47,27 +46,19 @@ export default function UsersManagementClient({
   const [isSaving, setIsSaving] = useState(false)
 
   // Invite / Create Modals
-  const [modalType, setModalType] = useState<'staff_invite' | 'driver_invite' | 'general_user' | null>(null)
+  const [modalType, setModalType] = useState<'staff_invite' | 'general_user' | null>(null)
   const [isSubmittingModal, setIsSubmittingModal] = useState(false)
 
-  // Staff Invite Form State
+  // Unified Staff / Delivery Invite Form State
   const [staffInviteData, setStaffInviteData] = useState({
     name: '',
     email: '',
     phone: '',
     department: 'Kitchen Operations',
     role: 'staff' as UserRole,
-  })
-
-  // Driver Invite Form State
-  const [driverInviteData, setDriverInviteData] = useState({
-    name: '',
-    phone: '',
-    email: '',
     vehicle_type: 'bike',
     vehicle_number: '',
     license_number: '',
-    auto_verify: true,
   })
 
   // General Create User State
@@ -159,7 +150,7 @@ export default function UsersManagementClient({
     }
   }
 
-  // Handle Staff Invite Submission
+  // Handle Staff & Delivery Invite Submission
   const handleStaffInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!staffInviteData.name.trim() || !staffInviteData.email.trim()) {
@@ -183,7 +174,7 @@ export default function UsersManagementClient({
       setModalType(null)
       // Optimistic addition
       const newUserObj: ManagedUser = {
-        id: (res as any).userId || `staff-${Date.now()}`,
+        id: (res as any).userId || `user-${Date.now()}`,
         name: staffInviteData.name.trim(),
         email: staffInviteData.email.trim().toLowerCase(),
         phone: staffInviteData.phone.trim() || null,
@@ -191,6 +182,9 @@ export default function UsersManagementClient({
         is_active: true,
         invite_status: 'pending',
         department: staffInviteData.department,
+        vehicle_type: staffInviteData.role === 'driver' ? staffInviteData.vehicle_type : undefined,
+        vehicle_number: staffInviteData.role === 'driver' ? staffInviteData.vehicle_number : undefined,
+        license_number: staffInviteData.role === 'driver' ? staffInviteData.license_number : undefined,
         created_at: new Date().toISOString(),
       }
       setUsers([newUserObj, ...users])
@@ -200,61 +194,12 @@ export default function UsersManagementClient({
         phone: '',
         department: 'Kitchen Operations',
         role: 'staff',
-      })
-    } else {
-      toast.error(res.error || 'Failed to invite staff member')
-    }
-  }
-
-  // Handle Driver Invite Submission
-  const handleDriverInviteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!driverInviteData.name.trim() || !driverInviteData.phone.trim()) {
-      toast.error('Please enter rider full name and mobile number.')
-      return
-    }
-
-    setIsSubmittingModal(true)
-    const formData = new FormData()
-    formData.append('name', driverInviteData.name.trim())
-    formData.append('phone', driverInviteData.phone.trim())
-    formData.append('email', driverInviteData.email.trim())
-    formData.append('vehicle_type', driverInviteData.vehicle_type)
-    formData.append('vehicle_number', driverInviteData.vehicle_number.trim().toUpperCase())
-    formData.append('license_number', driverInviteData.license_number.trim().toUpperCase())
-    formData.append('auto_verify', driverInviteData.auto_verify ? 'true' : 'false')
-
-    const res = await onboardDriverDirect(formData)
-    setIsSubmittingModal(false)
-
-    if (res.success) {
-      toast.success(`Delivery partner ${driverInviteData.name} onboarded successfully!`)
-      setModalType(null)
-      const newDriverObj: ManagedUser = {
-        id: (res as any).driverId || `driver-${Date.now()}`,
-        name: driverInviteData.name.trim(),
-        phone: driverInviteData.phone.trim(),
-        email: driverInviteData.email.trim() || `${driverInviteData.phone.trim()}@driver.pizzaexpert.local`,
-        role: 'driver',
-        is_active: true,
-        verification_status: driverInviteData.auto_verify ? 'verified' : 'pending',
-        vehicle_type: driverInviteData.vehicle_type,
-        vehicle_number: driverInviteData.vehicle_number.trim().toUpperCase(),
-        license_number: driverInviteData.license_number.trim().toUpperCase(),
-        created_at: new Date().toISOString(),
-      }
-      setUsers([newDriverObj, ...users])
-      setDriverInviteData({
-        name: '',
-        phone: '',
-        email: '',
         vehicle_type: 'bike',
         vehicle_number: '',
         license_number: '',
-        auto_verify: true,
       })
     } else {
-      toast.error(res.error || 'Failed to onboard delivery partner')
+      toast.error(res.error || 'Failed to invite team member')
     }
   }
 
@@ -336,7 +281,7 @@ export default function UsersManagementClient({
           </div>
         </div>
 
-        {/* Quick Action Invite Buttons */}
+        {/* Quick Action Buttons (Unified Staff & Delivery Invite) */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setModalType('staff_invite')}
@@ -344,14 +289,6 @@ export default function UsersManagementClient({
           >
             <UserPlus size={15} />
             <span>Invite New Staff</span>
-          </button>
-
-          <button
-            onClick={() => setModalType('driver_invite')}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#1C1917] text-white hover:bg-[#44403C] transition-colors flex items-center gap-1.5 shadow-xs"
-          >
-            <Bike size={15} />
-            <span>Invite Delivery Partner</span>
           </button>
 
           <button
@@ -428,7 +365,7 @@ export default function UsersManagementClient({
         {[
           { id: 'all', label: 'All Directory', count: users.length, icon: Users },
           { id: 'staff', label: 'Active Staff Roster', count: staffCount, icon: UtensilsCrossed },
-          { id: 'driver', label: 'Delivery Partners (Fleet)', count: driverCount, icon: Bike },
+          { id: 'driver', label: 'Delivery Staff & Partners', count: driverCount, icon: Bike },
           { id: 'customer', label: 'Registered Customers', count: customerCount, icon: Crown },
           { id: 'matrix', label: 'RBAC Permission Matrix', count: null, icon: Shield },
         ].map((tab) => {
@@ -488,7 +425,7 @@ export default function UsersManagementClient({
                   <option value="super_admin">👑 Super Admin</option>
                   <option value="manager">👔 Manager</option>
                   <option value="staff">👨‍🍳 Kitchen Staff</option>
-                  <option value="driver">🛵 Delivery Partner</option>
+                  <option value="driver">🛵 Delivery Staff</option>
                   <option value="viewer">👁️ Auditor / Viewer</option>
                   <option value="customer">👤 Customer</option>
                 </select>
@@ -505,7 +442,7 @@ export default function UsersManagementClient({
                   {activeTab === 'staff'
                     ? 'Active Staff Roster'
                     : activeTab === 'driver'
-                    ? 'Delivery Partner Fleet'
+                    ? 'Delivery Staff & Partner Fleet'
                     : activeTab === 'customer'
                     ? 'Customer Directory'
                     : 'All Registered Accounts'}
@@ -515,23 +452,20 @@ export default function UsersManagementClient({
                 </p>
               </div>
 
-              {activeTab === 'staff' && (
+              {(activeTab === 'staff' || activeTab === 'driver') && (
                 <button
-                  onClick={() => setModalType('staff_invite')}
+                  onClick={() => {
+                    setStaffInviteData((prev) => ({
+                      ...prev,
+                      role: activeTab === 'driver' ? 'driver' : 'staff',
+                      department: activeTab === 'driver' ? 'Delivery Dispatch' : 'Kitchen Operations',
+                    }))
+                    setModalType('staff_invite')
+                  }}
                   className="btn btn-primary px-3 py-1.5 text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto"
                 >
                   <UserPlus size={13} />
-                  <span>Invite New Staff</span>
-                </button>
-              )}
-
-              {activeTab === 'driver' && (
-                <button
-                  onClick={() => setModalType('driver_invite')}
-                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#1C1917] text-white hover:bg-[#44403C] flex items-center gap-1.5 self-start sm:self-auto"
-                >
-                  <Bike size={13} />
-                  <span>Invite Delivery Partner</span>
+                  <span>{activeTab === 'driver' ? 'Invite Delivery Staff' : 'Invite New Staff'}</span>
                 </button>
               )}
             </div>
@@ -600,7 +534,7 @@ export default function UsersManagementClient({
                                 user.role === 'viewer' ? "bg-purple-50 text-purple-800 border-purple-200" :
                                 "bg-stone-100 text-[#57534E] border-stone-200"
                               )}>
-                                {user.role}
+                                {user.role === 'driver' ? 'Delivery Staff' : user.role}
                               </span>
                             )}
 
@@ -727,7 +661,7 @@ export default function UsersManagementClient({
         </div>
       )}
 
-      {/* ── MODAL 1: INVITE NEW STAFF ─────────────────────────────────── */}
+      {/* ── UNIFIED INVITE NEW STAFF / DELIVERY MEMBER MODAL ─────────── */}
       {modalType === 'staff_invite' && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -791,22 +725,31 @@ export default function UsersManagementClient({
                 >
                   <option value="Kitchen Operations">Kitchen Operations / Chef</option>
                   <option value="Front Counter & POS">Front Counter & Cashier</option>
-                  <option value="Store Management">Store Management</option>
                   <option value="Delivery Dispatch">Delivery Dispatch</option>
+                  <option value="Store Management">Store Management</option>
                   <option value="Finance & Accounts">Finance & Accounts</option>
                 </select>
               </div>
 
+              {/* Role Assignment with Delivery Staff included */}
               <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-2">
                 <label className="block font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
                   Role Assignment *
                 </label>
                 <select
                   value={staffInviteData.role}
-                  onChange={(e) => setStaffInviteData({ ...staffInviteData, role: e.target.value as UserRole })}
+                  onChange={(e) => {
+                    const newRole = e.target.value as UserRole
+                    setStaffInviteData((prev) => ({
+                      ...prev,
+                      role: newRole,
+                      department: newRole === 'driver' ? 'Delivery Dispatch' : prev.department,
+                    }))
+                  }}
                   className="admin-input text-xs bg-white text-[#1C1917] font-bold"
                 >
                   <option value="staff">👨‍🍳 Staff (Kitchen / Orders / KDS)</option>
+                  <option value="driver">🛵 Delivery Staff (Rider App & GPS Dispatch)</option>
                   <option value="manager">👔 Store Manager (Inventory & Shifts)</option>
                   <option value="viewer">👁️ Auditor / Viewer (Read-Only Reports)</option>
                 </select>
@@ -814,6 +757,40 @@ export default function UsersManagementClient({
                   {ROLE_DEFINITIONS[staffInviteData.role]?.description}
                 </p>
               </div>
+
+              {/* If Delivery Staff is selected, show optional vehicle details */}
+              {staffInviteData.role === 'driver' && (
+                <div className="bg-[#FBF9F5] p-3.5 rounded-2xl border border-[#E7E0D8] space-y-2.5">
+                  <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
+                    Vehicle Details (Optional)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-semibold text-[#78716C] mb-1">Vehicle Type</label>
+                      <select
+                        value={staffInviteData.vehicle_type}
+                        onChange={(e) => setStaffInviteData({ ...staffInviteData, vehicle_type: e.target.value })}
+                        className="admin-input text-xs bg-white text-[#1C1917]"
+                      >
+                        <option value="bike">Motorcycle</option>
+                        <option value="scooter">Scooter</option>
+                        <option value="ebike">EV Scooter</option>
+                        <option value="bicycle">Bicycle</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#78716C] mb-1">Plate Number</label>
+                      <input
+                        type="text"
+                        placeholder="UP 70 AB 1234"
+                        value={staffInviteData.vehicle_number}
+                        onChange={(e) => setStaffInviteData({ ...staffInviteData, vehicle_number: e.target.value.toUpperCase() })}
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
                 <button
@@ -837,140 +814,7 @@ export default function UsersManagementClient({
         </div>
       )}
 
-      {/* ── MODAL 2: INVITE DELIVERY PARTNER ─────────────────────────── */}
-      {modalType === 'driver_invite' && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
-              <div>
-                <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
-                  <Bike size={20} className="text-blue-600" />
-                  Invite & Onboard Delivery Partner
-                </h3>
-                <span className="text-xs text-[#78716C]">
-                  Register a rider for GPS dispatch and live order delivery tracking
-                </span>
-              </div>
-              <button onClick={() => setModalType(null)} className="p-1 text-[#78716C] hover:text-[#1C1917]">
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleDriverInviteSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block font-bold text-[#1C1917] mb-1">Rider Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Rahul Verma"
-                    value={driverInviteData.name}
-                    onChange={(e) => setDriverInviteData({ ...driverInviteData, name: e.target.value })}
-                    className="admin-input text-xs bg-white text-[#1C1917]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#1C1917] mb-1">Mobile Phone (10 digits) *</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="9876543210"
-                    value={driverInviteData.phone}
-                    onChange={(e) => setDriverInviteData({ ...driverInviteData, phone: e.target.value })}
-                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#1C1917] mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    placeholder="rahul@driver.pizzaexpert.local"
-                    value={driverInviteData.email}
-                    onChange={(e) => setDriverInviteData({ ...driverInviteData, email: e.target.value })}
-                    className="admin-input text-xs bg-white text-[#1C1917]"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
-                <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
-                  Vehicle & License Details
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block font-semibold text-[#78716C] mb-1">Vehicle Type</label>
-                    <select
-                      value={driverInviteData.vehicle_type}
-                      onChange={(e) => setDriverInviteData({ ...driverInviteData, vehicle_type: e.target.value })}
-                      className="admin-input text-xs bg-white text-[#1C1917]"
-                    >
-                      <option value="bike">Motorcycle (Hero/Honda)</option>
-                      <option value="scooter">Scooter (Activa/Jupiter)</option>
-                      <option value="ebike">Electric Vehicle / EV</option>
-                      <option value="bicycle">Bicycle</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#78716C] mb-1">Plate Number</label>
-                    <input
-                      type="text"
-                      placeholder="UP 70 AB 1234"
-                      value={driverInviteData.vehicle_number}
-                      onChange={(e) => setDriverInviteData({ ...driverInviteData, vehicle_number: e.target.value })}
-                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#78716C] mb-1">License Number</label>
-                    <input
-                      type="text"
-                      placeholder="UP70202400123"
-                      value={driverInviteData.license_number}
-                      onChange={(e) => setDriverInviteData({ ...driverInviteData, license_number: e.target.value })}
-                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between border-t border-[#E7E0D8]">
-                  <span className="text-[11px] font-bold text-[#1C1917]">Auto-Approve Verification</span>
-                  <input
-                    type="checkbox"
-                    checked={driverInviteData.auto_verify}
-                    onChange={(e) => setDriverInviteData({ ...driverInviteData, auto_verify: e.target.checked })}
-                    className="w-4 h-4 accent-[#B91C1C] rounded"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
-                <button
-                  type="button"
-                  onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingModal}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#1C1917] text-white hover:bg-[#44403C] flex items-center gap-1.5 shadow-xs"
-                >
-                  {isSubmittingModal ? <Loader2 size={14} className="animate-spin" /> : <Bike size={14} />}
-                  <span>Onboard Delivery Partner</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL 3: GENERAL USER CREATE ─────────────────────────────── */}
+      {/* ── MODAL 2: GENERAL DIRECT USER CREATE ──────────────────────── */}
       {modalType === 'general_user' && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -1040,7 +884,7 @@ export default function UsersManagementClient({
                   <option value="super_admin">👑 Super Admin (Full Business Control)</option>
                   <option value="manager">👔 Store Manager (Orders, Inventory & Staff Shift)</option>
                   <option value="staff">👨‍🍳 Kitchen & Counter Staff (KDS & Prep)</option>
-                  <option value="driver">🛵 Delivery Partner (Rider App & GPS Dispatch)</option>
+                  <option value="driver">🛵 Delivery Staff (Rider App & GPS Dispatch)</option>
                   <option value="viewer">👁️ Auditor / Viewer (Read-Only Reports)</option>
                   <option value="customer">👤 Customer Account</option>
                 </select>
@@ -1071,7 +915,7 @@ export default function UsersManagementClient({
         </div>
       )}
 
-      {/* ── MODAL 4: MANAGE / EDIT USER RBAC ─────────────────────────── */}
+      {/* ── MODAL 3: MANAGE / EDIT USER RBAC ─────────────────────────── */}
       {selectedUser && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -1144,7 +988,7 @@ export default function UsersManagementClient({
                   <option value="super_admin">👑 Super Admin</option>
                   <option value="manager">👔 Store Manager</option>
                   <option value="staff">👨‍🍳 Kitchen & Counter Staff</option>
-                  <option value="driver">🛵 Delivery Partner</option>
+                  <option value="driver">🛵 Delivery Staff</option>
                   <option value="viewer">👁️ Auditor / Viewer</option>
                   <option value="customer">👤 Customer</option>
                 </select>
