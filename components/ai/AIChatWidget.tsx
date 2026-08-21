@@ -15,12 +15,17 @@ import {
   ArrowRight,
   MapPin,
   Phone,
+  Lock,
+  LogIn,
+  UserPlus,
+  Sparkles,
 } from 'lucide-react'
 import { useStoreStore } from '@/lib/store/useStoreStore'
 import { useCartStore } from '@/store/cartStore'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { createOrder } from '@/app/actions/orders'
 import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorpay'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/utils'
 
@@ -42,6 +47,7 @@ interface ProductItem {
   imageUrl: string
   isVeg: boolean
   isSpicy: boolean
+  categoryId?: string
 }
 
 interface ChatCartItem {
@@ -82,6 +88,7 @@ type ChatMsg =
   | { kind: 'products'; role: 'model'; categoryName: string; products: ProductItem[] }
   | { kind: 'confirm'; role: 'model'; product: ProductItem }
   | { kind: 'added'; role: 'model'; itemName: string; quantity: number; cartCount: number }
+  | { kind: 'auth_required'; role: 'model' }
   | { kind: 'checkout'; role: 'model' }
   | { kind: 'error'; role: 'model'; text: string }
   | { kind: 'payment'; role: 'model'; orderId: string; total: number }
@@ -107,17 +114,39 @@ function ensureRazorpayScript(): Promise<void> {
   })
 }
 
-function isMenuIntent(text: string): boolean {
+const CATEGORY_KEYWORDS: Record<string, RegExp> = {
+  pizzas: /pizza|pizzas|margherita|paneer|capsicum|farmhouse|cheese burst/i,
+  burgers: /burger|burgers|zinger|crispy veg|patty/i,
+  beverages: /drink|drinks|beverage|beverages|coke|pepsi|cola|shake|lassi|juice|water|soda/i,
+  sides: /side|sides|garlic bread|fries|finger|nugget|dips/i,
+  desserts: /dessert|desserts|sweet|cake|brownie|ice cream|mousse|choco/i,
+  combos: /combo|combos|meal|family feast|offer/i,
+  pasta: /pasta|pastas|white sauce|red sauce|arrabiata/i,
+}
+
+function matchCategoryKeyword(text: string): string | null {
+  for (const [slug, regex] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (regex.test(text)) return slug
+  }
+  return null
+}
+
+function isGeneralMenuIntent(text: string): boolean {
   return (
     text.includes('menu') ||
     text.includes('khana') ||
     text.includes('khaana') ||
-    text.includes('something to eat') ||
-    text.includes('eat something') ||
-    text.includes('show food') ||
-    (text.includes('order') &&
-      (text.includes('place') || text.includes('new') || text.includes('pizza') || text.includes(' want '))) ||
-    (text.includes('order food'))
+    text.includes('food') ||
+    text.includes('items') ||
+    text.includes('categories') ||
+    text.includes('options') ||
+    text.includes('what do you have') ||
+    text.includes('what can i eat') ||
+    text.includes('recommend') ||
+    text.includes('popular') ||
+    text.includes('best seller') ||
+    text.includes('rate list') ||
+    text.includes('price list')
   )
 }
 
@@ -128,7 +157,8 @@ function isCheckoutIntent(text: string): boolean {
     text.includes('proceed to pay') ||
     text.includes('ready to pay') ||
     (text.includes('cart') && (text.includes('pay') || text.includes('buy'))) ||
-    text.includes('place my order')
+    text.includes('place my order') ||
+    text.includes('place order')
   )
 }
 
@@ -139,6 +169,7 @@ export default function AIChatWidget() {
   const [messages, setMessages] = useState<ChatMsg[]>([{ kind: 'welcome', role: 'model' }])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
 
   const [chatItems, setChatItems] = useState<ChatCartItem[]>([])
   const [customer, setCustomer] = useState<CustomerDetails | null>(null)
@@ -150,6 +181,18 @@ export default function AIChatWidget() {
   const lastCategoryRef = useRef<{ id: string; name: string } | null>(null)
   const pendingPaymentRef = useRef<PendingPayment | null>(null)
   const customerRef = useRef<CustomerDetails | null>(null)
+
+  // Track Supabase User state
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUser(user)
+      } catch {}
+    }
+    checkAuth()
+  }, [isOpen])
 
   useEffect(() => {
     pendingPaymentRef.current = pendingPayment
@@ -178,7 +221,7 @@ export default function AIChatWidget() {
       if (data.success && data.categories?.length) {
         setMessages((m) => [
           ...m,
-          { kind: 'text', role: 'model', text: `We have ${data.categories.length} delicious categories. Pick one and I'll show you what's inside! 👇` },
+          { kind: 'text', role: 'model', text: 'Select any category below to browse our fresh hot items with photos and prices: 👇' },
           { kind: 'categories', role: 'model', categories: data.categories },
         ])
       } else {
@@ -219,6 +262,26 @@ export default function AIChatWidget() {
       setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Could not load that category. Please try again.' }])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleOpenCategoryBySlug = async (slug: string) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (activeStoreId) params.set('storeId', activeStoreId)
+      const res = await fetch(`/api/ai/menu?${params.toString()}`)
+      const data = await res.json()
+      if (data.success && data.categories?.length) {
+        const foundCat = data.categories.find((c: CategoryItem) => c.slug.toLowerCase().includes(slug.toLowerCase()) || slug.toLowerCase().includes(c.slug.toLowerCase()))
+        if (foundCat) {
+          await handleOpenCategory(foundCat.id, foundCat.name)
+          return
+        }
+      }
+      await handleBrowse()
+    } catch {
+      await handleBrowse()
     }
   }
 
@@ -270,23 +333,44 @@ export default function AIChatWidget() {
     setMessages((m) => [...m, { kind: 'added', role: 'model', itemName: product.name, quantity: qty, cartCount }])
   }
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (chatItems.length === 0) {
       useCartStore.getState().openCart()
       toast.info('Your cart is empty')
       setMessages((m) => [
         ...m,
-        { kind: 'text', role: 'model', text: 'Your cart is empty right now. Let us fix that! 🍕' },
+        { kind: 'text', role: 'model', text: 'Your cart is empty right now. Pick something delicious from our menu! 🍕' },
         { kind: 'welcome', role: 'model' },
       ])
       return
     }
+
+    // Check user authentication
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    setCurrentUser(user)
+
+    if (!user) {
+      // Must sign in before placing order
+      setMessages((m) => [...m, { kind: 'auth_required', role: 'model' }])
+      return
+    }
+
     setMessages((m) => [...m, { kind: 'checkout', role: 'model' }])
   }
 
   // ── Order placement ────────────────────────────────────────────────────
   const handlePlaceOrder = async (details: CustomerDetails) => {
     if (chatItems.length === 0) return
+
+    // Re-verify auth
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setMessages((m) => [...m, { kind: 'auth_required', role: 'model' }])
+      return
+    }
+
     setIsLoading(true)
     try {
       const payloadItems = chatItems.map((i) => ({
@@ -316,7 +400,11 @@ export default function AIChatWidget() {
       const res = await createOrder({ cartItems: payloadItems, address, paymentMethod: 'razorpay' })
 
       if (!res.success || !res.orderId) {
-        setMessages((m) => [...m, { kind: 'error', role: 'model', text: res.error || 'Could not place your order. Please try again.' }])
+        if (res.error?.toLowerCase().includes('sign in')) {
+          setMessages((m) => [...m, { kind: 'auth_required', role: 'model' }])
+        } else {
+          setMessages((m) => [...m, { kind: 'error', role: 'model', text: res.error || 'Could not place your order. Please try again.' }])
+        }
         return
       }
 
@@ -404,7 +492,7 @@ export default function AIChatWidget() {
         email: customerDetails?.email || '',
         contact: customerDetails?.phone || '',
       },
-      theme: { color: '#FF3B00' },
+      theme: { color: '#B91C1C' },
       handler: async (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) => {
         const verifyRes = await verifyRazorpayPayment({
           orderId: pending.orderId,
@@ -424,7 +512,7 @@ export default function AIChatWidget() {
           setIsLoading(false)
           setMessages((m) => [
             ...m,
-            { kind: 'text', role: 'model', text: 'Payment window was closed. No problem — tap "Proceed to Pay" below anytime to retry. 💳' },
+            { kind: 'text', role: 'model', text: 'Payment window was closed. No problem — tap "Proceed to Pay" below anytime to complete your order. 💳' },
           ])
         },
       },
@@ -453,7 +541,7 @@ export default function AIChatWidget() {
     setIsLoading(false)
   }
 
-  // ── Free text handling (LLM + intent detection) ───────────────────────
+  // ── Free text handling (Visual & Formatted Navigation) ─────────────────
   const handleSend = async () => {
     const text = input.trim()
     if (!text) return
@@ -462,18 +550,28 @@ export default function AIChatWidget() {
 
     const lower = text.toLowerCase()
 
-    if (isMenuIntent(lower)) {
+    // 1. Checkout intent
+    if (isCheckoutIntent(lower)) {
+      await handleCheckout()
+      return
+    }
+
+    // 2. Direct category intent (e.g. "pizzas", "burger", "drinks", "sides", "desserts", "pasta")
+    const matchedCategory = matchCategoryKeyword(lower)
+    if (matchedCategory) {
+      await handleOpenCategoryBySlug(matchedCategory)
+      return
+    }
+
+    // 3. General menu intent
+    if (isGeneralMenuIntent(lower)) {
       await handleBrowse()
       return
     }
 
-    if (isCheckoutIntent(lower)) {
-      handleCheckout()
-      return
-    }
-
+    // 4. Tracking intent
     if (
-      (lower.includes('track') || (lower.includes('order status') || lower.includes('where is my'))) &&
+      (lower.includes('track') || lower.includes('order status') || lower.includes('where is my')) &&
       (chatItems.length > 0 || orderId)
     ) {
       const target = orderId || ''
@@ -483,26 +581,28 @@ export default function AIChatWidget() {
           kind: 'text',
           role: 'model',
           text: target
-            ? `You can track order #${target.slice(0, 8).toUpperCase()} here: ${window.location.origin}/track?orderId=${target}`
+            ? `You can track order #${target.slice(0, 8).toUpperCase()} live here: ${window.location.origin}/track?orderId=${target}`
             : `Open this page to track your order: ${window.location.origin}/track`,
         },
       ])
       return
     }
 
+    // 5. Help intent
     if (lower.includes('help') || lower.includes('what can you do')) {
       setMessages((m) => [
         ...m,
         {
           kind: 'text',
           role: 'model',
-          text: 'I can take your complete order right here! 🍕\n\n• Type "menu" to browse categories & items\n• Type "checkout" to pay once you have selected items\n• Type "track" for your order status\n\nJust tap the buttons I show you and we will get you sorted in no time!',
+          text: 'I can help you browse our visual menu and place your complete delivery order right here! 🍕',
         },
+        { kind: 'welcome', role: 'model' },
       ])
       return
     }
 
-    // General conversation via LLM
+    // 6. Conversational AI fallback with structured card integration
     setIsLoading(true)
     try {
       const response = await fetch('/api/ai/order-assistant', {
@@ -511,17 +611,43 @@ export default function AIChatWidget() {
         body: JSON.stringify({ history: messages, storeId: activeStoreId }),
       })
       const data = await response.json()
-      if (data.success && data.reply) {
+      if (data.success) {
         setMessages((m) => [
           ...m,
-          { kind: 'text', role: 'model', text: data.reply },
-          { kind: 'text', role: 'model', text: 'Want to place an order? Just type "menu" and I will walk you through it. 😊' },
+          { kind: 'text', role: 'model', text: data.reply || 'Here is what we have on our menu! 🍕' },
         ])
+
+        if (data.categorySlug) {
+          await handleOpenCategoryBySlug(data.categorySlug)
+        } else if (data.showCategories) {
+          await handleBrowse()
+        } else if (data.productIds && data.productIds.length > 0) {
+          // Fetch and display specific recommended products
+          const params = new URLSearchParams()
+          if (activeStoreId) params.set('storeId', activeStoreId)
+          const menuRes = await fetch(`/api/ai/menu?${params.toString()}`)
+          const menuData = await menuRes.json()
+          if (menuData.success && menuData.products) {
+            const matchedProducts = menuData.products.filter((p: ProductItem) => data.productIds.includes(p.id))
+            if (matchedProducts.length > 0) {
+              setMessages((m) => [
+                ...m,
+                { kind: 'products', role: 'model', categoryName: 'Recommended For You', products: matchedProducts },
+              ])
+            } else {
+              await handleBrowse()
+            }
+          }
+        }
       } else {
-        setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Sorry, I am having trouble connecting right now.' }])
+        setMessages((m) => [
+          ...m,
+          { kind: 'text', role: 'model', text: 'Here are all our menu categories so you can easily pick what you like: 👇' },
+        ])
+        await handleBrowse()
       }
     } catch {
-      setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'An error occurred. Please try again later.' }])
+      await handleBrowse()
     } finally {
       setIsLoading(false)
     }
@@ -539,14 +665,14 @@ export default function AIChatWidget() {
         if (msg.role === 'user') {
           return (
             <div className="flex justify-end">
-              <div className="max-w-[85%] p-3 rounded-2xl rounded-tr-none text-sm bg-[#1C1917] text-white">{msg.text}</div>
+              <div className="max-w-[85%] p-3 rounded-2xl rounded-tr-none text-sm bg-[#1C1917] text-white shadow-xs">{msg.text}</div>
             </div>
           )
         }
         return (
           <div className="flex justify-start">
             <div
-              className={`max-w-[85%] p-3 rounded-2xl rounded-tl-none text-sm shadow-sm whitespace-pre-line ${
+              className={`max-w-[85%] p-3 rounded-2xl rounded-tl-none text-sm shadow-xs whitespace-pre-line ${
                 msg.kind === 'error' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-white border border-[#E7E0D8] text-[#1C1917]'
               }`}
             >
@@ -581,8 +707,11 @@ export default function AIChatWidget() {
           <AddedCard itemName={msg.itemName} quantity={msg.quantity} cartCount={msg.cartCount} onCheckout={handleCheckout} onBrowse={handleBrowse} />
         )
 
+      case 'auth_required':
+        return <AuthRequiredCard onBrowse={handleBrowse} />
+
       case 'checkout':
-        return <CheckoutCard items={chatItems} loading={isLoading} onSubmit={handlePlaceOrder} />
+        return <CheckoutCard items={chatItems} user={currentUser} loading={isLoading} onSubmit={handlePlaceOrder} />
 
       case 'payment':
         return <PaymentCard orderId={msg.orderId} total={msg.total} loading={isLoading} onPay={handlePay} />
@@ -601,7 +730,7 @@ export default function AIChatWidget() {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-20 md:bottom-6 right-6 p-4 rounded-full bg-[#B91C1C] text-white shadow-lg hover:bg-rose-700 transition-all z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-20 md:bottom-6 right-6 p-4 rounded-full bg-[#B91C1C] text-white shadow-xl hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all z-50 ${isOpen ? 'scale-0' : 'scale-100'}`}
         aria-label="Open Pizza Assistant chat"
       >
         <MessageCircle size={24} />
@@ -609,28 +738,34 @@ export default function AIChatWidget() {
 
       {/* Chat Window */}
       <div
-        className={`fixed bottom-20 md:bottom-6 right-6 w-[360px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
-          isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
+        className={`fixed bottom-20 md:bottom-6 right-6 w-[360px] sm:w-[380px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
+          isOpen ? 'scale-100 opacity-100 pointer-events-auto' : 'scale-0 opacity-0 pointer-events-none'
         }`}
-        style={{ height: '560px', maxHeight: 'calc(100vh - 112px)' }}
+        style={{ height: '580px', maxHeight: 'calc(100vh - 100px)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-[#B91C1C] text-white rounded-t-2xl">
-          <div className="flex items-center gap-2">
-            <Bot size={20} />
+        <div className="flex items-center justify-between p-4 bg-[#B91C1C] text-white rounded-t-2xl shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <Bot size={18} />
+            </div>
             <div>
-              <h3 className="font-bold text-sm leading-tight">Pizza Assistant</h3>
-              <p className="text-[10px] text-white/80">Order delivery right here 🍕</p>
+              <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
+                Pizza Assistant <Sparkles size={12} className="text-amber-300" />
+              </h3>
+              <p className="text-[10px] text-white/80">Interactive visual ordering 🍕</p>
             </div>
           </div>
-          {chatItems.length > 0 && (
-            <span className="flex items-center gap-1 text-[10px] font-bold bg-white/20 rounded-full px-2 py-1">
-              <ShoppingCart size={11} /> {chatItems.reduce((s, i) => s + i.quantity, 0)}
-            </span>
-          )}
-          <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors" aria-label="Close chat">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {chatItems.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-bold bg-white/20 rounded-full px-2.5 py-1">
+                <ShoppingCart size={11} /> {chatItems.reduce((s, i) => s + i.quantity, 0)}
+              </span>
+            )}
+            <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors" aria-label="Close chat">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -640,8 +775,8 @@ export default function AIChatWidget() {
           ))}
           {showThinking && (
             <div className="flex justify-start">
-              <div className="bg-white border border-[#E7E0D8] p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2 text-sm text-[#78716C]">
-                <Loader2 size={14} className="animate-spin" /> Thinking...
+              <div className="bg-white border border-[#E7E0D8] p-3 rounded-2xl rounded-tl-none shadow-xs flex items-center gap-2 text-xs text-[#78716C]">
+                <Loader2 size={13} className="animate-spin text-[#B91C1C]" /> Loading visual menu...
               </div>
             </div>
           )}
@@ -656,13 +791,13 @@ export default function AIChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask about our menu..."
-              className="flex-1 px-4 py-2 bg-[#F5F2EC] rounded-xl text-sm text-[#1C1917] placeholder:text-[#A8A29E] caret-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white transition-all"
+              placeholder="Ask for pizzas, burgers, drinks..."
+              className="flex-1 px-4 py-2.5 bg-[#F5F2EC] rounded-xl text-xs sm:text-sm text-[#1C1917] placeholder:text-[#A8A29E] caret-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white transition-all"
             />
             <button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              className="p-2.5 rounded-xl bg-[#1C1917] text-white disabled:opacity-50 hover:bg-[#44403C] transition-colors"
+              className="p-2.5 rounded-xl bg-[#1C1917] text-white disabled:opacity-50 hover:bg-[#44403C] transition-colors shadow-xs"
               aria-label="Send message"
             >
               <Send size={16} />
@@ -684,20 +819,20 @@ function WelcomeCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
-        <p className="text-sm text-[#1C1917] leading-relaxed">
-          Hi! I&apos;m your virtual pizza assistant. I can take your <strong>full delivery order</strong> right here. 🍕
+      <div className="max-w-[92%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3.5 space-y-3">
+        <p className="text-xs sm:text-sm text-[#1C1917] leading-relaxed">
+          Welcome to <strong>Pizza Expert</strong>! 🍕 Browse our visual menu cards below, add your favorites to cart, and place your order directly.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onBrowse}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
           >
-            🍕 Browse Menu
+            🍕 View Menu
           </button>
           <button
             onClick={onCheckout}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#1C1917] text-white text-xs font-bold hover:bg-[#44403C] transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-[#44403C] transition-colors shadow-xs"
           >
             🛒 Checkout
           </button>
@@ -716,16 +851,19 @@ function CategoriesCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2">
-        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">Choose a category</p>
+      <div className="w-full max-w-[98%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
+        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide flex items-center justify-between">
+          <span>Explore Categories</span>
+          <span className="text-[10px] font-normal text-[#78716C]">Tap to view items</span>
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => onSelect(cat.id, cat.name)}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-[#E7E0D8] hover:border-[#B91C1C] hover:bg-[#FEF2F2] transition-colors text-left"
+              className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-[#E7E0D8] hover:border-[#B91C1C] hover:bg-[#FEF2F2] transition-all text-left group shadow-2xs"
             >
-              <img src={cat.imageUrl} alt={cat.name} className="w-full h-14 object-cover rounded-lg" loading="lazy" />
+              <img src={cat.imageUrl} alt={cat.name} className="w-full h-14 object-cover rounded-lg group-hover:scale-[1.02] transition-transform" loading="lazy" />
               <span className="text-[11px] font-bold text-[#1C1917] text-center leading-tight">{cat.name}</span>
               <span className="text-[9px] text-[#A8A29E]">{cat.productCount} items</span>
             </button>
@@ -749,31 +887,33 @@ function ProductsCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2">
-        <div className="flex items-center justify-between">
+      <div className="w-full max-w-[98%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
+        <div className="flex items-center justify-between pb-1 border-b border-[#F4EFEA]">
           <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">{categoryName}</p>
           <button onClick={onBack} className="text-[10px] font-bold text-[#B91C1C] hover:underline">
-            ← Back
+            ← All Categories
           </button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-0.5">
           {products.map((p) => (
             <button
               key={p.id}
               onClick={() => onSelect(p)}
-              className="w-full flex items-center gap-2.5 p-2 rounded-xl border border-[#E7E0D8] hover:border-[#B91C1C] hover:bg-[#FEF2F2] transition-colors text-left"
+              className="w-full flex items-center gap-2.5 p-2 rounded-xl border border-[#E7E0D8] hover:border-[#B91C1C] hover:bg-[#FEF2F2] transition-all text-left shadow-2xs"
             >
               <img src={p.imageUrl} alt={p.name} className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-bold text-[#1C1917] truncate">{p.name}</span>
-                  {p.isVeg && <span className="inline-block w-3 h-3 rounded-[3px] border-2 border-green-600 shrink-0" title="Veg" />}
-                  {p.isSpicy && <span className="text-[9px] font-bold text-red-600 shrink-0">🌶️</span>}
+                  {p.isVeg && <span className="inline-block w-2.5 h-2.5 rounded-[2px] border-2 border-green-600 shrink-0" title="Veg" />}
+                  {p.isSpicy && <span className="text-[9px] shrink-0">🌶️</span>}
                 </div>
-                <p className="text-[10px] text-[#A8A29E] truncate">{p.description}</p>
+                <p className="text-[10px] text-[#78716C] truncate">{p.description}</p>
                 <p className="text-xs font-extrabold text-[#B91C1C]">{formatPrice(p.price)}</p>
               </div>
-              <Plus size={16} className="text-[#B91C1C] shrink-0" />
+              <div className="w-7 h-7 rounded-lg bg-[#FEF2F2] text-[#B91C1C] flex items-center justify-center shrink-0 hover:bg-[#B91C1C] hover:text-white transition-colors">
+                <Plus size={14} />
+              </div>
             </button>
           ))}
         </div>
@@ -796,7 +936,7 @@ function ConfirmCard({
   const [qty, setQty] = useState(1)
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
+      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
         <div className="flex items-center gap-2.5">
           <img src={product.imageUrl} alt={product.name} className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" />
           <div className="min-w-0">
@@ -805,7 +945,7 @@ function ConfirmCard({
             {product.isSpicy && <span className="text-[10px] font-bold text-red-600">🌶️ Spicy</span>}
           </div>
         </div>
-        <div className="flex items-center justify-between rounded-lg bg-[#F5F2EC] p-1.5">
+        <div className="flex items-center justify-between rounded-xl bg-[#F5F2EC] p-2">
           <span className="text-[11px] font-bold text-[#57534E]">Quantity</span>
           <div className="flex items-center gap-1.5">
             <button
@@ -827,10 +967,10 @@ function ConfirmCard({
         </div>
         <button
           onClick={() => onConfirm(product, qty)}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
         >
           <BadgeCheck size={14} />
-          Confirm · {formatPrice(product.price * qty)}
+          Add to Cart · {formatPrice(product.price * qty)}
         </button>
         <div className="flex gap-2">
           <button onClick={onBack} className="flex-1 px-2 py-1.5 rounded-lg border border-[#E7E0D8] text-[10px] font-bold text-[#57534E] hover:bg-[#F4EFEA] transition-colors">
@@ -860,20 +1000,20 @@ function AddedCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
-        <p className="text-sm text-[#1C1917] font-medium">
-          ✅ <strong>{itemName}</strong> ×{quantity} added to your cart. You have <strong>{cartCount}</strong> item(s).
+      <div className="max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
+        <p className="text-xs sm:text-sm text-[#1C1917] font-medium">
+          ✅ <strong>{itemName}</strong> ×{quantity} added to cart. Total items: <strong>{cartCount}</strong>.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onCheckout}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
           >
             🛒 Checkout <ArrowRight size={13} />
           </button>
           <button
             onClick={onBrowse}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#1C1917] text-white text-xs font-bold hover:bg-[#44403C] transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-[#44403C] transition-colors shadow-xs"
           >
             + Add More
           </button>
@@ -883,18 +1023,58 @@ function AddedCard({
   )
 }
 
+function AuthRequiredCard({ onBrowse }: { onBrowse: () => void }) {
+  return (
+    <div className="flex justify-start">
+      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-4 space-y-3">
+        <div className="w-10 h-10 rounded-xl bg-red-50 text-[#B91C1C] flex items-center justify-center mx-auto">
+          <Lock size={20} />
+        </div>
+        <div className="text-center space-y-1">
+          <h4 className="text-sm font-bold text-[#1C1917]">Sign In Required to Order</h4>
+          <p className="text-[11px] text-[#57534E] leading-relaxed">
+            Please log in or register so we can link your live GPS tracking, digital receipt, and loyalty points.
+          </p>
+        </div>
+        <div className="space-y-2 pt-1">
+          <Link
+            href="/login?redirect=/checkout"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
+          >
+            <LogIn size={14} /> Sign In to Place Order
+          </Link>
+          <Link
+            href="/register?redirect=/checkout"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#E7E0D8] text-[#1C1917] text-xs font-bold hover:bg-[#F4EFEA] transition-colors"
+          >
+            <UserPlus size={14} /> Create Account
+          </Link>
+        </div>
+        <button
+          onClick={onBrowse}
+          className="w-full text-center text-[10px] font-semibold text-[#78716C] hover:text-[#1C1917] pt-1"
+        >
+          ← Keep Browsing Menu
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CheckoutCard({
   items,
+  user,
   loading,
   onSubmit,
 }: {
   items: ChatCartItem[]
+  user: any
   loading: boolean
   onSubmit: (details: CustomerDetails) => void
 }) {
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(user?.user_metadata?.name || user?.user_metadata?.full_name || '')
+  const [phone, setPhone] = useState(user?.phone || user?.user_metadata?.phone || '')
+  const [email, setEmail] = useState(user?.email || '')
   const [line1, setLine1] = useState('')
   const [city, setCity] = useState('Prayagraj')
   const [state, setState] = useState('Uttar Pradesh')
@@ -907,7 +1087,7 @@ function CheckoutCard({
   const handleSubmit = () => {
     if (!name.trim()) return setError('Please enter your name.')
     if (!/^[6-9]\d{9}$/.test(phone.replace(/[^0-9]/g, ''))) return setError('Please enter a valid 10-digit mobile number.')
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Please enter a valid email (optional).')
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Please enter a valid email.')
     if (!line1.trim()) return setError('Please enter your delivery address.')
     if (!city.trim()) return setError('Please enter your city.')
     if (!/^\d{6}$/.test(pincode.trim())) return setError('Please enter a valid 6-digit PIN code.')
@@ -916,13 +1096,13 @@ function CheckoutCard({
   }
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg bg-[#F5F2EC] text-sm text-[#1C1917] placeholder:text-[#A8A29E] caret-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white border border-transparent focus:border-[#E7E0D8] transition-all'
+    'w-full px-3 py-2 rounded-lg bg-[#F5F2EC] text-xs text-[#1C1917] placeholder:text-[#A8A29E] caret-[#1C1917] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:bg-white border border-transparent focus:border-[#E7E0D8] transition-all'
 
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
-        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">Your Order</p>
-        <div className="space-y-1.5 rounded-lg bg-[#F5F2EC] p-2.5">
+      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
+        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">Order Summary</p>
+        <div className="space-y-1.5 rounded-xl bg-[#F5F2EC] p-2.5">
           {items.map((i) => (
             <div key={i.id} className="flex items-center justify-between text-xs">
               <span className="text-[#1C1917] font-medium">
@@ -937,33 +1117,33 @@ function CheckoutCard({
           </div>
         </div>
 
-        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">Delivery Details</p>
+        <p className="text-xs font-bold text-[#1C1917] uppercase tracking-wide">Delivery Address</p>
         <input className={inputClass} placeholder="Full Name *" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex items-center gap-1.5">
           <Phone size={14} className="text-[#A8A29E] shrink-0" />
           <input className={inputClass} placeholder="Mobile Number (10 digits) *" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
         </div>
-        <input className={inputClass} placeholder="Email (for receipt) — optional" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+        <input className={inputClass} placeholder="Email (for order invoice)" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
         <div className="flex items-center gap-1.5">
           <MapPin size={14} className="text-[#A8A29E] shrink-0" />
-          <input className={inputClass} placeholder="Full Delivery Address *" value={line1} onChange={(e) => setLine1(e.target.value)} />
+          <input className={inputClass} placeholder="Street / House / Flat *" value={line1} onChange={(e) => setLine1(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-1.5">
           <input className={inputClass} placeholder="City *" value={city} onChange={(e) => setCity(e.target.value)} />
           <input className={inputClass} placeholder="State" value={state} onChange={(e) => setState(e.target.value)} />
         </div>
         <input className={inputClass} placeholder="PIN Code (6 digits) *" value={pincode} onChange={(e) => setPincode(e.target.value)} inputMode="numeric" />
-        <input className={inputClass} placeholder="Notes (landmark, etc.)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input className={inputClass} placeholder="Notes (e.g., Near Anand Bhawan)" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
         {error && <p className="text-[11px] font-semibold text-red-600">{error}</p>}
 
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors disabled:opacity-60 shadow-xs"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-          {loading ? 'Placing Order...' : 'Place Order & Go to Payment'}
+          {loading ? 'Processing Order...' : 'Confirm Order & Pay'}
         </button>
       </div>
     </div>
@@ -983,28 +1163,28 @@ function PaymentCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
-        <p className="text-sm font-bold text-[#1C1917]">Almost done — pay to confirm! 💳</p>
-        <div className="rounded-lg bg-[#F5F2EC] p-2.5 space-y-1 text-xs">
+      <div className="w-full max-w-[95%] bg-white border border-[#E7E0D8] rounded-2xl rounded-tl-none shadow-xs p-3 space-y-2.5">
+        <p className="text-xs sm:text-sm font-bold text-[#1C1917]">Complete payment to confirm! 💳</p>
+        <div className="rounded-xl bg-[#F5F2EC] p-2.5 space-y-1 text-xs">
           <div className="flex justify-between">
             <span className="text-[#57534E]">Order Ref</span>
             <span className="font-mono font-bold text-[#1C1917]">#{orderId.slice(0, 8).toUpperCase()}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#57534E]">Payable Amount</span>
+            <span className="text-[#57534E]">Total Amount</span>
             <span className="font-extrabold text-[#B91C1C]">{formatPrice(total)}</span>
           </div>
         </div>
-        <p className="text-[10px] text-[#A8A29E] leading-snug">
-          This will open a secure payment link (UPI / Card / NetBanking). Your order is confirmed as soon as payment succeeds.
+        <p className="text-[10px] text-[#78716C] leading-snug">
+          Secure checkout via UPI / Credit / Debit / NetBanking.
         </p>
         <button
           onClick={onPay}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-green-700 text-white text-xs font-bold hover:bg-green-800 transition-colors disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors disabled:opacity-60 shadow-xs"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <BadgeCheck size={14} />}
-          {loading ? 'Opening Gateway...' : `Proceed to Pay ${formatPrice(total)}`}
+          {loading ? 'Opening Gateway...' : `Pay ${formatPrice(total)}`}
         </button>
       </div>
     </div>
@@ -1014,34 +1194,34 @@ function PaymentCard({
 function DoneCard({ orderId, total }: { orderId: string; total: number }) {
   return (
     <div className="flex justify-start">
-      <div className="w-full max-w-[95%] bg-white border border-green-200 rounded-2xl rounded-tl-none shadow-sm p-3 space-y-2.5">
+      <div className="w-full max-w-[95%] bg-white border border-emerald-200 rounded-2xl rounded-tl-none shadow-xs p-3.5 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-            <BadgeCheck size={18} className="text-green-700" />
+          <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+            <BadgeCheck size={18} className="text-emerald-700" />
           </span>
           <div>
-            <p className="text-sm font-bold text-green-800">Thank you, {total > 0 ? 'payment received! 🎉' : ''}</p>
-            <p className="text-[10px] text-[#57534E]">Your order has been placed successfully.</p>
+            <p className="text-sm font-bold text-emerald-800">Order Confirmed! 🎉</p>
+            <p className="text-[10px] text-[#57534E]">Payment received. Your pizza is being baked.</p>
           </div>
         </div>
-        <div className="rounded-lg bg-green-50 border border-green-200 p-2.5 space-y-1 text-xs">
+        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-2.5 space-y-1 text-xs">
           <div className="flex justify-between">
             <span className="text-[#57534E]">Order ID</span>
             <span className="font-mono font-bold text-[#1C1917]">#{orderId.slice(0, 8).toUpperCase()}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-[#57534E]">Amount Paid</span>
-            <span className="font-extrabold text-green-700">{formatPrice(total)}</span>
+            <span className="font-extrabold text-emerald-700">{formatPrice(total)}</span>
           </div>
         </div>
         <Link
           href={`/track?orderId=${orderId}`}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
         >
-          📍 Track My Order <ArrowRight size={13} />
+          📍 Track Live Delivery <ArrowRight size={13} />
         </Link>
         <Link href={`/order/${orderId}`} className="block text-center text-[11px] font-bold text-[#57534E] hover:text-[#B91C1C] transition-colors">
-          View Order Details →
+          View Receipt →
         </Link>
       </div>
     </div>

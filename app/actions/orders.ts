@@ -147,8 +147,11 @@ export async function createOrder(payload: {
 
     const { subtotal, tax, deliveryFee, discount, total } = calculation.data
 
-    // 2. Get current user if authenticated
-    const { data: { user } } = await supabase.auth.getUser()
+    // 2. Authentication check: Orders cannot be placed without sign-in
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user) {
+      return { success: false, error: 'Sign in required: Please sign in or register to place your order.' }
+    }
 
     // 3. Determine initial order status
     //    COD fraud gate: high-value COD orders enter 'cod_pending' to allow phone verification
@@ -164,7 +167,7 @@ export async function createOrder(payload: {
     const { data: order, error: orderErr } = await adminClient
       .from('orders')
       .insert({
-        user_id: user?.id || null,
+        user_id: user.id,
         status: initialStatus,
         subtotal,
         tax,
