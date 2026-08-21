@@ -117,8 +117,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     icon: Settings,
     keywords: ['admin', 'config', 'staff', 'rbac', 'taxes', 'email templates', 'theme'],
     items: [
-      { label: 'User Management (RBAC)', href: '/admin/users', icon: ShieldCheck, keywords: ['roles', 'permissions', 'super admin', 'access control'] },
-      { label: 'Staff Roster', href: '/admin/staff', icon: Users, keywords: ['employees', 'staff members', 'cashier logins', 'schedule'] },
+      { label: 'User & Team Management', href: '/admin/users', icon: ShieldCheck, keywords: ['users', 'staff', 'drivers', 'roles', 'permissions', 'super admin', 'access control', 'roster'] },
       { label: 'General Settings', href: '/admin/settings', icon: Settings, keywords: ['store details', 'logo', 'business name', 'operating hours', 'contact'] },
       { label: 'Email Templates', href: '/admin/settings?tab=emails', icon: Mail, keywords: ['email templates', 'mail notifications', 'resend', 'receipt template', 'alerts'] },
       { label: 'Tax Engine & GST', href: '/admin/settings/taxes', icon: Percent, keywords: ['gst rate', 'tax slab', 'fssai', 'gstin number'] },

@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   Users, Shield, ShieldCheck, UserPlus, Search, Edit3, Trash2,
   Phone, Mail, Bike, UtensilsCrossed, Crown, Eye, CheckCircle2,
   XCircle, AlertCircle, Sparkles, Filter, Download, X, Loader2,
-  KeyRound, FileText, Check, Lock, Unlock, Zap
+  KeyRound, FileText, Check, Lock, Unlock, Zap, Send, Building2,
+  Car, RefreshCw, Plus
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ManagedUser } from '@/app/actions/users'
@@ -14,6 +16,8 @@ import {
   createManagedUser,
   deleteManagedUser
 } from '@/app/actions/users'
+import { inviteStaffMember } from '@/app/actions/staff'
+import { onboardDriverDirect } from '@/app/actions/drivers'
 import {
   ROLE_DEFINITIONS,
   ALL_PERMISSIONS,
@@ -21,14 +25,20 @@ import {
   isPrimarySuperAdmin,
   type UserRole
 } from '@/lib/auth/rbac'
+import { cn } from '@/lib/utils'
 
 export default function UsersManagementClient({
   initialUsers
 }: {
   initialUsers: ManagedUser[]
 }) {
+  const searchParams = useSearchParams()
+  const initialTabParam = searchParams.get('tab')
+
   const [users, setUsers] = useState<ManagedUser[]>(initialUsers)
-  const [activeTab, setActiveTab] = useState<'all' | 'staff' | 'driver' | 'customer' | 'matrix'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'staff' | 'driver' | 'customer' | 'matrix'>(
+    initialTabParam === 'staff' ? 'staff' : initialTabParam === 'driver' || initialTabParam === 'drivers' ? 'driver' : 'all'
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
 
@@ -36,9 +46,31 @@ export default function UsersManagementClient({
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Create User Modal
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
+  // Invite / Create Modals
+  const [modalType, setModalType] = useState<'staff_invite' | 'driver_invite' | 'general_user' | null>(null)
+  const [isSubmittingModal, setIsSubmittingModal] = useState(false)
+
+  // Staff Invite Form State
+  const [staffInviteData, setStaffInviteData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: 'Kitchen Operations',
+    role: 'staff' as UserRole,
+  })
+
+  // Driver Invite Form State
+  const [driverInviteData, setDriverInviteData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    vehicle_type: 'bike',
+    vehicle_number: '',
+    license_number: '',
+    auto_verify: true,
+  })
+
+  // General Create User State
   const [newUserData, setNewUserData] = useState<{
     name: string
     email: string
@@ -62,6 +94,12 @@ export default function UsersManagementClient({
     license_number: '',
     auto_verify: true,
   })
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'staff') setActiveTab('staff')
+    else if (tabParam === 'driver' || tabParam === 'drivers') setActiveTab('driver')
+  }, [searchParams])
 
   // Filter users based on tab, role filter, and search
   const filteredUsers = users.filter((u) => {
@@ -121,7 +159,106 @@ export default function UsersManagementClient({
     }
   }
 
-  // Handle Create User
+  // Handle Staff Invite Submission
+  const handleStaffInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!staffInviteData.name.trim() || !staffInviteData.email.trim()) {
+      toast.error('Please enter full name and email address.')
+      return
+    }
+
+    setIsSubmittingModal(true)
+    const formData = new FormData()
+    formData.append('name', staffInviteData.name.trim())
+    formData.append('email', staffInviteData.email.trim().toLowerCase())
+    formData.append('phone', staffInviteData.phone.trim())
+    formData.append('department', staffInviteData.department)
+    formData.append('role', staffInviteData.role)
+
+    const res = await inviteStaffMember(formData)
+    setIsSubmittingModal(false)
+
+    if (res.success) {
+      toast.success(`Invitation email sent to ${staffInviteData.email}!`)
+      setModalType(null)
+      // Optimistic addition
+      const newUserObj: ManagedUser = {
+        id: (res as any).userId || `staff-${Date.now()}`,
+        name: staffInviteData.name.trim(),
+        email: staffInviteData.email.trim().toLowerCase(),
+        phone: staffInviteData.phone.trim() || null,
+        role: staffInviteData.role,
+        is_active: true,
+        invite_status: 'pending',
+        department: staffInviteData.department,
+        created_at: new Date().toISOString(),
+      }
+      setUsers([newUserObj, ...users])
+      setStaffInviteData({
+        name: '',
+        email: '',
+        phone: '',
+        department: 'Kitchen Operations',
+        role: 'staff',
+      })
+    } else {
+      toast.error(res.error || 'Failed to invite staff member')
+    }
+  }
+
+  // Handle Driver Invite Submission
+  const handleDriverInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!driverInviteData.name.trim() || !driverInviteData.phone.trim()) {
+      toast.error('Please enter rider full name and mobile number.')
+      return
+    }
+
+    setIsSubmittingModal(true)
+    const formData = new FormData()
+    formData.append('name', driverInviteData.name.trim())
+    formData.append('phone', driverInviteData.phone.trim())
+    formData.append('email', driverInviteData.email.trim())
+    formData.append('vehicle_type', driverInviteData.vehicle_type)
+    formData.append('vehicle_number', driverInviteData.vehicle_number.trim().toUpperCase())
+    formData.append('license_number', driverInviteData.license_number.trim().toUpperCase())
+    formData.append('auto_verify', driverInviteData.auto_verify ? 'true' : 'false')
+
+    const res = await onboardDriverDirect(formData)
+    setIsSubmittingModal(false)
+
+    if (res.success) {
+      toast.success(`Delivery partner ${driverInviteData.name} onboarded successfully!`)
+      setModalType(null)
+      const newDriverObj: ManagedUser = {
+        id: (res as any).driverId || `driver-${Date.now()}`,
+        name: driverInviteData.name.trim(),
+        phone: driverInviteData.phone.trim(),
+        email: driverInviteData.email.trim() || `${driverInviteData.phone.trim()}@driver.pizzaexpert.local`,
+        role: 'driver',
+        is_active: true,
+        verification_status: driverInviteData.auto_verify ? 'verified' : 'pending',
+        vehicle_type: driverInviteData.vehicle_type,
+        vehicle_number: driverInviteData.vehicle_number.trim().toUpperCase(),
+        license_number: driverInviteData.license_number.trim().toUpperCase(),
+        created_at: new Date().toISOString(),
+      }
+      setUsers([newDriverObj, ...users])
+      setDriverInviteData({
+        name: '',
+        phone: '',
+        email: '',
+        vehicle_type: 'bike',
+        vehicle_number: '',
+        license_number: '',
+        auto_verify: true,
+      })
+    } else {
+      toast.error(res.error || 'Failed to onboard delivery partner')
+    }
+  }
+
+  // Handle General Create User
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newUserData.name.trim() || !newUserData.email.trim()) {
@@ -129,14 +266,14 @@ export default function UsersManagementClient({
       return
     }
 
-    setIsCreating(true)
+    setIsSubmittingModal(true)
     const res = await createManagedUser(newUserData)
-    setIsCreating(false)
+    setIsSubmittingModal(false)
 
     if (res.success && res.user) {
-      toast.success(`🎉 User ${newUserData.name} created with role ${newUserData.role.toUpperCase()}!`)
+      toast.success(`User ${newUserData.name} created with role ${newUserData.role.toUpperCase()}!`)
       setUsers([res.user as ManagedUser, ...users])
-      setShowCreateModal(false)
+      setModalType(null)
       setNewUserData({
         name: '',
         email: '',
@@ -157,7 +294,7 @@ export default function UsersManagementClient({
   // Handle Delete
   const handleDelete = async (user: ManagedUser) => {
     if (user.role === 'super_admin' || isPrimarySuperAdmin(user)) {
-      toast.error('👑 Super Admin profiles are permanently locked and cannot be deleted by anyone.')
+      toast.error('👑 Super Admin profiles are permanently locked and cannot be deleted.')
       return
     }
 
@@ -181,161 +318,402 @@ export default function UsersManagementClient({
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FEF2F2] border border-[#FCA5A5] text-[#B91C1C] text-xs font-bold font-mono uppercase mb-1">
-            <ShieldCheck size={14} /> Role-Based Access Control (RBAC)
+      {/* Top Header & Actions Bar */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#E7E0D8] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-red-50 text-[#B91C1C] flex items-center justify-center font-bold">
+              <ShieldCheck size={22} />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black font-serif text-[#1C1917] tracking-tight uppercase">
+                User & Team Management
+              </h1>
+              <p className="text-xs sm:text-sm text-[#78716C]">
+                Staff Roster, Delivery Fleet, Customer Directory & RBAC Security Control
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#1C1917]">
-            User & Team Management
-          </h1>
-          <p className="text-xs sm:text-sm text-[#78716C]">
-            Manage staff members, kitchen crew, delivery partners, customers, and granular RBAC permissions.
-          </p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn btn-primary text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-xs"
+        {/* Quick Action Invite Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setModalType('staff_invite')}
+            className="btn btn-primary px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-xs"
+          >
+            <UserPlus size={15} />
+            <span>Invite New Staff</span>
+          </button>
+
+          <button
+            onClick={() => setModalType('driver_invite')}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#1C1917] text-white hover:bg-[#44403C] transition-colors flex items-center gap-1.5 shadow-xs"
+          >
+            <Bike size={15} />
+            <span>Invite Delivery Partner</span>
+          </button>
+
+          <button
+            onClick={() => setModalType('general_user')}
+            className="px-3 py-2 rounded-xl text-xs font-bold border border-[#E7E0D8] text-[#1C1917] hover:bg-[#F5F5F4] transition-colors flex items-center gap-1.5"
+          >
+            <Plus size={15} />
+            <span>Add User</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Roster Metric Pills */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            "p-4 rounded-2xl border transition-all cursor-pointer",
+            activeTab === 'all' ? "bg-white border-[#B91C1C] shadow-xs ring-1 ring-[#B91C1C]/20" : "bg-white/70 border-[#E7E0D8] hover:bg-white"
+          )}
         >
-          <UserPlus size={16} />
-          <span>Add User / Onboard Staff</span>
-        </button>
+          <div className="flex items-center justify-between text-[#78716C] mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider">All Accounts</span>
+            <Users size={16} />
+          </div>
+          <p className="text-2xl font-black text-[#1C1917]">{users.length}</p>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('staff')}
+          className={cn(
+            "p-4 rounded-2xl border transition-all cursor-pointer",
+            activeTab === 'staff' ? "bg-white border-[#B91C1C] shadow-xs ring-1 ring-[#B91C1C]/20" : "bg-white/70 border-[#E7E0D8] hover:bg-white"
+          )}
+        >
+          <div className="flex items-center justify-between text-emerald-700 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider">Staff Roster</span>
+            <UtensilsCrossed size={16} />
+          </div>
+          <p className="text-2xl font-black text-emerald-800">{staffCount}</p>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('driver')}
+          className={cn(
+            "p-4 rounded-2xl border transition-all cursor-pointer",
+            activeTab === 'driver' ? "bg-white border-[#B91C1C] shadow-xs ring-1 ring-[#B91C1C]/20" : "bg-white/70 border-[#E7E0D8] hover:bg-white"
+          )}
+        >
+          <div className="flex items-center justify-between text-blue-700 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider">Delivery Fleet</span>
+            <Bike size={16} />
+          </div>
+          <p className="text-2xl font-black text-blue-800">{driverCount}</p>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('customer')}
+          className={cn(
+            "p-4 rounded-2xl border transition-all cursor-pointer",
+            activeTab === 'customer' ? "bg-white border-[#B91C1C] shadow-xs ring-1 ring-[#B91C1C]/20" : "bg-white/70 border-[#E7E0D8] hover:bg-white"
+          )}
+        >
+          <div className="flex items-center justify-between text-amber-700 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider">Customers</span>
+            <Crown size={16} />
+          </div>
+          <p className="text-2xl font-black text-amber-800">{customerCount}</p>
+        </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-[#78716C]">Total Directory</span>
-          <div className="text-2xl font-bold font-mono text-[#1C1917]">{users.length} Users</div>
-          <span className="text-[11px] text-emerald-600 font-medium">● Unified RBAC Hub</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-[#78716C]">Staff & Managers</span>
-          <div className="text-2xl font-bold font-mono text-[#B91C1C]">{staffCount} Members</div>
-          <span className="text-[11px] text-[#78716C]">Kitchen, Counter & Admin</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-[#78716C]">Delivery Partners</span>
-          <div className="text-2xl font-bold font-mono text-amber-600">{driverCount} Riders</div>
-          <span className="text-[11px] text-emerald-600 font-medium">● Active Fleet</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
-          <span className="text-[10px] font-bold uppercase text-[#78716C]">Registered Customers</span>
-          <div className="text-2xl font-bold font-mono text-purple-700">{customerCount} Accounts</div>
-          <span className="text-[11px] text-[#78716C]">Ordering & Loyalty</span>
-        </div>
-      </div>
-
-      {/* Tabbed Navigation Bar */}
-      <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-xs p-2 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
-          {[
-            { key: 'all', label: `All Users (${users.length})`, icon: Users },
-            { key: 'staff', label: `Staff & Team (${staffCount})`, icon: UtensilsCrossed },
-            { key: 'driver', label: `Delivery Partners (${driverCount})`, icon: Bike },
-            { key: 'customer', label: `Customers (${customerCount})`, icon: UserPlus },
-            { key: 'matrix', label: '🛡️ RBAC Permissions Matrix', icon: Shield },
-          ].map(({ key, label, icon: Icon }) => (
+      {/* Tabs Navigation */}
+      <div className="flex items-center gap-2 border-b border-[#E7E0D8] pb-1 overflow-x-auto">
+        {[
+          { id: 'all', label: 'All Directory', count: users.length, icon: Users },
+          { id: 'staff', label: 'Active Staff Roster', count: staffCount, icon: UtensilsCrossed },
+          { id: 'driver', label: 'Delivery Partners (Fleet)', count: driverCount, icon: Bike },
+          { id: 'customer', label: 'Registered Customers', count: customerCount, icon: Crown },
+          { id: 'matrix', label: 'RBAC Permission Matrix', count: null, icon: Shield },
+        ].map((tab) => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
             <button
-              key={key}
-              onClick={() => setActiveTab(key as any)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === key
-                  ? 'bg-[#1C1917] text-white shadow-xs'
-                  : 'text-[#78716C] hover:text-[#1C1917] hover:bg-[#FBF9F5]'
-              }`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all",
+                isActive
+                  ? "bg-[#1C1917] text-white shadow-xs"
+                  : "text-[#78716C] hover:text-[#1C1917] hover:bg-white/80"
+              )}
             >
               <Icon size={14} />
-              <span>{label}</span>
+              <span>{tab.label}</span>
+              {tab.count !== null && (
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[10px]",
+                  isActive ? "bg-white/20 text-white" : "bg-[#E7E0D8] text-[#57534E]"
+                )}>
+                  {tab.count}
+                </span>
+              )}
             </button>
-          ))}
-        </div>
+          )
+        })}
+      </div>
 
-        {/* Search & Filter */}
-        {activeTab !== 'matrix' && (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#78716C]" />
+      {/* Main Content Area */}
+      {activeTab !== 'matrix' ? (
+        <div className="space-y-4">
+          {/* Search & Filter Bar */}
+          <div className="bg-white rounded-2xl p-4 border border-[#E7E0D8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
               <input
                 type="text"
-                placeholder="Search name, email, phone, plate..."
+                placeholder="Search by name, email, phone number, vehicle plate..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="admin-input pl-9 pr-3 py-2 text-xs bg-white text-[#1C1917]"
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] text-xs text-[#1C1917] placeholder:text-[#A8A29E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20"
               />
             </div>
 
             {activeTab === 'all' && (
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="admin-input py-2 px-3 text-xs bg-white text-[#1C1917] w-auto font-bold"
-              >
-                <option value="all">All Roles</option>
-                <option value="super_admin">Super Admin</option>
-                <option value="manager">Manager</option>
-                <option value="staff">Staff</option>
-                <option value="driver">Driver</option>
-                <option value="viewer">Viewer</option>
-                <option value="customer">Customer</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <Filter size={15} className="text-[#78716C]" />
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-[#FBF9F5] border border-[#E7E0D8] text-xs font-bold text-[#1C1917] focus:bg-white focus:outline-none"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="super_admin">👑 Super Admin</option>
+                  <option value="manager">👔 Manager</option>
+                  <option value="staff">👨‍🍳 Kitchen Staff</option>
+                  <option value="driver">🛵 Delivery Partner</option>
+                  <option value="viewer">👁️ Auditor / Viewer</option>
+                  <option value="customer">👤 Customer</option>
+                </select>
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* TAB CONTENT: RBAC PERMISSIONS MATRIX */}
-      {activeTab === 'matrix' ? (
-        <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-xs overflow-hidden space-y-4 p-6">
-          <div className="border-b border-[#E7E0D8] pb-4">
-            <h3 className="font-serif font-black text-lg text-[#1C1917]">
+          {/* User Table Card */}
+          <div className="bg-white rounded-3xl border border-[#E7E0D8] shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-[#E7E0D8] bg-[#FBF9F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-sm text-[#1C1917] flex items-center gap-2">
+                  <Users size={16} className="text-[#B91C1C]" />
+                  {activeTab === 'staff'
+                    ? 'Active Staff Roster'
+                    : activeTab === 'driver'
+                    ? 'Delivery Partner Fleet'
+                    : activeTab === 'customer'
+                    ? 'Customer Directory'
+                    : 'All Registered Accounts'}
+                </h3>
+                <p className="text-[11px] text-[#78716C]">
+                  Showing {filteredUsers.length} members matching criteria
+                </p>
+              </div>
+
+              {activeTab === 'staff' && (
+                <button
+                  onClick={() => setModalType('staff_invite')}
+                  className="btn btn-primary px-3 py-1.5 text-xs rounded-xl flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <UserPlus size={13} />
+                  <span>Invite New Staff</span>
+                </button>
+              )}
+
+              {activeTab === 'driver' && (
+                <button
+                  onClick={() => setModalType('driver_invite')}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#1C1917] text-white hover:bg-[#44403C] flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <Bike size={13} />
+                  <span>Invite Delivery Partner</span>
+                </button>
+              )}
+            </div>
+
+            <div className="divide-y divide-[#E7E0D8]">
+              {filteredUsers.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-[#F5F5F4] text-[#A8A29E] flex items-center justify-center mx-auto">
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#1C1917]">No users found</p>
+                    <p className="text-xs text-[#A8A29E] mt-0.5">
+                      {searchQuery ? 'Try adjusting your search terms.' : 'No members currently registered under this filter.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                filteredUsers.map((user) => {
+                  const isPrimary = isPrimarySuperAdmin(user)
+                  const isSuperAdmin = user.role === 'super_admin' || isPrimary
+                  const isActive = user.is_active !== false
+
+                  return (
+                    <div
+                      key={user.id}
+                      className={cn(
+                        "p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors",
+                        isSuperAdmin ? "bg-amber-50/30 border-l-4 border-amber-500" : !isActive ? "bg-stone-50/70 opacity-75" : "hover:bg-[#FBF9F5]/60"
+                      )}
+                    >
+                      {/* Left: User Identity */}
+                      <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                        <div
+                          className={cn(
+                            "w-11 h-11 rounded-2xl flex items-center justify-center font-black uppercase shrink-0 text-white shadow-2xs",
+                            isSuperAdmin
+                              ? "bg-gradient-to-br from-amber-600 to-amber-800 ring-2 ring-amber-400/50"
+                              : user.role === 'driver'
+                              ? "bg-blue-600"
+                              : user.role === 'manager'
+                              ? "bg-emerald-700"
+                              : user.role === 'staff'
+                              ? "bg-[#B91C1C]"
+                              : "bg-[#18181B]"
+                          )}
+                        >
+                          {(user.name || 'U').slice(0, 2)}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-sm text-[#1C1917] truncate">{user.name || 'Unnamed User'}</span>
+
+                            {/* Role Badge */}
+                            {isSuperAdmin ? (
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-gradient-to-r from-amber-200 via-rose-200 to-amber-200 text-[#78350F] rounded-full border border-amber-400 inline-flex items-center gap-1">
+                                <Crown size={10} className="fill-amber-600 text-amber-700" /> {isPrimary ? 'Primary Super Admin (Root)' : 'Super Admin'}
+                              </span>
+                            ) : (
+                              <span className={cn(
+                                "px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border",
+                                user.role === 'manager' ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                user.role === 'driver' ? "bg-blue-50 text-blue-800 border-blue-200" :
+                                user.role === 'staff' ? "bg-rose-50 text-[#B91C1C] border-rose-200" :
+                                user.role === 'viewer' ? "bg-purple-50 text-purple-800 border-purple-200" :
+                                "bg-stone-100 text-[#57534E] border-stone-200"
+                              )}>
+                                {user.role}
+                              </span>
+                            )}
+
+                            {/* Status Badge */}
+                            {!isActive && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-stone-200 text-stone-700 rounded-full">
+                                Suspended
+                              </span>
+                            )}
+                            {user.invite_status === 'pending' && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-100 text-amber-800 rounded-full border border-amber-200">
+                                Invite Sent (Pending)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Details Row */}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#78716C] mt-1">
+                            <span className="flex items-center gap-1 truncate">
+                              <Mail size={12} className="text-[#A8A29E]" />
+                              {user.email || 'No email attached'}
+                            </span>
+                            {user.phone && (
+                              <span className="flex items-center gap-1 font-mono">
+                                <Phone size={12} className="text-[#A8A29E]" />
+                                {user.phone}
+                              </span>
+                            )}
+                            {user.department && (
+                              <span className="flex items-center gap-1 font-semibold text-[#57534E]">
+                                <Building2 size={12} className="text-[#A8A29E]" />
+                                {user.department}
+                              </span>
+                            )}
+                            {user.vehicle_number && (
+                              <span className="flex items-center gap-1 font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                <Bike size={11} /> {user.vehicle_number}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 self-end md:self-center">
+                        <button
+                          onClick={() => setSelectedUser(user)}
+                          className="px-3 py-1.5 rounded-xl border border-[#E7E0D8] text-xs font-bold text-[#1C1917] hover:bg-[#F5F5F4] transition-colors flex items-center gap-1.5 shadow-2xs"
+                        >
+                          <Edit3 size={13} className="text-[#78716C]" />
+                          <span>Manage</span>
+                        </button>
+
+                        {!isSuperAdmin && (
+                          <button
+                            onClick={() => handleDelete(user)}
+                            className="p-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* RBAC MATRIX VIEW */
+        <div className="bg-white rounded-3xl p-6 border border-[#E7E0D8] shadow-xs space-y-5">
+          <div>
+            <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
+              <ShieldCheck size={20} className="text-[#B91C1C]" />
               Role-Based Access Control (RBAC) Permission Matrix
             </h3>
-            <p className="text-xs text-[#78716C] mt-0.5">
-              Granular permission matrix defining what actions each user role can perform across Pizza Expert.
+            <p className="text-xs text-[#78716C] mt-1">
+              Authoritative security permission matrix enforced across all API routes, database RLS, and admin tabs.
             </p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#FBF9F5] border-b border-[#E7E0D8]">
-                  <th className="p-3.5 font-mono uppercase font-bold text-[#78716C]">Permission Module</th>
-                  {(['super_admin', 'manager', 'staff', 'driver', 'viewer', 'customer'] as UserRole[]).map((r) => {
-                    const def = ROLE_DEFINITIONS[r]
-                    return (
-                      <th key={r} className="p-3 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${def.badgeColor} ${def.textColor} border ${def.borderColor}`}>
-                          {def.label}
-                        </span>
-                      </th>
-                    )
-                  })}
+          <div className="overflow-x-auto border border-[#E7E0D8] rounded-2xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#FBF9F5] border-b border-[#E7E0D8] text-[#1C1917]">
+                <tr>
+                  <th className="p-3.5 font-bold">Permission / Capability</th>
+                  {Object.keys(ROLE_DEFINITIONS).map((r) => (
+                    <th key={r} className="p-3.5 font-bold text-center capitalize">
+                      {r.replace('_', ' ')}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E7E0D8]">
                 {ALL_PERMISSIONS.map((perm) => (
-                  <tr key={perm.key} className="hover:bg-[#FDFBF7] transition-colors">
+                  <tr key={perm.key} className="hover:bg-[#FBF9F5]/50">
                     <td className="p-3.5">
                       <div className="font-bold text-[#1C1917]">{perm.label}</div>
-                      <div className="text-[10px] font-mono text-[#78716C]">{perm.category} • <span className="text-[#B91C1C]">{perm.key}</span></div>
+                      <div className="text-[10px] text-[#78716C] font-semibold">{perm.category}</div>
                     </td>
-                    {(['super_admin', 'manager', 'staff', 'driver', 'viewer', 'customer'] as UserRole[]).map((r) => {
-                      const allowed = hasPermission(r, perm.key)
+                    {Object.keys(ROLE_DEFINITIONS).map((roleKey) => {
+                      const allowed = hasPermission(roleKey as UserRole, perm.key)
                       return (
-                        <td key={r} className="p-3 text-center">
+                        <td key={roleKey} className="p-3.5 text-center">
                           {allowed ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
-                              <Check size={14} className="stroke-[3]" />
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                              ✓
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-300">
-                              -
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-400 font-bold">
+                              —
                             </span>
                           )}
                         </td>
@@ -347,433 +725,266 @@ export default function UsersManagementClient({
             </table>
           </div>
         </div>
-      ) : (
-        /* TAB CONTENT: USERS DIRECTORY TABLE */
-        <div className="bg-white rounded-2xl border border-[#E7E0D8] shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FBF9F5] border-b border-[#E7E0D8] text-[#78716C] uppercase font-mono font-bold text-[10px]">
-                <tr>
-                  <th className="px-5 py-3">User & Contact</th>
-                  <th className="px-5 py-3">Assigned Role (RBAC)</th>
-                  <th className="px-5 py-3">Role Details</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E7E0D8]">
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-[#78716C] italic">
-                      No users found matching current filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((user) => {
-                    const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.customer
-                    const isPrimary = isPrimarySuperAdmin(user)
-                    const isSuperAdmin = user.role === 'super_admin' || isPrimary
-                    return (
-                      <tr key={user.id} className={`transition-colors ${isSuperAdmin ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-[#FDFBF7]'}`}>
-                        {/* Name & Contact */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs font-serif uppercase shrink-0 shadow-2xs ${
-                              isSuperAdmin ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white ring-2 ring-amber-400/50' : 'bg-[#1C1917] text-white'
-                            }`}>
-                              {user.name.slice(0, 2)}
-                            </div>
-                            <div>
-                              <div className="font-bold text-[#1C1917] text-sm flex items-center gap-1.5">
-                                <span>{user.name}</span>
-                                {isPrimary ? (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 inline-flex items-center gap-0.5">
-                                    <Crown size={10} className="fill-amber-600 text-amber-700" /> Root
-                                  </span>
-                                ) : user.role === 'super_admin' ? (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-900 border border-red-300 inline-flex items-center gap-0.5">
-                                    <Crown size={10} className="fill-red-600 text-red-700" /> Super Admin
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="text-[11px] text-[#78716C] flex items-center gap-1.5">
-                                <span>{user.email}</span>
-                                {user.phone && <span>• {user.phone}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* RBAC Role */}
-                        <td className="px-5 py-4">
-                          {isSuperAdmin ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-gradient-to-r from-amber-100 via-rose-100 to-amber-100 text-[#78350F] border border-amber-300 flex items-center gap-1 shadow-2xs w-fit">
-                              <Crown size={12} className="text-amber-600 fill-amber-500" /> {isPrimary ? 'Primary Super Admin' : 'Super Admin (Locked)'}
-                            </span>
-                          ) : (
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${roleDef.badgeColor} ${roleDef.textColor} border ${roleDef.borderColor}`}>
-                              {roleDef.label}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Specific details */}
-                        <td className="px-5 py-4">
-                          {isSuperAdmin ? (
-                            <div className="text-[11px]">
-                              <span className="font-bold text-amber-900">👑 {isPrimary ? 'Root Founder Account' : 'Super Admin Account'}</span>
-                              <span className="block text-[10px] font-mono text-emerald-700 font-bold">Immutable Authority</span>
-                            </div>
-                          ) : user.role === 'driver' ? (
-                            <div className="text-[11px]">
-                              <span className="font-bold text-[#1C1917]">{user.vehicle_type}</span>
-                              <span className="text-[#78716C]"> • {user.vehicle_number || 'No plate'}</span>
-                              <span className="block text-[10px] font-mono text-emerald-700 font-bold">
-                                KYC: {user.verification_status || 'Verified'}
-                              </span>
-                            </div>
-                          ) : ['super_admin', 'manager', 'staff', 'viewer'].includes(user.role) ? (
-                            <div className="text-[11px]">
-                              <span className="font-bold text-[#1C1917]">{user.department || 'Operations'}</span>
-                              {user.employee_code && (
-                                <span className="block text-[10px] font-mono text-[#78716C]">{user.employee_code}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[#78716C] text-[11px]">Customer Profile</span>
-                          )}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-5 py-4">
-                          {user.is_active ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              Active
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300">
-                              Deactivated
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-5 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setSelectedUser({ ...user })}
-                              className="px-3 py-1.5 bg-[#FBF9F5] hover:bg-[#E7E0D8] rounded-lg text-xs font-bold text-[#1C1917] flex items-center gap-1 transition-colors"
-                            >
-                              <Edit3 size={13} />
-                              <span>Manage / RBAC</span>
-                            </button>
-
-                            {isSuperAdmin ? (
-                              <span
-                                className="p-1.5 text-stone-400 bg-stone-100 rounded-lg inline-flex items-center cursor-not-allowed"
-                                title="👑 Super Admin profiles are permanently locked and cannot be deleted by anyone."
-                              >
-                                <Lock size={14} className="text-amber-600" />
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleDelete(user)}
-                                className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                                title="Delete user"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
 
-      {/* EDIT / INSPECT USER DRAWER & MODAL */}
-      {selectedUser && (
+      {/* ── MODAL 1: INVITE NEW STAFF ─────────────────────────────────── */}
+      {modalType === 'staff_invite' && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
               <div>
                 <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
-                  <ShieldCheck size={20} className="text-[#B91C1C]" />
-                  Manage User: {selectedUser.name}
+                  <UserPlus size={20} className="text-[#B91C1C]" />
+                  Invite New Staff Member
                 </h3>
-                <span className="text-xs text-[#78716C]">User ID: {selectedUser.id}</span>
+                <span className="text-xs text-[#78716C]">
+                  Send an official team invite with customized department & role
+                </span>
               </div>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="p-1 text-[#78716C] hover:text-[#1C1917]"
-              >
+              <button onClick={() => setModalType(null)} className="p-1 text-[#78716C] hover:text-[#1C1917]">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              {/* Personal Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1C1917] mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={selectedUser.name}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
-                    className="admin-input text-xs bg-white text-[#1C1917]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#1C1917] mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={selectedUser.phone || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
-                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block font-bold text-[#1C1917] mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={selectedUser.email}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                    className="admin-input text-xs bg-white text-[#1C1917]"
-                  />
-                </div>
+            <form onSubmit={handleStaffInviteSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-[#1C1917] mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Aman Sharma"
+                  value={staffInviteData.name}
+                  onChange={(e) => setStaffInviteData({ ...staffInviteData, name: e.target.value })}
+                  className="admin-input text-xs bg-white text-[#1C1917]"
+                />
               </div>
 
-              {/* Role Selection (RBAC) */}
+              <div>
+                <label className="block font-bold text-[#1C1917] mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. aman@pizzaexpert.in"
+                  value={staffInviteData.email}
+                  onChange={(e) => setStaffInviteData({ ...staffInviteData, email: e.target.value })}
+                  className="admin-input text-xs bg-white text-[#1C1917]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1C1917] mb-1">Phone Number (Optional)</label>
+                <input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={staffInviteData.phone}
+                  onChange={(e) => setStaffInviteData({ ...staffInviteData, phone: e.target.value })}
+                  className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1C1917] mb-1">Department *</label>
+                <select
+                  value={staffInviteData.department}
+                  onChange={(e) => setStaffInviteData({ ...staffInviteData, department: e.target.value })}
+                  className="admin-input text-xs bg-white text-[#1C1917] font-bold"
+                >
+                  <option value="Kitchen Operations">Kitchen Operations / Chef</option>
+                  <option value="Front Counter & POS">Front Counter & Cashier</option>
+                  <option value="Store Management">Store Management</option>
+                  <option value="Delivery Dispatch">Delivery Dispatch</option>
+                  <option value="Finance & Accounts">Finance & Accounts</option>
+                </select>
+              </div>
+
               <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
-                    Role Assignment (RBAC)
-                  </label>
-                  {(selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)) && (
-                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 inline-flex items-center gap-1">
-                      <Lock size={10} /> Protected Authority
-                    </span>
-                  )}
-                </div>
-
-                {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser) ? (
-                  <div className="admin-input text-xs bg-stone-100 text-stone-700 font-bold flex items-center justify-between border-amber-300">
-                    <span className="flex items-center gap-1.5">
-                      <Crown size={14} className="text-amber-600 fill-amber-500" />
-                      {isPrimarySuperAdmin(selectedUser) ? 'Primary Super Admin (Root / Founder)' : 'Super Admin (Full Business Control)'}
-                    </span>
-                    <span className="text-[10px] text-amber-800 font-mono flex items-center gap-1">
-                      <Lock size={10} /> Immutable Role
-                    </span>
-                  </div>
-                ) : (
-                  <select
-                    value={selectedUser.role}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value as UserRole })}
-                    className="admin-input text-xs bg-white text-[#1C1917] font-bold"
-                  >
-                    <option value="super_admin">👑 Super Admin (Full Business Control)</option>
-                    <option value="manager">👔 Store Manager (Orders & Staff Shift)</option>
-                    <option value="staff">👨‍🍳 Kitchen & Counter Staff (KDS & Prep)</option>
-                    <option value="driver">🛵 Delivery Partner (Rider App & GPS)</option>
-                    <option value="viewer">👁️ Auditor / Viewer (Read-Only Reports)</option>
-                    <option value="customer">🛍️ Customer Account</option>
-                  </select>
-                )}
-
-                <p className="text-[11px] text-[#57534E] italic">
-                  {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)
-                    ? 'Super Admin profiles have full unrestricted control over the business and cannot be demoted or removed by any user.'
-                    : ROLE_DEFINITIONS[selectedUser.role]?.description}
+                <label className="block font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
+                  Role Assignment *
+                </label>
+                <select
+                  value={staffInviteData.role}
+                  onChange={(e) => setStaffInviteData({ ...staffInviteData, role: e.target.value as UserRole })}
+                  className="admin-input text-xs bg-white text-[#1C1917] font-bold"
+                >
+                  <option value="staff">👨‍🍳 Staff (Kitchen / Orders / KDS)</option>
+                  <option value="manager">👔 Store Manager (Inventory & Shifts)</option>
+                  <option value="viewer">👁️ Auditor / Viewer (Read-Only Reports)</option>
+                </select>
+                <p className="text-[11px] text-[#57534E]">
+                  {ROLE_DEFINITIONS[staffInviteData.role]?.description}
                 </p>
               </div>
 
-              {/* Staff Specific Fields */}
-              {['super_admin', 'manager', 'staff', 'viewer'].includes(selectedUser.role) && (
-                <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
-                  <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
-                    Staff & Employment Details
-                  </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Department</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Kitchen (Allapur)"
-                        value={selectedUser.department || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
-                        className="admin-input text-xs bg-white text-[#1C1917]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Employee Code</label>
-                      <input
-                        type="text"
-                        placeholder="EMP-012"
-                        value={selectedUser.employee_code || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, employee_code: e.target.value })}
-                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Driver Specific Fields */}
-              {selectedUser.role === 'driver' && (
-                <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
-                  <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
-                    Delivery Partner & Vehicle KYC Details
-                  </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Vehicle Type</label>
-                      <select
-                        value={selectedUser.vehicle_type || 'bike'}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_type: e.target.value })}
-                        className="admin-input text-xs bg-white text-[#1C1917]"
-                      >
-                        <option value="bike">Motorcycle (Hero/Bajaj)</option>
-                        <option value="scooter">Scooter (Activa/Jupiter)</option>
-                        <option value="ebike">Electric Scooter / EV</option>
-                        <option value="bicycle">Bicycle</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Vehicle Plate Number</label>
-                      <input
-                        type="text"
-                        placeholder="UP 70 AB 1234"
-                        value={selectedUser.vehicle_number || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_number: e.target.value })}
-                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Driving License No.</label>
-                      <input
-                        type="text"
-                        placeholder="UP-70-2024-001234"
-                        value={selectedUser.license_number || ''}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, license_number: e.target.value })}
-                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">KYC Verification Status</label>
-                      <select
-                        value={selectedUser.verification_status || 'verified'}
-                        onChange={(e) => setSelectedUser({ ...selectedUser, verification_status: e.target.value as any })}
-                        className="admin-input text-xs bg-white text-[#1C1917] font-bold"
-                      >
-                        <option value="verified">Verified (Approved)</option>
-                        <option value="pending">Pending Document Review</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Active Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-xl border border-[#E7E0D8] bg-white">
-                <div>
-                  <span className="font-bold text-[#1C1917] block">Account Access Status</span>
-                  <span className="text-[11px] text-[#78716C]">
-                    {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)
-                      ? 'Super Admin account is permanently active and locked against deactivation.'
-                      : selectedUser.is_active
-                      ? 'User can log in and perform assigned role tasks'
-                      : 'Account is suspended'}
-                  </span>
-                </div>
-                {selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser) ? (
-                  <span className="px-3 py-1 rounded-lg text-xs font-bold font-mono bg-emerald-600 text-white flex items-center gap-1">
-                    <Lock size={12} /> ACTIVE (LOCKED)
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUser({ ...selectedUser, is_active: !selectedUser.is_active })}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-colors ${
-                      selectedUser.is_active ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
-                    }`}
-                  >
-                    {selectedUser.is_active ? 'ACTIVE' : 'SUSPENDED'}
-                  </button>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#E7E0D8]">
-                {!(selectedUser.role === 'super_admin' || isPrimarySuperAdmin(selectedUser)) ? (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selectedUser)}
-                    className="px-4 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold flex items-center justify-center gap-1.5 transition-colors text-xs"
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete User</span>
-                  </button>
-                ) : (
-                  <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 inline-flex items-center gap-1.5">
-                    <Lock size={12} className="text-amber-600" /> Super Admin Profile Locked
-                  </span>
-                )}
-
-                <div className="flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUser(null)}
-                    className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E] text-xs hover:bg-[#F5F5F4] transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="btn btn-primary px-5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs text-xs"
-                  >
-                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    <span>Save RBAC Changes</span>
-                  </button>
-                </div>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingModal}
+                  className="btn btn-primary px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-xs"
+                >
+                  {isSubmittingModal ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  <span>Send Invite Email</span>
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* CREATE NEW USER / ONBOARD TEAM MEMBER MODAL */}
-      {showCreateModal && (
+      {/* ── MODAL 2: INVITE DELIVERY PARTNER ─────────────────────────── */}
+      {modalType === 'driver_invite' && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div>
+                <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
+                  <Bike size={20} className="text-blue-600" />
+                  Invite & Onboard Delivery Partner
+                </h3>
+                <span className="text-xs text-[#78716C]">
+                  Register a rider for GPS dispatch and live order delivery tracking
+                </span>
+              </div>
+              <button onClick={() => setModalType(null)} className="p-1 text-[#78716C] hover:text-[#1C1917]">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleDriverInviteSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-[#1C1917] mb-1">Rider Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Rahul Verma"
+                    value={driverInviteData.name}
+                    onChange={(e) => setDriverInviteData({ ...driverInviteData, name: e.target.value })}
+                    className="admin-input text-xs bg-white text-[#1C1917]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#1C1917] mb-1">Mobile Phone (10 digits) *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="9876543210"
+                    value={driverInviteData.phone}
+                    onChange={(e) => setDriverInviteData({ ...driverInviteData, phone: e.target.value })}
+                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#1C1917] mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="rahul@driver.pizzaexpert.local"
+                    value={driverInviteData.email}
+                    onChange={(e) => setDriverInviteData({ ...driverInviteData, email: e.target.value })}
+                    className="admin-input text-xs bg-white text-[#1C1917]"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
+                <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
+                  Vehicle & License Details
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block font-semibold text-[#78716C] mb-1">Vehicle Type</label>
+                    <select
+                      value={driverInviteData.vehicle_type}
+                      onChange={(e) => setDriverInviteData({ ...driverInviteData, vehicle_type: e.target.value })}
+                      className="admin-input text-xs bg-white text-[#1C1917]"
+                    >
+                      <option value="bike">Motorcycle (Hero/Honda)</option>
+                      <option value="scooter">Scooter (Activa/Jupiter)</option>
+                      <option value="ebike">Electric Vehicle / EV</option>
+                      <option value="bicycle">Bicycle</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#78716C] mb-1">Plate Number</label>
+                    <input
+                      type="text"
+                      placeholder="UP 70 AB 1234"
+                      value={driverInviteData.vehicle_number}
+                      onChange={(e) => setDriverInviteData({ ...driverInviteData, vehicle_number: e.target.value })}
+                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#78716C] mb-1">License Number</label>
+                    <input
+                      type="text"
+                      placeholder="UP70202400123"
+                      value={driverInviteData.license_number}
+                      onChange={(e) => setDriverInviteData({ ...driverInviteData, license_number: e.target.value })}
+                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between border-t border-[#E7E0D8]">
+                  <span className="text-[11px] font-bold text-[#1C1917]">Auto-Approve Verification</span>
+                  <input
+                    type="checkbox"
+                    checked={driverInviteData.auto_verify}
+                    onChange={(e) => setDriverInviteData({ ...driverInviteData, auto_verify: e.target.checked })}
+                    className="w-4 h-4 accent-[#B91C1C] rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingModal}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#1C1917] text-white hover:bg-[#44403C] flex items-center gap-1.5 shadow-xs"
+                >
+                  {isSubmittingModal ? <Loader2 size={14} className="animate-spin" /> : <Bike size={14} />}
+                  <span>Onboard Delivery Partner</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 3: GENERAL USER CREATE ─────────────────────────────── */}
+      {modalType === 'general_user' && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
               <div>
                 <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
                   <UserPlus size={20} className="text-[#B91C1C]" />
-                  Add User / Onboard Team Member
+                  Add Direct User Account
                 </h3>
                 <span className="text-xs text-[#78716C]">
-                  Configure account credentials and assigned RBAC permissions
+                  Configure account credentials and assigned RBAC role
                 </span>
               </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1 text-[#78716C] hover:text-[#1C1917]"
-              >
+              <button onClick={() => setModalType(null)} className="p-1 text-[#78716C] hover:text-[#1C1917]">
                 <X size={20} />
               </button>
             </div>
@@ -785,7 +996,7 @@ export default function UsersManagementClient({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ramesh Singh"
+                    placeholder="e.g. Priya Sharma"
                     value={newUserData.name}
                     onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
                     className="admin-input text-xs bg-white text-[#1C1917]"
@@ -809,7 +1020,7 @@ export default function UsersManagementClient({
                   <input
                     type="email"
                     required
-                    placeholder="ramesh@pizzaexpert.in"
+                    placeholder="priya@pizzaexpert.in"
                     value={newUserData.email}
                     onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
                     className="admin-input text-xs bg-white text-[#1C1917]"
@@ -817,7 +1028,6 @@ export default function UsersManagementClient({
                 </div>
               </div>
 
-              {/* Role Selection */}
               <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-2">
                 <label className="block font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
                   Assign RBAC Role *
@@ -832,50 +1042,160 @@ export default function UsersManagementClient({
                   <option value="staff">👨‍🍳 Kitchen & Counter Staff (KDS & Prep)</option>
                   <option value="driver">🛵 Delivery Partner (Rider App & GPS Dispatch)</option>
                   <option value="viewer">👁️ Auditor / Viewer (Read-Only Reports)</option>
+                  <option value="customer">👤 Customer Account</option>
                 </select>
                 <p className="text-[11px] text-[#57534E]">
                   {ROLE_DEFINITIONS[newUserData.role]?.description}
                 </p>
               </div>
 
-              {/* If Staff / Manager */}
-              {['super_admin', 'manager', 'staff', 'viewer'].includes(newUserData.role) && (
-                <div className="grid grid-cols-2 gap-3 bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8]">
-                  <div>
-                    <label className="block font-semibold text-[#78716C] mb-1">Department</label>
-                    <input
-                      type="text"
-                      placeholder="Kitchen Operations"
-                      value={newUserData.department}
-                      onChange={(e) => setNewUserData({ ...newUserData, department: e.target.value })}
-                      className="admin-input text-xs bg-white text-[#1C1917]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-[#78716C] mb-1">Employee Code</label>
-                    <input
-                      type="text"
-                      placeholder="EMP-025"
-                      value={newUserData.employee_code}
-                      onChange={(e) => setNewUserData({ ...newUserData, employee_code: e.target.value })}
-                      className="admin-input text-xs font-mono bg-white text-[#1C1917]"
-                    />
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingModal}
+                  className="btn btn-primary px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-xs"
+                >
+                  {isSubmittingModal ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                  <span>Create Account</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 4: MANAGE / EDIT USER RBAC ─────────────────────────── */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-[#E7E0D8] p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div>
+                <h3 className="font-serif font-black text-lg text-[#1C1917] flex items-center gap-2">
+                  <ShieldCheck size={20} className="text-[#B91C1C]" />
+                  Manage Role & Access: {selectedUser.name}
+                </h3>
+                <span className="text-xs text-[#78716C]">
+                  User ID: <span className="font-mono">{selectedUser.id}</span>
+                </span>
+              </div>
+              <button onClick={() => setSelectedUser(null)} className="p-1 text-[#78716C] hover:text-[#1C1917]">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#1C1917] mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={selectedUser.name}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+                    className="admin-input text-xs bg-white text-[#1C1917]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#1C1917] mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={selectedUser.phone || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
+                    className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#1C1917] mb-1">Email Address</label>
+                <input
+                  type="email"
+                  disabled
+                  value={selectedUser.email}
+                  className="admin-input text-xs bg-[#F5F5F4] text-[#78716C] cursor-not-allowed"
+                />
+              </div>
+
+              {/* Role Selection */}
+              <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#1C1917] uppercase text-[11px] tracking-wider">
+                    Assigned Role
+                  </label>
+                  {isPrimarySuperAdmin(selectedUser) && (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                      Primary Super Admin (Permanent)
+                    </span>
+                  )}
+                </div>
+
+                <select
+                  disabled={isPrimarySuperAdmin(selectedUser)}
+                  value={selectedUser.role}
+                  onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value as UserRole })}
+                  className="admin-input text-xs bg-white text-[#1C1917] font-bold disabled:bg-[#F5F5F4]"
+                >
+                  <option value="super_admin">👑 Super Admin</option>
+                  <option value="manager">👔 Store Manager</option>
+                  <option value="staff">👨‍🍳 Kitchen & Counter Staff</option>
+                  <option value="driver">🛵 Delivery Partner</option>
+                  <option value="viewer">👁️ Auditor / Viewer</option>
+                  <option value="customer">👤 Customer</option>
+                </select>
+                <p className="text-[11px] text-[#57534E]">
+                  {ROLE_DEFINITIONS[selectedUser.role]?.description}
+                </p>
+              </div>
+
+              {/* Staff Specific Fields */}
+              {['super_admin', 'manager', 'staff', 'viewer'].includes(selectedUser.role) && (
+                <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
+                  <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
+                    Staff & Employment Details
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-[#78716C] mb-1">Department</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Kitchen Operations"
+                        value={selectedUser.department || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
+                        className="admin-input text-xs bg-white text-[#1C1917]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#78716C] mb-1">Employee Code</label>
+                      <input
+                        type="text"
+                        placeholder="EMP-012"
+                        value={selectedUser.employee_code || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, employee_code: e.target.value })}
+                        className="admin-input text-xs font-mono bg-white text-[#1C1917]"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* If Driver */}
-              {newUserData.role === 'driver' && (
-                <div className="space-y-3 bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8]">
+              {/* Driver Specific Fields */}
+              {selectedUser.role === 'driver' && (
+                <div className="bg-[#FBF9F5] p-4 rounded-2xl border border-[#E7E0D8] space-y-3">
                   <span className="font-bold text-[#1C1917] text-[11px] uppercase tracking-wider block">
-                    Driver Vehicle & KYC Details
+                    Delivery Partner & Vehicle Details
                   </span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block font-semibold text-[#78716C] mb-1">Vehicle Type</label>
                       <select
-                        value={newUserData.vehicle_type}
-                        onChange={(e) => setNewUserData({ ...newUserData, vehicle_type: e.target.value })}
+                        value={selectedUser.vehicle_type || 'bike'}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_type: e.target.value })}
                         className="admin-input text-xs bg-white text-[#1C1917]"
                       >
                         <option value="bike">Motorcycle</option>
@@ -884,49 +1204,105 @@ export default function UsersManagementClient({
                         <option value="bicycle">Bicycle</option>
                       </select>
                     </div>
-
                     <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Number Plate</label>
+                      <label className="block font-semibold text-[#78716C] mb-1">Vehicle Number</label>
                       <input
                         type="text"
                         placeholder="UP 70 AB 1234"
-                        value={newUserData.vehicle_number}
-                        onChange={(e) => setNewUserData({ ...newUserData, vehicle_number: e.target.value.toUpperCase() })}
+                        value={selectedUser.vehicle_number || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, vehicle_number: e.target.value })}
                         className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
                     </div>
-
                     <div>
-                      <label className="block font-semibold text-[#78716C] mb-1">Driving License No.</label>
+                      <label className="block font-semibold text-[#78716C] mb-1">License No.</label>
                       <input
                         type="text"
                         placeholder="UP-70-2024-0012"
-                        value={newUserData.license_number}
-                        onChange={(e) => setNewUserData({ ...newUserData, license_number: e.target.value.toUpperCase() })}
+                        value={selectedUser.license_number || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, license_number: e.target.value })}
                         className="admin-input text-xs font-mono bg-white text-[#1C1917]"
                       />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#78716C] mb-1">Verification Status</label>
+                      <select
+                        value={selectedUser.verification_status || 'verified'}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, verification_status: e.target.value as any })}
+                        className="admin-input text-xs bg-white text-[#1C1917] font-bold"
+                      >
+                        <option value="verified">Verified (Approved)</option>
+                        <option value="pending">Pending Review</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7E0D8]">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  className="btn btn-primary px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-xs"
-                >
-                  {isCreating ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                  <span>Create & Onboard Account</span>
-                </button>
+              {/* Active Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-[#E7E0D8] bg-white">
+                <div>
+                  <span className="font-bold text-[#1C1917] block">Account Access Status</span>
+                  <span className="text-[11px] text-[#78716C]">
+                    {isPrimarySuperAdmin(selectedUser)
+                      ? 'Root Super Admin account is permanently active.'
+                      : selectedUser.is_active
+                      ? 'User can log in and perform assigned tasks'
+                      : 'Account is suspended'}
+                  </span>
+                </div>
+                {isPrimarySuperAdmin(selectedUser) ? (
+                  <span className="px-3 py-1 rounded-lg text-xs font-bold font-mono bg-emerald-600 text-white flex items-center gap-1">
+                    <Lock size={12} /> ACTIVE (ROOT)
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUser({ ...selectedUser, is_active: !selectedUser.is_active })}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-colors ${
+                      selectedUser.is_active ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                    }`}
+                  >
+                    {selectedUser.is_active ? 'ACTIVE' : 'SUSPENDED'}
+                  </button>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#E7E0D8]">
+                {!isPrimarySuperAdmin(selectedUser) ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(selectedUser)}
+                    className="px-4 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold flex items-center justify-center gap-1.5 transition-colors text-xs"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete User</span>
+                  </button>
+                ) : (
+                  <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 inline-flex items-center gap-1.5">
+                    <Lock size={12} className="text-amber-600" /> Root Profile Locked
+                  </span>
+                )}
+
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUser(null)}
+                    className="px-4 py-2 rounded-xl border border-[#E7E0D8] font-bold text-[#57534E] text-xs hover:bg-[#F5F5F4] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="btn btn-primary px-5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs text-xs"
+                  >
+                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    <span>Save Changes</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
