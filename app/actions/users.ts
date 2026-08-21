@@ -255,6 +255,24 @@ export async function updateUserRoleAndDetails(
   }
 }
 
+export async function checkEmailRegistered(email: string): Promise<boolean> {
+  try {
+    if (!email || !email.trim()) return false
+    const admin = getSupabaseAdmin()
+    const targetEmail = email.trim().toLowerCase()
+
+    // 1. Check auth.users
+    const { data } = await admin.auth.admin.listUsers()
+    const userExists = data?.users?.some(u => u.email?.toLowerCase() === targetEmail)
+    if (userExists) return true
+
+    return false
+  } catch (err) {
+    console.warn('Check email error:', err)
+    return false
+  }
+}
+
 export async function createManagedUser(payload: {
   name: string
   email: string
@@ -268,14 +286,26 @@ export async function createManagedUser(payload: {
   auto_verify?: boolean
 }) {
   try {
-    let userId: string | null = null
+    const targetEmail = payload.email?.trim().toLowerCase()
+    if (!targetEmail) {
+      return { success: false, error: 'Email is required.' }
+    }
+
     const admin = getSupabaseAdmin()
 
-    // 1. Try creating Auth user first or resolve existing
+    // Check if email already exists - do not allow duplicate accounts
+    const isRegistered = await checkEmailRegistered(targetEmail)
+    if (isRegistered) {
+      return { success: false, error: 'This email is already registered.' }
+    }
+
+    let userId: string | null = null
+
+    // 1. Create Auth user
     try {
       const cleanPhone = payload.phone?.replace(/\D/g, '') || ''
       const { data: authData, error: authError } = await admin.auth.admin.createUser({
-        email: payload.email,
+        email: targetEmail,
         phone: payload.phone?.startsWith('+') ? payload.phone : cleanPhone ? `+91${cleanPhone}` : undefined,
         email_confirm: true,
         user_metadata: { name: payload.name, role: payload.role },
@@ -285,16 +315,7 @@ export async function createManagedUser(payload: {
       if (authData?.user?.id) {
         userId = authData.user.id
       } else {
-        const { data: listData } = await admin.auth.admin.listUsers()
-        const existing = listData?.users?.find(
-          u => u.email?.toLowerCase() === payload.email.toLowerCase() ||
-               (cleanPhone && u.phone?.includes(cleanPhone))
-        )
-        if (existing) {
-          userId = existing.id
-        } else {
-          return { success: false, error: `Auth registration failed: ${authError?.message || 'Could not create auth account'}` }
-        }
+        return { success: false, error: authError?.message || 'Could not create auth account' }
       }
     } catch (authError: any) {
       console.warn('Auth user creation notice:', authError)
@@ -302,7 +323,7 @@ export async function createManagedUser(payload: {
     }
 
     if (!userId) {
-      return { success: false, error: 'Could not create or locate authentication user account' }
+      return { success: false, error: 'Could not create authentication user account' }
     }
 
     // 2. Upsert into profiles with defensive column fallback

@@ -168,12 +168,19 @@ export async function onboardDriverDirect(formData: FormData) {
     }
 
     const cleanPhone = phone.replace(/\D/g, '')
-    const email = rawEmail || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`
+    const email = (rawEmail || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`).trim().toLowerCase()
     let driverId: string | null = null
 
     const admin = getSupabaseAdmin()
 
-    // 1. Try creating or locating Auth user first
+    // Check if email already registered
+    const { data: listData } = await admin.auth.admin.listUsers()
+    const emailExists = listData?.users?.some(u => u.email?.toLowerCase() === email)
+    if (emailExists) {
+      return { success: false, error: 'This email is already registered.' }
+    }
+
+    // 1. Try creating Auth user first
     try {
       const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email,
@@ -185,18 +192,11 @@ export async function onboardDriverDirect(formData: FormData) {
       })
       if (authData?.user?.id) {
         driverId = authData.user.id
-      } else if (authError) {
-        // Look up if user already exists
-        const { data: listData } = await admin.auth.admin.listUsers()
-        const existing = listData?.users?.find(
-          u => u.email?.toLowerCase() === email.toLowerCase() || 
-               (cleanPhone && u.phone?.includes(cleanPhone))
-        )
-        if (existing) {
-          driverId = existing.id
-        } else {
-          return { success: false, error: `Authentication setup failed: ${authError.message}` }
+      } else {
+        if (authError?.message?.toLowerCase().includes('already') || authError?.message?.toLowerCase().includes('registered') || authError?.message?.toLowerCase().includes('exists')) {
+          return { success: false, error: 'This email is already registered.' }
         }
+        return { success: false, error: authError?.message || 'Failed to create driver authentication' }
       }
     } catch (authErr: any) {
       console.warn('Auth user create notice:', authErr)
@@ -204,7 +204,7 @@ export async function onboardDriverDirect(formData: FormData) {
     }
 
     if (!driverId) {
-      return { success: false, error: 'Could not create or find driver auth user' }
+      return { success: false, error: 'Could not create driver auth user' }
     }
 
     // 2. Upsert into profiles (note: email lives on auth.users)
@@ -307,7 +307,14 @@ export async function submitDriverApplication(data: {
   try {
     const admin = getSupabaseAdmin()
     const cleanPhone = data.phone.replace(/\D/g, '')
-    const email = data.email || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`
+    const email = (data.email || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`).trim().toLowerCase()
+
+    // Check if email already registered
+    const { data: listData } = await admin.auth.admin.listUsers()
+    const emailExists = listData?.users?.some(u => u.email?.toLowerCase() === email)
+    if (emailExists) {
+      return { success: false, error: 'This email is already registered.' }
+    }
 
     // Must resolve or create auth user first because profiles(id) references auth.users(id)
     let applicationId: string | null = null
@@ -323,16 +330,10 @@ export async function submitDriverApplication(data: {
       if (authData?.user?.id) {
         applicationId = authData.user.id
       } else {
-        const { data: listData } = await admin.auth.admin.listUsers()
-        const existing = listData?.users?.find(
-          u => u.email?.toLowerCase() === email.toLowerCase() || 
-               (cleanPhone && u.phone?.includes(cleanPhone))
-        )
-        if (existing) {
-          applicationId = existing.id
-        } else {
-          return { success: false, error: `Auth registration failed: ${authError?.message || 'Could not register applicant account'}` }
+        if (authError?.message?.toLowerCase().includes('already') || authError?.message?.toLowerCase().includes('registered') || authError?.message?.toLowerCase().includes('exists')) {
+          return { success: false, error: 'This email is already registered.' }
         }
+        return { success: false, error: authError?.message || 'Could not register applicant account' }
       }
     } catch (e: any) {
       return { success: false, error: `Authentication error: ${e.message}` }

@@ -10,6 +10,8 @@ import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 
+import { checkEmailRegistered } from '@/app/actions/users'
+
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -32,17 +34,31 @@ function RegisterForm() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    const targetEmail = email.trim().toLowerCase()
+    if (!targetEmail) {
+      toast.error('Please enter a valid email address.')
+      return
+    }
+
     setLoading(true)
 
     try {
+      // 1. Server-side check if email is already in the database
+      const isAlreadyRegistered = await checkEmailRegistered(targetEmail)
+      if (isAlreadyRegistered) {
+        toast.error('This email is already registered. Please log in instead.')
+        setLoading(false)
+        return
+      }
+
       const supabase = createClient()
       const origin = typeof window !== 'undefined' && window.location.origin
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || 'https://pizza-kappa-nine.vercel.app')
       const emailRedirectTo = `${origin}/auth/callback`
 
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: targetEmail,
         password,
         options: {
           emailRedirectTo,
@@ -55,7 +71,19 @@ function RegisterForm() {
       })
 
       if (error) {
-        toast.error(error.message || 'Registration failed')
+        if (
+          error.message.toLowerCase().includes('already') ||
+          error.message.toLowerCase().includes('registered') ||
+          error.message.toLowerCase().includes('exists') ||
+          error.message.toLowerCase().includes('duplicate')
+        ) {
+          toast.error('This email is already registered. Please log in instead.')
+        } else {
+          toast.error(error.message || 'Registration failed')
+        }
+      } else if (data?.user?.identities && data.user.identities.length === 0) {
+        // Supabase returns empty identities array when user already exists with email confirmations on
+        toast.error('This email is already registered. Please log in instead.')
       } else {
         toast.success('Account created successfully!')
         router.push(redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login')

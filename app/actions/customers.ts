@@ -178,19 +178,31 @@ export async function createCustomer(formData: FormData) {
       return { success: false, error: 'Name and Email are required' }
     }
 
+    const targetEmail = email.trim().toLowerCase()
+
     const admin = getSupabaseAdmin()
     const supabase = await createServerClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
 
+    // Check if user already exists
+    const { data: listData } = await admin.auth.admin.listUsers()
+    const emailExists = listData?.users?.some(u => u.email?.toLowerCase() === targetEmail)
+    if (emailExists) {
+      return { success: false, error: 'This email is already registered.' }
+    }
+
     // Create user in Auth
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email,
+      email: targetEmail,
       password,
       email_confirm: true,
       user_metadata: { name, role }
     })
 
     if (authError) {
+      if (authError.message.toLowerCase().includes('already') || authError.message.toLowerCase().includes('registered') || authError.message.toLowerCase().includes('exists')) {
+        return { success: false, error: 'This email is already registered.' }
+      }
       return { success: false, error: authError.message }
     }
 

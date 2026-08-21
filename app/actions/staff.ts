@@ -29,16 +29,29 @@ export async function inviteStaffMember(formData: FormData) {
       return { success: false, error: 'Name, email, and role are required' }
     }
 
+    const targetEmail = email.trim().toLowerCase()
+
+    const admin = getSupabaseAdmin()
     const supabase = await createServerClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
 
+    // Check if user is already registered
+    const { data: listData } = await admin.auth.admin.listUsers()
+    const emailExists = listData?.users?.some(u => u.email?.toLowerCase() === targetEmail)
+    if (emailExists) {
+      return { success: false, error: 'This email is already registered.' }
+    }
+
     // 1. Invite user via Supabase Auth Admin API
-    const { data: inviteData, error: inviteError } = await getSupabaseAdmin().auth.admin.inviteUserByEmail(
-      email,
+    const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+      targetEmail,
       { data: { name, role } }
     )
 
     if (inviteError) {
+      if (inviteError.message.toLowerCase().includes('already') || inviteError.message.toLowerCase().includes('registered') || inviteError.message.toLowerCase().includes('exists')) {
+        return { success: false, error: 'This email is already registered.' }
+      }
       return { success: false, error: inviteError.message }
     }
 
