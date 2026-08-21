@@ -268,24 +268,41 @@ export async function createManagedUser(payload: {
   auto_verify?: boolean
 }) {
   try {
-    let userId = crypto.randomUUID()
+    let userId: string | null = null
     const admin = getSupabaseAdmin()
 
-    // 1. Try creating Auth user first
+    // 1. Try creating Auth user first or resolve existing
     try {
       const cleanPhone = payload.phone?.replace(/\D/g, '') || ''
-      const { data: authData } = await admin.auth.admin.createUser({
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email: payload.email,
         phone: payload.phone?.startsWith('+') ? payload.phone : cleanPhone ? `+91${cleanPhone}` : undefined,
         email_confirm: true,
         user_metadata: { name: payload.name, role: payload.role },
         password: `PizzaUser@${Math.random().toString(36).slice(-6)}!`,
       })
+
       if (authData?.user?.id) {
         userId = authData.user.id
+      } else {
+        const { data: listData } = await admin.auth.admin.listUsers()
+        const existing = listData?.users?.find(
+          u => u.email?.toLowerCase() === payload.email.toLowerCase() ||
+               (cleanPhone && u.phone?.includes(cleanPhone))
+        )
+        if (existing) {
+          userId = existing.id
+        } else {
+          return { success: false, error: `Auth registration failed: ${authError?.message || 'Could not create auth account'}` }
+        }
       }
-    } catch (authError) {
+    } catch (authError: any) {
       console.warn('Auth user creation notice:', authError)
+      return { success: false, error: authError?.message || 'Authentication service error' }
+    }
+
+    if (!userId) {
+      return { success: false, error: 'Could not create or locate authentication user account' }
     }
 
     // 2. Upsert into profiles with defensive column fallback

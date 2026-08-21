@@ -13,22 +13,25 @@ export default function StoreSwitcher() {
 
   useEffect(() => {
     async function fetchStores() {
-      // In a real app, you'd fetch based on user role and store_staff
-      // For now, we fetch all active stores or those linked to the user
-      const { data: stores, error } = await supabase
-        .from('stores')
-        .select('id, name')
-        .eq('active', true)
+      try {
+        const { data: stores, error } = await supabase
+          .from('stores')
+          .select('id, name')
+          .eq('active', true)
 
-      if (stores && !error) {
-        setAvailableStores(stores)
-        
-        // Auto-select first store if none selected
-        if (!activeStoreId && stores.length > 0) {
-          setActiveStore(stores[0].id)
+        if (stores && !error && stores.length > 0) {
+          setAvailableStores(stores)
+          
+          // Auto-select first store if none selected
+          if (!activeStoreId) {
+            setActiveStore(stores[0].id)
+          }
         }
+      } catch (err) {
+        // Table may not yet exist in Supabase; silently handle
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchStores()

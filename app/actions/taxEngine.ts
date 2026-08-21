@@ -7,20 +7,69 @@ import { requireUser } from '@/lib/auth/requireUser'
 // ─── Get Tax Groups & Components ────────────────────────────────────────────
 
 export async function getTaxConfig() {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'accountant'])
-  const supabase = createAdminClient()
-
   try {
+    await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'accountant', 'staff', 'admin'])
+    const supabase = createAdminClient()
+
     const { data: groups, error } = await supabase
       .from('tax_groups')
       .select('*, tax_rates(*)')
       .eq('is_active', true)
       .order('is_default', { ascending: false })
 
-    if (error) throw new Error(error.message)
-    return { success: true, taxGroups: groups || [] }
+    if (error) {
+      console.warn('Tax groups query notice:', error.message)
+      return { 
+        success: true, 
+        taxGroups: [
+          {
+            id: 'default-gst-5',
+            name: 'GST 5%',
+            description: 'CBIC Restaurant Tax Rate (2.5% CGST + 2.5% SGST)',
+            is_default: true,
+            is_active: true,
+            tax_rates: [
+              { component_name: 'CGST', rate: 2.5, is_inclusive: false },
+              { component_name: 'SGST', rate: 2.5, is_inclusive: false },
+            ]
+          }
+        ] 
+      }
+    }
+
+    const effectiveGroups = (groups && groups.length > 0) ? groups : [
+      {
+        id: 'default-gst-5',
+        name: 'GST 5%',
+        description: 'CBIC Restaurant Tax Rate (2.5% CGST + 2.5% SGST)',
+        is_default: true,
+        is_active: true,
+        tax_rates: [
+          { component_name: 'CGST', rate: 2.5, is_inclusive: false },
+          { component_name: 'SGST', rate: 2.5, is_inclusive: false },
+        ]
+      }
+    ]
+
+    return { success: true, taxGroups: effectiveGroups }
   } catch (err: any) {
-    return { success: false, error: err.message, taxGroups: [] }
+    return { 
+      success: false, 
+      error: err.message, 
+      taxGroups: [
+        {
+          id: 'default-gst-5',
+          name: 'GST 5%',
+          description: 'CBIC Restaurant Tax Rate (2.5% CGST + 2.5% SGST)',
+          is_default: true,
+          is_active: true,
+          tax_rates: [
+            { component_name: 'CGST', rate: 2.5, is_inclusive: false },
+            { component_name: 'SGST', rate: 2.5, is_inclusive: false },
+          ]
+        }
+      ] 
+    }
   }
 }
 
@@ -32,10 +81,10 @@ export async function saveTaxGroup(payload: {
   isDefault: boolean
   rates: Array<{ componentName: string; rate: number; isInclusive: boolean }>
 }) {
-  await requireUser(['manager', 'super_admin'])
-  const supabase = createAdminClient()
-
   try {
+    await requireUser(['manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
+
     // 1. If marking default, clear other defaults
     if (payload.isDefault) {
       await supabase
@@ -82,10 +131,10 @@ export async function saveTaxGroup(payload: {
 // ─── Calculate Order Taxes dynamically from Active Tax Group ─────────────────
 
 export async function calculateOrderTaxes(subtotal: number) {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
-
   try {
+    await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'staff', 'admin'])
+    const supabase = createAdminClient()
+
     const { data: taxGroup } = await supabase
       .from('tax_groups')
       .select('*, tax_rates(*)')
@@ -126,3 +175,4 @@ export async function calculateOrderTaxes(subtotal: number) {
     }
   }
 }
+

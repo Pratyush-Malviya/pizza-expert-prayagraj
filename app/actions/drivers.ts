@@ -169,15 +169,15 @@ export async function onboardDriverDirect(formData: FormData) {
 
     const cleanPhone = phone.replace(/\D/g, '')
     const email = rawEmail || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`
-    let driverId = crypto.randomUUID()
+    let driverId: string | null = null
 
     const admin = getSupabaseAdmin()
 
-    // 1. Try creating Auth user first
+    // 1. Try creating or locating Auth user first
     try {
       const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email,
-        phone: phone.startsWith('+') ? phone : `+91${cleanPhone}`,
+        phone: phone.startsWith('+') ? phone : cleanPhone ? `+91${cleanPhone}` : undefined,
         email_confirm: true,
         phone_confirm: true,
         user_metadata: { name, role: 'driver' },
@@ -185,9 +185,26 @@ export async function onboardDriverDirect(formData: FormData) {
       })
       if (authData?.user?.id) {
         driverId = authData.user.id
+      } else if (authError) {
+        // Look up if user already exists
+        const { data: listData } = await admin.auth.admin.listUsers()
+        const existing = listData?.users?.find(
+          u => u.email?.toLowerCase() === email.toLowerCase() || 
+               (cleanPhone && u.phone?.includes(cleanPhone))
+        )
+        if (existing) {
+          driverId = existing.id
+        } else {
+          return { success: false, error: `Authentication setup failed: ${authError.message}` }
+        }
       }
-    } catch (authErr) {
+    } catch (authErr: any) {
       console.warn('Auth user create notice:', authErr)
+      return { success: false, error: authErr?.message || 'Failed to authenticate driver account' }
+    }
+
+    if (!driverId) {
+      return { success: false, error: 'Could not create or find driver auth user' }
     }
 
     // 2. Upsert into profiles (note: email lives on auth.users)
@@ -288,8 +305,42 @@ export async function submitDriverApplication(data: {
   payoutUpi?: string
 }) {
   try {
-    const applicationId = crypto.randomUUID()
     const admin = getSupabaseAdmin()
+    const cleanPhone = data.phone.replace(/\D/g, '')
+    const email = data.email || `${cleanPhone || Date.now()}@driver.pizzaexpert.local`
+
+    // Must resolve or create auth user first because profiles(id) references auth.users(id)
+    let applicationId: string | null = null
+    try {
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
+        email,
+        phone: data.phone.startsWith('+') ? data.phone : cleanPhone ? `+91${cleanPhone}` : undefined,
+        email_confirm: true,
+        user_metadata: { name: data.name, role: 'driver' },
+        password: `DriverApp@${Math.random().toString(36).slice(-6)}!`,
+      })
+
+      if (authData?.user?.id) {
+        applicationId = authData.user.id
+      } else {
+        const { data: listData } = await admin.auth.admin.listUsers()
+        const existing = listData?.users?.find(
+          u => u.email?.toLowerCase() === email.toLowerCase() || 
+               (cleanPhone && u.phone?.includes(cleanPhone))
+        )
+        if (existing) {
+          applicationId = existing.id
+        } else {
+          return { success: false, error: `Auth registration failed: ${authError?.message || 'Could not register applicant account'}` }
+        }
+      }
+    } catch (e: any) {
+      return { success: false, error: `Authentication error: ${e.message}` }
+    }
+
+    if (!applicationId) {
+      return { success: false, error: 'Failed to initialize applicant user record' }
+    }
 
     await admin.from('profiles').upsert({
       id: applicationId,
