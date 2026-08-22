@@ -382,7 +382,7 @@ export default function KitchenDisplayPage() {
                     return (
                       <div
                         key={ord.id}
-                        className={`p-4 rounded-2xl border transition-all space-y-3 shadow-xs ${
+                        className={`p-4 rounded-2xl border transition-all flex flex-col justify-between shadow-xs ${
                           isOverdue
                             ? 'border-red-500 bg-red-50/60 ring-2 ring-red-500/40'
                             : selectedOrders.has(ord.id)
@@ -390,6 +390,7 @@ export default function KitchenDisplayPage() {
                             : 'border-[#E7E0D8] hover:border-[#B91C1C]/40 bg-white'
                         }`}
                       >
+                        <div className="space-y-3">
                         {/* Overdue Alert Strip */}
                         {isOverdue && (
                           <div className="flex items-center justify-between px-2.5 py-1 bg-red-100 border border-red-300/80 rounded-xl text-red-700 text-[11px] font-bold animate-pulse">
@@ -559,7 +560,7 @@ export default function KitchenDisplayPage() {
                         </div>
 
                         {/* Items List */}
-                        <div className="space-y-1.5 pt-1">
+                        <div className="space-y-1.5 pt-1 max-h-48 overflow-y-auto pr-1">
                           {itemsList.map((item: any, idx: number) => {
                             const pName = item.product?.name || item.products?.name || item.name || 'Wood-Fired Item'
                             return (
@@ -586,16 +587,19 @@ export default function KitchenDisplayPage() {
                             <span>{ord.notes}</span>
                           </div>
                         )}
+                        </div>
 
-                        {/* Stage Progress Action Button */}
+                        {/* Stage Progress Action Button Pinned at Bottom */}
                         {action && (
-                          <button
-                            onClick={() => updateOrderStatus(ord.id, action.next)}
-                            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${action.color}`}
-                          >
-                            <span>{action.label}</span>
-                            <ArrowRight size={13} />
-                          </button>
+                          <div className="pt-3 mt-auto">
+                            <button
+                              onClick={() => updateOrderStatus(ord.id, action.next)}
+                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${action.color}`}
+                            >
+                              <span>{action.label}</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
                         )}
                       </div>
                     )

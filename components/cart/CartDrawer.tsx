@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react'
+import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Tag } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
 import CartUpsell from './CartUpsell'
@@ -137,9 +137,23 @@ export default function CartDrawer() {
               {items.length > 0 && <CartUpsell />}
             </div>
 
-            {/* Footer Summary */}
-            {items.length > 0 && (
-              <div className="p-6 bg-white border-t border-[#E7E0D8] space-y-4">
+                {/* 1-Line Promo Coupon Accordion */}
+                <div className="bg-[#FBF9F5] border border-[#E7E0D8] rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#1C1917]">
+                      <Tag size={14} className="text-[#B91C1C]" />
+                      <span>Have a Promo Coupon?</span>
+                    </div>
+                    <Link
+                      href="/cart"
+                      onClick={closeCart}
+                      className="text-xs font-bold text-[#B91C1C] hover:underline"
+                    >
+                      Apply Code &gt;
+                    </Link>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-[#57534E]">
                     <span>Subtotal</span>

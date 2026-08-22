@@ -11,7 +11,7 @@ import {
   Calendar, ShoppingBag, Eye, Ban, CheckCircle2, X, MapPin,
   TrendingUp, ArrowUpRight, ArrowDownRight, Loader2,
   UserPlus, Edit, Trash2, Activity, History, Key, UserCheck, Mail,
-  Gift, Cake, MessageSquare
+  Gift, Cake, MessageSquare, MoreVertical
 } from 'lucide-react'
 import { triggerBirthdayDealsAction, sendCustomerWhatsAppDealAction } from '@/app/actions/notifications'
 import { cn } from '@/lib/utils'
@@ -60,6 +60,7 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
   const [adjustReason, setAdjustReason] = useState<string>('Manual Admin Grant')
   const [isAdjustingPoints, setIsAdjustingPoints] = useState(false)
   const [isTriggeringDeals, setIsTriggeringDeals] = useState(false)
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
 
   // Trigger Birthday & Anniversary Deals
   async function handleTriggerBirthdayDeals() {
@@ -451,7 +452,7 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 relative">
                           <button
                             onClick={() => handleSendWhatsAppDeal(customer)}
                             className="p-1.5 rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors"
@@ -468,41 +469,61 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                             <Eye size={15} />
                           </button>
 
-                          <button
-                            onClick={() => setEditingCustomer(customer)}
-                            className="p-1.5 rounded-lg border border-[#E7E0D8] text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#B91C1C] transition-colors"
-                            title="Edit User Profile"
-                          >
-                            <Edit size={15} />
-                          </button>
+                          {/* Secondary Actions Dropdown */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setActiveMenuId(activeMenuId === customer.id ? null : customer.id)}
+                              className="p-1.5 rounded-lg border border-[#E7E0D8] text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#1C1917] transition-colors"
+                              title="More Options"
+                            >
+                              <MoreVertical size={15} />
+                            </button>
 
-                          <button
-                            onClick={() => setDeletingCustomer(customer)}
-                            className="p-1.5 rounded-lg border border-[#FCA5A5] text-[#B91C1C] hover:bg-[#FEF2F2] transition-colors"
-                            title="Delete User Account"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                            {activeMenuId === customer.id && (
+                              <div className="absolute right-0 top-8 z-30 bg-white rounded-xl shadow-xl border border-[#E7E0D8] py-1.5 min-w-[150px] text-left text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
+                                <button
+                                  onClick={() => {
+                                    setEditingCustomer(customer)
+                                    setActiveMenuId(null)
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#F4EFEA] flex items-center gap-2 text-[#1C1917]"
+                                >
+                                  <Edit size={13} className="text-[#57534E]" /> Edit Profile
+                                </button>
 
-                          <button
-                            onClick={() => handleToggleBlock(customer)}
-                            disabled={loadingActionId === customer.id}
-                            className={cn(
-                              "px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors border",
-                              isActive
-                                ? "border-[#E7E0D8] text-[#78716C] hover:bg-[#F5F5F4]"
-                                : "border-[#86EFAC] text-[#15803D] hover:bg-[#F0FDF4]"
+                                <button
+                                  onClick={() => {
+                                    setPointsModalCustomer(customer)
+                                    setActiveMenuId(null)
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#F4EFEA] flex items-center gap-2 text-[#1C1917]"
+                                >
+                                  <Award size={13} className="text-amber-600" /> Adjust Points
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    handleToggleBlock(customer)
+                                    setActiveMenuId(null)
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-[#F4EFEA] flex items-center gap-2 text-[#78716C]"
+                                >
+                                  {isActive ? <Ban size={13} className="text-amber-600" /> : <CheckCircle2 size={13} className="text-emerald-600" />}
+                                  {isActive ? 'Block Account' : 'Unblock Account'}
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setDeletingCustomer(customer)
+                                    setActiveMenuId(null)
+                                  }}
+                                  className="w-full px-3 py-2 text-left hover:bg-rose-50 flex items-center gap-2 text-rose-600 border-t border-[#E7E0D8] mt-1 pt-1.5"
+                                >
+                                  <Trash2 size={13} /> Delete Account
+                                </button>
+                              </div>
                             )}
-                            title={isActive ? "Block Account" : "Unblock Account"}
-                          >
-                            {loadingActionId === customer.id ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : isActive ? (
-                              <Ban size={13} />
-                            ) : (
-                              <CheckCircle2 size={13} />
-                            )}
-                          </button>
+                          </div>
                         </div>
                       </td>
                     </tr>

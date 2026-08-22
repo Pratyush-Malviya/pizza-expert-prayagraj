@@ -123,19 +123,16 @@ export default function ZomatoProductCard({ product, onQuickView }: ZomatoProduc
               </span>
             )}
 
-            {/* Bestseller Tag */}
-            {product.sort_order === 1 && (
-              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+            {/* Single Priority Tag (Bestseller OR Spicy) */}
+            {product.sort_order === 1 ? (
+              <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
                 <Sparkles size={10} className="text-amber-600" /> Bestseller
               </span>
-            )}
-
-            {/* Spicy Tag */}
-            {product.is_spicy && (
-              <span className="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                <Flame size={10} className="text-rose-600" /> Spicy
+            ) : product.is_spicy ? (
+              <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                <Flame size={10} className="text-rose-500" /> Spicy
               </span>
-            )}
+            ) : null}
           </div>
 
           {/* Dish Name */}

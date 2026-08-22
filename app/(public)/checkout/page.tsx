@@ -521,7 +521,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="bg-[#FBF9F5] min-h-screen py-10">
+    <div className="bg-[#FBF9F5] min-h-screen py-10 pb-32">
       <div className="container-custom">
         <div className="mb-6">
           <Link href="/cart" className="text-xs font-semibold text-[#57534E] hover:text-[#B91C1C] flex items-center gap-1.5 transition-colors">
