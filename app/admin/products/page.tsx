@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import Image from 'next/image'
 import { formatPrice } from '@/lib/utils'
 import {
@@ -9,6 +10,7 @@ import {
   Eye,
   FolderPlus,
   Image as ImageIcon,
+  Layers,
   Plus,
   Search,
   Sparkles,
@@ -453,6 +455,9 @@ export default function AdminProductsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Link href="/admin/categories" className="btn btn-outline btn-sm flex items-center gap-1.5 text-xs">
+            <Layers size={15} /> Manage Categories
+          </Link>
           <button onClick={() => setShowCategoryModal(true)} className="btn btn-outline btn-sm flex items-center gap-1.5 text-xs">
             <FolderPlus size={15} /> Add Category
           </button>

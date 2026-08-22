@@ -73,7 +73,8 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     icon: Boxes,
     keywords: ['products', 'pizzas', 'ingredients', 'stock', 'supplies', 'recipes'],
     items: [
-      { label: 'Products', href: '/admin/products', icon: Pizza, keywords: ['pizza', 'menu items', 'dishes', 'food catalog', 'beverages', 'sides', 'categories'] },
+      { label: 'Products', href: '/admin/products', icon: Pizza, keywords: ['pizza', 'menu items', 'dishes', 'food catalog', 'beverages', 'sides'] },
+      { label: 'Categories', href: '/admin/categories', icon: Layers, keywords: ['category', 'categories', 'menu categories', 'taxonomies', 'sections'] },
       { label: 'Recipe BOM & Costing', href: '/admin/recipes', icon: ChefHat, keywords: ['bom', 'bill of materials', 'cost per slice', 'margins', 'food cost'] },
       { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes, keywords: ['raw materials', 'cheese', 'flour', 'sauce', 'stock level', 'reorder'] },
       { label: 'Wastage Tracker', href: '/admin/inventory/wastage', icon: Trash2, keywords: ['spoilage', 'expired', 'damaged dough', 'waste logging'] },
