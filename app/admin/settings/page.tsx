@@ -51,6 +51,9 @@ function AdminSettingsContent() {
     twitterUrl: '',
     googleReviewsLink: '',
     googleMapsEmbedUrl: '',
+    reviewsRatingScore: '4.9 / 5.0',
+    reviewsSectionTitle: 'PRAYAGRAJ REVIEWS',
+    reviewsSectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
     enableInstagramCarousel: false,
     enableFlashBanner: true,
     flashBannerText: '',
@@ -85,8 +88,11 @@ function AdminSettingsContent() {
         facebookUrl: storeSettings.facebookUrl,
         instagramUrl: storeSettings.instagramUrl,
         twitterUrl: storeSettings.twitterUrl,
-        googleReviewsLink: storeSettings.googleReviewsLink,
+        googleReviewsLink: storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
         googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl,
+        reviewsRatingScore: storeSettings.reviewsRatingScore || '4.9 / 5.0',
+        reviewsSectionTitle: storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
+        reviewsSectionSubtitle: storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
         enableInstagramCarousel: storeSettings.enableInstagramCarousel,
         enableFlashBanner: storeSettings.enableFlashBanner ?? true,
         flashBannerText: storeSettings.flashBannerText || '🔥 FLAT 20% OFF on all Wood-Fired Pizzas! Use coupon code: PIZZA20',
@@ -537,6 +543,36 @@ function AdminSettingsContent() {
                   onChange={(e) => setFormData({ ...formData, googleMapsEmbedUrl: e.target.value })}
                   className="input-field"
                   placeholder="https://maps.google.com/..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Homepage Rating Badge Score</label>
+                <input
+                  type="text"
+                  value={formData.reviewsRatingScore}
+                  onChange={(e) => setFormData({ ...formData, reviewsRatingScore: e.target.value })}
+                  className="input-field font-mono"
+                  placeholder="4.9 / 5.0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Homepage Reviews Section Heading</label>
+                <input
+                  type="text"
+                  value={formData.reviewsSectionTitle}
+                  onChange={(e) => setFormData({ ...formData, reviewsSectionTitle: e.target.value })}
+                  className="input-field"
+                  placeholder="PRAYAGRAJ REVIEWS"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">Homepage Reviews Section Subtitle</label>
+                <textarea
+                  rows={2}
+                  value={formData.reviewsSectionSubtitle}
+                  onChange={(e) => setFormData({ ...formData, reviewsSectionSubtitle: e.target.value })}
+                  className="input-field"
+                  placeholder="Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad."
                 />
               </div>
             </div>

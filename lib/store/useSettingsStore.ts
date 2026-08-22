@@ -91,9 +91,12 @@ interface SettingsState {
   instagramUrl: string
   twitterUrl: string
   
-  // Integrations & Maps
+  // Integrations & Google Reviews Section Customizer
   googleReviewsLink: string
   googleMapsEmbedUrl: string
+  reviewsRatingScore: string
+  reviewsSectionTitle: string
+  reviewsSectionSubtitle: string
   
   // Features & Flash Banner
   enableInstagramCarousel: boolean
@@ -279,6 +282,9 @@ export const useSettingsStore = create<SettingsState>()(
 
       googleReviewsLink: 'https://g.page/r/pizzaexpert-prayagraj/review',
       googleMapsEmbedUrl: 'https://maps.google.com/maps?q=Allapur,+Prayagraj,+Uttar+Pradesh&t=&z=14&ie=UTF8&iwloc=&output=embed',
+      reviewsRatingScore: '4.9 / 5.0',
+      reviewsSectionTitle: 'PRAYAGRAJ REVIEWS',
+      reviewsSectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
 
       enableInstagramCarousel: false,
       enableFlashBanner: true,

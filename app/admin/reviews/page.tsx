@@ -33,6 +33,8 @@ import {
   createAdminReviewAction,
   ReviewItem,
 } from '@/app/actions/reviews'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import { Edit3, ExternalLink } from 'lucide-react'
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([])
@@ -42,6 +44,24 @@ export default function AdminReviewsPage() {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [submitting, setSubmitting] = useState<{ [key: string]: boolean }>({})
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showSectionSettings, setShowSectionSettings] = useState(false)
+  const storeSettings = useSettingsStore()
+  const [headerSettings, setHeaderSettings] = useState({
+    ratingScore: '4.9 / 5.0',
+    sectionTitle: 'PRAYAGRAJ REVIEWS',
+    sectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+    googleReviewsLink: 'https://g.page/r/pizzaexpert-prayagraj/review',
+  })
+
+  useEffect(() => {
+    setHeaderSettings({
+      ratingScore: storeSettings.reviewsRatingScore || '4.9 / 5.0',
+      sectionTitle: storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
+      sectionSubtitle: storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+      googleReviewsLink: storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
+    })
+  }, [storeSettings])
+
   const [newReview, setNewReview] = useState({
     customer_name: '',
     rating: 5,
@@ -51,6 +71,18 @@ export default function AdminReviewsPage() {
     source: 'google' as 'google' | 'storefront' | 'app',
     is_approved: true,
   })
+
+  const handleSaveHeaderSettings = (e: React.FormEvent) => {
+    e.preventDefault()
+    storeSettings.updateSettings({
+      reviewsRatingScore: headerSettings.ratingScore,
+      reviewsSectionTitle: headerSettings.sectionTitle,
+      reviewsSectionSubtitle: headerSettings.sectionSubtitle,
+      googleReviewsLink: headerSettings.googleReviewsLink,
+    })
+    toast.success('Homepage Reviews Section updated successfully!')
+    setShowSectionSettings(false)
+  }
 
   useEffect(() => {
     loadReviews()
@@ -181,7 +213,14 @@ export default function AdminReviewsPage() {
             Moderating verified Google reviews, in-app customer feedback, and homepage testimonials.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={() => setShowSectionSettings(!showSectionSettings)}
+            className="px-3.5 py-2 bg-white border border-[#E7E0D8] hover:bg-[#F4EFEA] text-[#1C1917] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+          >
+            <Edit3 size={14} className="text-[#B91C1C]" />
+            <span>Customize Homepage Section</span>
+          </button>
           <button
             onClick={() => setShowAddModal(true)}
             className="px-3.5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer uppercase tracking-wider"
@@ -199,6 +238,92 @@ export default function AdminReviewsPage() {
           </button>
         </div>
       </div>
+
+      {/* ─── Expandable Homepage Reviews Section Customizer ─── */}
+      {showSectionSettings && (
+        <form onSubmit={handleSaveHeaderSettings} className="bg-white rounded-3xl p-6 border-2 border-[#B91C1C]/30 shadow-lg space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⭐</span>
+              <div>
+                <h3 className="font-serif font-bold text-base text-[#1C1917]">Homepage Reviews Section Header & Google Link</h3>
+                <p className="text-xs text-[#78716C]">Customize the 4.9★ badge score, headline, description, and &apos;Write a Review&apos; link displayed on the main home page.</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setShowSectionSettings(false)} className="text-[#A8A29E] hover:text-[#1C1917]">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Badge Score (e.g. 4.9 / 5.0)</label>
+              <input
+                type="text"
+                value={headerSettings.ratingScore}
+                onChange={(e) => setHeaderSettings({ ...headerSettings, ratingScore: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl font-mono"
+                placeholder="4.9 / 5.0"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Section Heading Title</label>
+              <input
+                type="text"
+                value={headerSettings.sectionTitle}
+                onChange={(e) => setHeaderSettings({ ...headerSettings, sectionTitle: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl font-bold"
+                placeholder="PRAYAGRAJ REVIEWS"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Section Subtitle / Description</label>
+            <input
+              type="text"
+              value={headerSettings.sectionSubtitle}
+              onChange={(e) => setHeaderSettings({ ...headerSettings, sectionSubtitle: e.target.value })}
+              className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl"
+              placeholder="Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#1C1917] mb-1">Google Maps / My Business Review Link (For &apos;Write a Review&apos; button)</label>
+            <div className="relative">
+              <input
+                type="url"
+                value={headerSettings.googleReviewsLink}
+                onChange={(e) => setHeaderSettings({ ...headerSettings, googleReviewsLink: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl pl-8"
+                placeholder="https://g.page/r/pizzaexpert-prayagraj/review"
+                required
+              />
+              <ExternalLink size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E0D8]">
+            <button
+              type="button"
+              onClick={() => setShowSectionSettings(false)}
+              className="px-4 py-2 text-xs font-bold border border-[#E7E0D8] rounded-xl hover:bg-[#F4EFEA]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold rounded-xl shadow-xs"
+            >
+              Save Homepage Changes
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* ─── Metrics KPI Cards ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

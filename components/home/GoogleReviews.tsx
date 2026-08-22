@@ -9,7 +9,12 @@ import { getPublicReviews, ReviewItem } from '@/app/actions/reviews'
 export default function GoogleReviews() {
   const [mounted, setMounted] = useState(false)
   const [reviews, setReviews] = useState<ReviewItem[]>([])
-  const googleReviewsLink = useSettingsStore((state) => state.googleReviewsLink)
+  const {
+    googleReviewsLink,
+    reviewsRatingScore,
+    reviewsSectionTitle,
+    reviewsSectionSubtitle,
+  } = useSettingsStore()
 
   useEffect(() => {
     setMounted(true)
@@ -19,6 +24,13 @@ export default function GoogleReviews() {
       }
     })
   }, [])
+
+  const ratingScore = mounted && reviewsRatingScore ? reviewsRatingScore : '4.9 / 5.0'
+  const sectionTitle = mounted && reviewsSectionTitle ? reviewsSectionTitle : 'PRAYAGRAJ REVIEWS'
+  const sectionSubtitle =
+    mounted && reviewsSectionSubtitle
+      ? reviewsSectionSubtitle
+      : 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.'
 
   return (
     <section className="section-py bg-[#08080B] border-y border-white/10" aria-labelledby="reviews-heading">
@@ -33,14 +45,14 @@ export default function GoogleReviews() {
                 ))}
               </div>
               <span className="font-mono font-black text-white text-sm bg-white/10 px-2 py-0.5 rounded-md">
-                4.9 / 5.0
+                {ratingScore}
               </span>
             </div>
             <h2 id="reviews-heading" className="section-title text-white">
-              PRAYAGRAJ REVIEWS
+              {sectionTitle}
             </h2>
             <p className="section-subtitle">
-              Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.
+              {sectionSubtitle}
             </p>
           </div>
 
