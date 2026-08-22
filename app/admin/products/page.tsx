@@ -165,22 +165,31 @@ export default function AdminProductsPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const localCategories = JSON.parse(localStorage.getItem('pizza_categories') || '[]') as CategoryOption[]
-      const localProducts = JSON.parse(localStorage.getItem('pizza_products') || '[]') as Product[]
+      const storedCategoriesRaw = localStorage.getItem('pizza_categories')
+      let localCategories: CategoryOption[] = []
+      if (storedCategoriesRaw) {
+        try {
+          const parsed = JSON.parse(storedCategoriesRaw)
+          if (Array.isArray(parsed)) localCategories = parsed
+        } catch {}
+      } else {
+        localCategories = DEFAULT_CATEGORIES
+        localStorage.setItem('pizza_categories', JSON.stringify(DEFAULT_CATEGORIES))
+      }
+      setCategories(localCategories)
 
-      // Merge local categories with DEFAULT_CATEGORIES to ensure no default category is lost
-      const categoryMap = new Map<string, CategoryOption>()
-      DEFAULT_CATEGORIES.forEach((cat) => categoryMap.set(cat.slug, cat))
-      localCategories.forEach((cat) => categoryMap.set(cat.slug || cat.id, cat))
-      const mergedCategories = Array.from(categoryMap.values()).sort((a, b) => a.sort_order - b.sort_order)
-      setCategories(mergedCategories)
-
-      // Merge local products with INITIAL_PRODUCTS to ensure all menu products are listed
-      const productMap = new Map<string, Product>()
-      INITIAL_PRODUCTS.forEach((prod) => productMap.set(prod.id, prod))
-      localProducts.forEach((prod) => productMap.set(prod.id, prod))
-      const mergedProducts = Array.from(productMap.values())
-      setProducts(mergedProducts)
+      const storedProductsRaw = localStorage.getItem('pizza_products')
+      let localProducts: Product[] = []
+      if (storedProductsRaw) {
+        try {
+          const parsedProds = JSON.parse(storedProductsRaw)
+          if (Array.isArray(parsedProds)) localProducts = parsedProds
+        } catch {}
+      } else {
+        localProducts = INITIAL_PRODUCTS
+        localStorage.setItem('pizza_products', JSON.stringify(INITIAL_PRODUCTS))
+      }
+      setProducts(localProducts)
 
       const supabase = createClient()
       const { data: remoteCategories, error: categoryError } = await supabase

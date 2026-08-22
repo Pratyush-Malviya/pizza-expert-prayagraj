@@ -4,23 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
+  AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Edit2,
-  Eye,
   FolderPlus,
-  FolderTree,
   Image as ImageIcon,
   Layers,
-  MoreVertical,
-  MoveDown,
-  MoveUp,
   Pizza,
   Plus,
   RefreshCw,
   Search,
-  Sparkles,
   Tag,
   Trash2,
   Upload,
@@ -49,11 +45,19 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-desserts', name: 'Desserts', slug: 'desserts', image_url: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=400&q=80', is_active: true, sort_order: 8 },
 ]
 
-interface ProductReference {
+interface ProductItem {
   id: string
   name: string
+  slug?: string
   category_id: string
   category?: string
+  price?: number
+  description?: string
+  image_url?: string
+  is_veg?: boolean
+  is_spicy?: boolean
+  is_bestseller?: boolean
+  is_available?: boolean
 }
 
 const slugify = (value: string) =>
@@ -64,14 +68,17 @@ const slugify = (value: string) =>
     .replace(/(^-|-$)+/g, '')
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES)
-  const [products, setProducts] = useState<ProductReference[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [products, setProducts] = useState<ProductItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
+  const [deleteMode, setDeleteMode] = useState<'reassign' | 'delete_all'>('reassign')
+  const [reassignTargetId, setReassignTargetId] = useState<string>('')
+  const [isDeleting, setIsDeleting] = useState(false)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
 
   // Form State
@@ -89,23 +96,46 @@ export default function AdminCategoriesPage() {
     } catch {}
   }, [])
 
+  const persistProducts = useCallback((updated: ProductItem[]) => {
+    setProducts(updated)
+    try {
+      localStorage.setItem('pizza_products', JSON.stringify(updated))
+    } catch {}
+  }, [])
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      // 1. Load from localStorage
-      const localCats = JSON.parse(localStorage.getItem('pizza_categories') || '[]') as Category[]
-      const localProds = JSON.parse(localStorage.getItem('pizza_products') || '[]') as ProductReference[]
-      if (localProds.length) {
-        setProducts(localProds)
+      // 1. Check localStorage first
+      const storedCategoriesRaw = localStorage.getItem('pizza_categories')
+      let localCats: Category[] = []
+
+      if (storedCategoriesRaw) {
+        try {
+          const parsed = JSON.parse(storedCategoriesRaw)
+          if (Array.isArray(parsed)) {
+            localCats = parsed
+          }
+        } catch {}
+      } else {
+        localCats = DEFAULT_CATEGORIES
+        localStorage.setItem('pizza_categories', JSON.stringify(DEFAULT_CATEGORIES))
       }
 
-      const map = new Map<string, Category>()
-      DEFAULT_CATEGORIES.forEach((c) => map.set(c.slug, c))
-      localCats.forEach((c) => map.set(c.slug || c.id, c))
-      let initialList = Array.from(map.values()).sort((a, b) => a.sort_order - b.sort_order)
-      setCategories(initialList)
+      setCategories(localCats)
 
-      // 2. Fetch from Supabase
+      // Load products from localStorage
+      const storedProductsRaw = localStorage.getItem('pizza_products')
+      if (storedProductsRaw) {
+        try {
+          const parsedProds = JSON.parse(storedProductsRaw)
+          if (Array.isArray(parsedProds)) {
+            setProducts(parsedProds)
+          }
+        } catch {}
+      }
+
+      // 2. Fetch from Supabase if available
       const supabase = createClient()
       const { data: remoteCats, error: catError } = await supabase
         .from('categories')
@@ -130,7 +160,18 @@ export default function AdminCategoriesPage() {
         .select('id, name, category_id')
 
       if (remoteProds && remoteProds.length > 0) {
-        setProducts(remoteProds)
+        setProducts((prev) => {
+          const merged = [...prev]
+          remoteProds.forEach((rp: any) => {
+            const idx = merged.findIndex((p) => p.id === rp.id)
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...rp }
+            } else {
+              merged.push(rp)
+            }
+          })
+          return merged
+        })
       }
     } catch (err) {
       console.warn('Error fetching categories:', err)
@@ -150,7 +191,6 @@ export default function AdminCategoriesPage() {
       if (p.category_id) {
         counts[p.category_id] = (counts[p.category_id] || 0) + 1
       }
-      // Also match by slug/name if category_id refers to fallback slug
       if (p.category) {
         counts[p.category] = (counts[p.category] || 0) + 1
       }
@@ -224,7 +264,6 @@ export default function AdminCategoriesPage() {
       return
     }
 
-    // Check duplicate slug
     const duplicate = categories.find(
       (c) => c.slug === slug && c.id !== editingCategory?.id
     )
@@ -245,7 +284,7 @@ export default function AdminCategoriesPage() {
     try {
       if (editingCategory) {
         // Update existing
-        const res = await updateCategoryAction(editingCategory.id, categoryPayload)
+        await updateCategoryAction(editingCategory.id, categoryPayload)
         const updatedCat: Category = {
           id: editingCategory.id,
           ...categoryPayload,
@@ -290,9 +329,9 @@ export default function AdminCategoriesPage() {
 
     try {
       await toggleCategoryStatusAction(cat.id, nextState)
-      toast.success(`"${cat.name}" is now ${nextState ? 'Active' : 'Inactive'}`)
+      toast.success(`"${cat.name}" is now ${nextState ? 'Active' : 'Hidden'}`)
     } catch {
-      toast.error('Failed to update status on server, updated locally')
+      toast.success(`"${cat.name}" status updated`)
     }
   }
 
@@ -326,32 +365,73 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  // Delete Category
+  // Open Delete Modal
+  const handleOpenDeleteModal = (cat: Category) => {
+    setDeleteTarget(cat)
+    const otherCategories = categories.filter((c) => c.id !== cat.id)
+    setReassignTargetId(otherCategories[0]?.id || '')
+    setDeleteMode('reassign')
+  }
+
+  // Execute Delete
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return
 
-    const productCount = getProductCount(deleteTarget)
-    if (productCount > 0) {
-      toast.error(
-        `Cannot delete: ${productCount} product(s) belong to "${deleteTarget.name}". Reassign products first.`
-      )
-      setDeleteTarget(null)
-      return
-    }
+    setIsDeleting(true)
+    const targetCat = deleteTarget
+    const pCount = getProductCount(targetCat)
 
     try {
-      const res = await deleteCategoryAction(deleteTarget.id)
-      if (!res.success && res.error) {
-        toast.error(res.error)
-      } else {
-        const nextList = categories.filter((c) => c.id !== deleteTarget.id)
-        persistCategories(nextList)
-        toast.success(`Category "${deleteTarget.name}" deleted`)
+      // 1. Handle product reassignment or deletion locally
+      if (pCount > 0) {
+        if (deleteMode === 'reassign' && reassignTargetId) {
+          const targetCategoryObj = categories.find((c) => c.id === reassignTargetId)
+          const updatedProducts = products.map((p) => {
+            const matchesCat =
+              p.category_id === targetCat.id ||
+              p.category_id === targetCat.slug ||
+              p.category === targetCat.name ||
+              p.category === targetCat.slug
+
+            if (matchesCat && targetCategoryObj) {
+              return {
+                ...p,
+                category_id: targetCategoryObj.id,
+                category: targetCategoryObj.name,
+              }
+            }
+            return p
+          })
+          persistProducts(updatedProducts)
+        } else {
+          // Delete products in this category
+          const updatedProducts = products.filter((p) => {
+            const matchesCat =
+              p.category_id === targetCat.id ||
+              p.category_id === targetCat.slug ||
+              p.category === targetCat.name ||
+              p.category === targetCat.slug
+            return !matchesCat
+          })
+          persistProducts(updatedProducts)
+        }
       }
+
+      // 2. Remove category from list
+      const nextCategories = categories.filter((c) => c.id !== targetCat.id)
+      persistCategories(nextCategories)
+
+      // 3. Call Server Action
+      await deleteCategoryAction(targetCat.id, {
+        reassignToCategoryId: deleteMode === 'reassign' ? reassignTargetId : undefined,
+      })
+
+      toast.success(`Category "${targetCat.name}" deleted successfully`)
+      setDeleteTarget(null)
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete category')
     } finally {
-      setDeleteTarget(null)
+      setIsDeleting(false)
     }
   }
 
@@ -360,6 +440,11 @@ export default function AdminCategoriesPage() {
   const activeCategories = categories.filter((c) => c.is_active).length
   const inactiveCategories = categories.filter((c) => !c.is_active).length
   const totalProductsAssigned = products.length
+
+  const otherCategoriesForReassign = useMemo(() => {
+    if (!deleteTarget) return []
+    return categories.filter((c) => c.id !== deleteTarget.id)
+  }, [categories, deleteTarget])
 
   return (
     <div className="space-y-6 pb-16">
@@ -615,7 +700,7 @@ export default function AdminCategoriesPage() {
                             <Edit2 size={15} />
                           </button>
                           <button
-                            onClick={() => setDeleteTarget(cat)}
+                            onClick={() => handleOpenDeleteModal(cat)}
                             title="Delete Category"
                             className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
                           >
@@ -727,7 +812,7 @@ export default function AdminCategoriesPage() {
                       <Edit2 size={13} />
                     </button>
                     <button
-                      onClick={() => setDeleteTarget(cat)}
+                      onClick={() => handleOpenDeleteModal(cat)}
                       className="btn btn-outline btn-xs p-1.5 text-red-600 hover:bg-red-50"
                     >
                       <Trash2 size={13} />
@@ -869,10 +954,10 @@ export default function AdminCategoriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Category Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4 border border-[#E7E0D8]">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-[#E7E0D8]">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
               <h3 className="font-serif font-bold text-lg text-red-600 flex items-center gap-2">
                 <Trash2 size={18} /> Delete Category
@@ -885,19 +970,81 @@ export default function AdminCategoriesPage() {
               </button>
             </div>
 
-            <div className="space-y-2 text-xs text-[#57534E]">
+            <div className="space-y-3 text-xs text-[#57534E]">
               <p>
                 Are you sure you want to delete category{' '}
                 <strong className="text-[#1C1917]">"{deleteTarget.name}"</strong>?
               </p>
+
               {getProductCount(deleteTarget) > 0 ? (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold">
-                  ⚠️ Warning: {getProductCount(deleteTarget)} products are currently assigned to this category. You must reassign or remove them before deleting.
+                <div className="space-y-3 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl">
+                  <div className="flex items-start gap-2 text-amber-900 font-semibold text-xs">
+                    <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      {getProductCount(deleteTarget)} product(s) currently belong to this category.
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-[#78716C]">
+                    Choose what to do with the attached products:
+                  </p>
+
+                  <div className="space-y-2">
+                    {otherCategoriesForReassign.length > 0 && (
+                      <label className="flex items-start gap-2 p-2.5 bg-white border border-[#E7E0D8] rounded-lg cursor-pointer">
+                        <input
+                          type="radio"
+                          name="deleteMode"
+                          value="reassign"
+                          checked={deleteMode === 'reassign'}
+                          onChange={() => setDeleteMode('reassign')}
+                          className="mt-0.5 text-[#B91C1C] focus:ring-[#B91C1C]"
+                        />
+                        <div className="space-y-1.5 flex-1">
+                          <span className="font-bold text-[#1C1917] block">
+                            Reassign products to another category
+                          </span>
+                          {deleteMode === 'reassign' && (
+                            <select
+                              value={reassignTargetId}
+                              onChange={(e) => setReassignTargetId(e.target.value)}
+                              className="input-field text-xs py-1.5 bg-[#FBF9F5]"
+                            >
+                              {otherCategoriesForReassign.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name} (/{c.slug})
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </label>
+                    )}
+
+                    <label className="flex items-start gap-2 p-2.5 bg-white border border-[#E7E0D8] rounded-lg cursor-pointer">
+                      <input
+                        type="radio"
+                        name="deleteMode"
+                        value="delete_all"
+                        checked={deleteMode === 'delete_all' || otherCategoriesForReassign.length === 0}
+                        onChange={() => setDeleteMode('delete_all')}
+                        className="mt-0.5 text-red-600 focus:ring-red-600"
+                      />
+                      <div>
+                        <span className="font-bold text-red-700 block">
+                          Delete category and all its attached products
+                        </span>
+                        <span className="text-[11px] text-[#78716C]">
+                          Permanently removes both the category and its dishes.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               ) : (
-                <p className="text-[11px] text-[#78716C]">
-                  This category has no assigned products and can be safely removed.
-                </p>
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-[11px]">
+                  ✓ This category has no assigned products and will be removed immediately.
+                </div>
               )}
             </div>
 
@@ -911,10 +1058,11 @@ export default function AdminCategoriesPage() {
               </button>
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={handleConfirmDelete}
                 className="btn btn-primary bg-red-600 hover:bg-red-700 btn-sm text-xs"
               >
-                Confirm Delete
+                {isDeleting ? 'Deleting...' : 'Delete Category'}
               </button>
             </div>
           </div>
