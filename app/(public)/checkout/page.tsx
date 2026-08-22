@@ -73,10 +73,28 @@ export default function CheckoutPage() {
   })
 
   const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay')
+  const [deliveryTimingMode, setDeliveryTimingMode] = useState<'asap' | 'scheduled'>('asap')
+  const [scheduledTimeSlot, setScheduledTimeSlot] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [codPendingOrderId, setCodPendingOrderId] = useState<string | null>(null)
   const [eta, setEta] = useState<EtaEstimate | null>(null)
+
+  const generateTimeSlots = useCallback(() => {
+    const slots: string[] = []
+    const now = new Date()
+    const earliest = new Date(now.getTime() + 45 * 60 * 1000)
+    earliest.setMinutes(Math.ceil(earliest.getMinutes() / 30) * 30, 0, 0)
+    const storeClose = new Date(now)
+    storeClose.setHours(23, 0, 0, 0)
+
+    let cursor = new Date(earliest)
+    while (cursor <= storeClose) {
+      slots.push(cursor.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }))
+      cursor = new Date(cursor.getTime() + 30 * 60 * 1000)
+    }
+    return slots
+  }, [])
 
   // Fetch ETA on mount & inject Razorpay checkout script
   useEffect(() => {
@@ -341,7 +359,10 @@ export default function CheckoutPage() {
           state: addressInfo.state,
           pincode: addressInfo.pincode,
         },
-        notes: addressInfo.notes,
+        notes: [
+          addressInfo.notes,
+          deliveryTimingMode === 'scheduled' && scheduledTimeSlot ? `[⏰ Scheduled Delivery: Today at ${scheduledTimeSlot}]` : null
+        ].filter(Boolean).join(' | '),
       })
 
       if (!res.success || !res.orderId) {
@@ -776,10 +797,84 @@ export default function CheckoutPage() {
               />
             )}
 
+            {/* Delivery Timing Card */}
+            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
+                <span>3. Delivery Timing</span>
+                <span className="text-xs font-mono text-[#D97706] bg-[#FEF3C7] px-2.5 py-1 rounded-full font-bold">
+                  {deliveryTimingMode === 'asap' ? '⚡ Express ASAP' : '📅 Pre-scheduled'}
+                </span>
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeliveryTimingMode('asap')
+                    setScheduledTimeSlot('')
+                  }}
+                  className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                    deliveryTimingMode === 'asap'
+                      ? 'border-[#B91C1C] bg-[#FEF2F2] ring-2 ring-[#B91C1C]/20'
+                      : 'border-[#E7E0D8] hover:border-[#A8A29E] bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Clock size={18} className="text-[#B91C1C]" />
+                    <div>
+                      <span className="block font-bold text-xs text-[#1C1917]">Deliver ASAP</span>
+                      <span className="text-[11px] text-[#78716C]">Hot & fresh in ~30–40 mins</span>
+                    </div>
+                  </div>
+                  {deliveryTimingMode === 'asap' && <CheckCircle2 size={16} className="text-[#B91C1C]" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryTimingMode('scheduled')}
+                  className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                    deliveryTimingMode === 'scheduled'
+                      ? 'border-[#B91C1C] bg-[#FEF2F2] ring-2 ring-[#B91C1C]/20'
+                      : 'border-[#E7E0D8] hover:border-[#A8A29E] bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Clock size={18} className="text-[#D97706]" />
+                    <div>
+                      <span className="block font-bold text-xs text-[#1C1917]">Schedule for Later</span>
+                      <span className="text-[11px] text-[#78716C]">Pick today's time slot</span>
+                    </div>
+                  </div>
+                  {deliveryTimingMode === 'scheduled' && <CheckCircle2 size={16} className="text-[#B91C1C]" />}
+                </button>
+              </div>
+
+              {deliveryTimingMode === 'scheduled' && (
+                <div className="pt-2">
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1.5">
+                    Select Target Delivery Slot Today:
+                  </label>
+                  <select
+                    value={scheduledTimeSlot}
+                    onChange={(e) => setScheduledTimeSlot(e.target.value)}
+                    required={deliveryTimingMode === 'scheduled'}
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                  >
+                    <option value="">-- Choose Time Slot --</option>
+                    {generateTimeSlots().map((slot) => (
+                      <option key={slot} value={slot}>
+                        ⏰ Today at {slot}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
             {/* Payment Method Card */}
             <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
               <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3">
-                3. Select Payment Gateway
+                4. Select Payment Gateway
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

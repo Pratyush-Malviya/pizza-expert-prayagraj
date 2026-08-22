@@ -10,8 +10,10 @@ import {
   Users, Search, Download, ShieldAlert, Award, Phone,
   Calendar, ShoppingBag, Eye, Ban, CheckCircle2, X, MapPin,
   TrendingUp, ArrowUpRight, ArrowDownRight, Loader2,
-  UserPlus, Edit, Trash2, Activity, History, Key, UserCheck, Mail
+  UserPlus, Edit, Trash2, Activity, History, Key, UserCheck, Mail,
+  Gift, Cake, MessageSquare
 } from 'lucide-react'
+import { triggerBirthdayDealsAction, sendCustomerWhatsAppDealAction } from '@/app/actions/notifications'
 import { cn } from '@/lib/utils'
 
 export interface CustomerRow {
@@ -57,6 +59,41 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
   const [deltaPoints, setDeltaPoints] = useState<number>(50)
   const [adjustReason, setAdjustReason] = useState<string>('Manual Admin Grant')
   const [isAdjustingPoints, setIsAdjustingPoints] = useState(false)
+  const [isTriggeringDeals, setIsTriggeringDeals] = useState(false)
+
+  // Trigger Birthday & Anniversary Deals
+  async function handleTriggerBirthdayDeals() {
+    setIsTriggeringDeals(true)
+    try {
+      const res = await triggerBirthdayDealsAction()
+      if (res.success) {
+        toast.success(`🎉 Dispatched Birthday Deals & Coupons to ${res.count} registered customers!`)
+      } else {
+        toast.error(res.error || 'Failed to dispatch birthday deals')
+      }
+    } catch (err) {
+      toast.error('Could not trigger birthday deals')
+    } finally {
+      setIsTriggeringDeals(false)
+    }
+  }
+
+  // Open direct WhatsApp chat with Birthday Deal
+  async function handleSendWhatsAppDeal(customer: CustomerRow) {
+    if (!customer.phone) {
+      toast.error('Customer has no phone number on file')
+      return
+    }
+    const res = await sendCustomerWhatsAppDealAction(
+      customer.phone,
+      customer.name,
+      'Get 20% OFF on your birthday order!'
+    )
+    if (res.success && res.whatsappUrl) {
+      window.open(res.whatsappUrl, '_blank')
+      toast.success(`Opening WhatsApp chat for ${customer.name}...`)
+    }
+  }
 
   // Filter logic
   const filteredCustomers = customers.filter(c => {
@@ -295,6 +332,14 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
           </select>
 
           <button
+            onClick={handleTriggerBirthdayDeals}
+            disabled={isTriggeringDeals}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs uppercase tracking-wider"
+          >
+            <Gift size={14} /> {isTriggeringDeals ? 'Sending...' : '🎂 Birthday Deals'}
+          </button>
+
+          <button
             onClick={() => setShowAddModal(true)}
             className="bg-[#B91C1C] hover:bg-[#991B1B] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs uppercase tracking-wider"
           >
@@ -407,6 +452,14 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleSendWhatsAppDeal(customer)}
+                            className="p-1.5 rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors"
+                            title="Send Birthday WhatsApp Deal"
+                          >
+                            <MessageSquare size={15} />
+                          </button>
+
                           <button
                             onClick={() => handleOpenDetails(customer)}
                             className="p-1.5 rounded-lg border border-[#E7E0D8] text-[#57534E] hover:bg-[#F4EFEA] hover:text-[#1C1917] transition-colors"

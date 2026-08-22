@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
+import CartUpsell from './CartUpsell'
 
 export default function CartDrawer() {
   const { isOpen, closeCart, items, updateQuantity, removeItem, getSubtotal, getItemKey } = useCartStore()
@@ -133,6 +134,7 @@ export default function CartDrawer() {
                   )
                 })
               )}
+              {items.length > 0 && <CartUpsell />}
             </div>
 
             {/* Footer Summary */}

@@ -9,6 +9,8 @@ import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useStoreStore } from '@/lib/store/useStoreStore'
 import { Ingredient, Product, RecipeItem } from '@/types'
+import { syncIngredientZeroStockAction } from '@/app/actions/inventoryLedger'
+import { toast } from 'sonner'
 
 // Mock seed ingredients for initial display if DB table is fresh
 const INITIAL_INGREDIENTS: Ingredient[] = [
@@ -144,6 +146,32 @@ export default function AdminInventoryPage() {
       )
     )
     setRestockModalOpen(false)
+  }
+
+  // Handle 0 stock out & auto-deactivate products
+  const handleZeroOutStock = async (ing: Ingredient) => {
+    try {
+      const supabase = createClient()
+      await supabase
+        .from('ingredients')
+        .update({ current_stock: 0, updated_at: new Date().toISOString() })
+        .eq('id', ing.id)
+
+      setIngredients((prev) =>
+        prev.map((item) => (item.id === ing.id ? { ...item, current_stock: 0 } : item))
+      )
+
+      const res = await syncIngredientZeroStockAction(ing.id)
+      if (res.affectedProducts && res.affectedProducts.length > 0) {
+        toast.warning(
+          `⚠️ ${ing.name} stock set to 0. Auto-marked ${res.affectedProducts.length} dish(es) Out of Stock on store menu!`
+        )
+      } else {
+        toast.info(`${ing.name} stock set to 0`)
+      }
+    } catch (err) {
+      toast.error('Could not update stock')
+    }
   }
 
   // Handle add new ingredient submit
@@ -395,16 +423,25 @@ export default function AdminInventoryPage() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setTargetIngredient(ing)
-                            setRestockModalOpen(true)
-                          }}
-                          className="px-3 py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-semibold rounded-md transition-colors"
-                        >
-                          + Restock
-                        </button>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setTargetIngredient(ing)
+                              setRestockModalOpen(true)
+                            }}
+                            className="px-2.5 py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-semibold rounded-md transition-colors"
+                          >
+                            + Restock
+                          </button>
+                          <button
+                            onClick={() => handleZeroOutStock(ing)}
+                            title="Zero Stock (86 item & auto-sync dishes)"
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-md transition-colors"
+                          >
+                            Zero (86)
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

@@ -377,16 +377,32 @@ export default function KitchenDisplayPage() {
                     const driverVehicle = addr.driverVehicle || delivery?.driver?.vehicle_type || 'Bike'
                     const otpCode = addr.deliveryOtp || delivery?.otp_code || null
                     const isDispatching = dispatchingOrderId === ord.id
+                    const isOverdue = (ord.status === 'confirmed' || ord.status === 'preparing') && minutesAgo >= 12
 
                     return (
                       <div
                         key={ord.id}
-                        className={`p-4 rounded-2xl bg-white border transition-all space-y-3 shadow-xs ${
-                          selectedOrders.has(ord.id)
-                            ? 'border-[#B91C1C] ring-2 ring-[#B91C1C]/20'
-                            : 'border-[#E7E0D8] hover:border-[#B91C1C]/40'
+                        className={`p-4 rounded-2xl border transition-all space-y-3 shadow-xs ${
+                          isOverdue
+                            ? 'border-red-500 bg-red-50/60 ring-2 ring-red-500/40'
+                            : selectedOrders.has(ord.id)
+                            ? 'border-[#B91C1C] ring-2 ring-[#B91C1C]/20 bg-white'
+                            : 'border-[#E7E0D8] hover:border-[#B91C1C]/40 bg-white'
                         }`}
                       >
+                        {/* Overdue Alert Strip */}
+                        {isOverdue && (
+                          <div className="flex items-center justify-between px-2.5 py-1 bg-red-100 border border-red-300/80 rounded-xl text-red-700 text-[11px] font-bold animate-pulse">
+                            <div className="flex items-center gap-1.5">
+                              <AlertCircle size={13} className="text-red-600 shrink-0" />
+                              <span>OVERDUE TICKET</span>
+                            </div>
+                            <span className="font-mono text-[10px] bg-red-200/80 px-1.5 py-0.5 rounded text-red-900">
+                              {minutesAgo}m elapsed (Target: 12m)
+                            </span>
+                          </div>
+                        )}
+
                         {/* Ticket Header */}
                         <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-2.5">
                           <div className="flex items-center gap-2">
@@ -419,7 +435,9 @@ export default function KitchenDisplayPage() {
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className={`text-[11px] font-bold font-mono px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                              minutesAgo > 25
+                              isOverdue
+                                ? 'bg-red-600 text-white animate-pulse'
+                                : minutesAgo > 25
                                 ? 'bg-rose-100 text-rose-700 animate-pulse'
                                 : minutesAgo > 15
                                 ? 'bg-amber-100 text-amber-700'

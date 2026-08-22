@@ -244,3 +244,41 @@ export async function getWastageHistory(limit = 100) {
   if (error) return { success: false, error: error.message, records: [] }
   return { success: true, records: data || [] }
 }
+
+// ─── Auto Out-of-Stock Sync When Ingredient Hits Zero ───────────────────────
+
+export async function syncIngredientZeroStockAction(ingredientId: string) {
+  const supabase = createAdminClient()
+
+  try {
+    const { data: ingredient } = await supabase
+      .from('ingredients')
+      .select('id, name, current_stock')
+      .eq('id', ingredientId)
+      .single()
+
+    if (!ingredient || Number(ingredient.current_stock) > 0) return { success: true, affectedProducts: [] }
+
+    const { data: recipeBoms } = await supabase
+      .from('recipe_items')
+      .select('product_id')
+      .eq('ingredient_id', ingredientId)
+
+    if (!recipeBoms || recipeBoms.length === 0) return { success: true, affectedProducts: [] }
+
+    const productIds = Array.from(new Set(recipeBoms.map((r: any) => r.product_id).filter(Boolean)))
+
+    if (productIds.length > 0) {
+      await supabase
+        .from('products')
+        .update({ is_available: false })
+        .in('id', productIds)
+    }
+
+    revalidatePath('/admin/products')
+    revalidatePath('/menu')
+    return { success: true, affectedProducts: productIds, ingredientName: ingredient.name }
+  } catch (err: any) {
+    return { success: false, error: err.message, affectedProducts: [] }
+  }
+}

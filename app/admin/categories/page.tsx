@@ -20,6 +20,8 @@ import {
   Tag,
   Trash2,
   Upload,
+  Percent,
+  TrendingUp,
   X,
   XCircle,
 } from 'lucide-react'
@@ -226,6 +228,58 @@ export default function AdminCategoriesPage() {
       })
       .sort((a, b) => a.sort_order - b.sort_order)
   }, [categories, search, statusFilter])
+
+  // Bulk Price Adjuster State
+  const [bulkPriceModalCat, setBulkPriceModalCat] = useState<Category | null>(null)
+  const [adjustType, setAdjustType] = useState<'flat' | 'percent'>('flat')
+  const [adjustDelta, setAdjustDelta] = useState<number>(10)
+  const [adjustDirection, setAdjustDirection] = useState<'increase' | 'decrease'>('increase')
+  const [isAdjustingPrices, setIsAdjustingPrices] = useState(false)
+
+  const handleBulkPriceAdjust = async () => {
+    if (!bulkPriceModalCat || !adjustDelta) return
+    setIsAdjustingPrices(true)
+
+    try {
+      const supabase = createClient()
+      const targetCatId = bulkPriceModalCat.id
+      const targetCatSlug = bulkPriceModalCat.slug
+
+      const { data: dbProducts } = await supabase
+        .from('products')
+        .select('id, name, price, category_id')
+        .or(`category_id.eq.${targetCatId}`)
+
+      let localProducts = JSON.parse(localStorage.getItem('pizza_products') || '[]')
+      let count = 0
+
+      localProducts = localProducts.map((prod: any) => {
+        if (prod.category_id === targetCatId || prod.category === targetCatSlug || prod.category?.slug === targetCatSlug) {
+          count++
+          const delta = adjustType === 'flat' ? adjustDelta : Math.round((prod.price * adjustDelta) / 100)
+          const nextPrice = adjustDirection === 'increase' ? prod.price + delta : Math.max(1, prod.price - delta)
+          return { ...prod, price: nextPrice }
+        }
+        return prod
+      })
+      localStorage.setItem('pizza_products', JSON.stringify(localProducts))
+
+      if (dbProducts && dbProducts.length > 0) {
+        for (const p of dbProducts) {
+          const delta = adjustType === 'flat' ? adjustDelta : Math.round((Number(p.price) * adjustDelta) / 100)
+          const nextPrice = adjustDirection === 'increase' ? Number(p.price) + delta : Math.max(1, Number(p.price) - delta)
+          await supabase.from('products').update({ price: nextPrice }).eq('id', p.id)
+        }
+      }
+
+      toast.success(`Successfully adjusted prices for ${count || dbProducts?.length || 0} products in "${bulkPriceModalCat.name}"!`)
+      setBulkPriceModalCat(null)
+    } catch (err) {
+      toast.error('Could not adjust prices')
+    } finally {
+      setIsAdjustingPrices(false)
+    }
+  }
 
   // Open Add Modal
   const handleOpenAddModal = () => {
@@ -710,6 +764,13 @@ export default function AdminCategoriesPage() {
                       <td className="py-3 pr-5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => setBulkPriceModalCat(cat)}
+                            title="Bulk Adjust Prices"
+                            className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded transition-colors"
+                          >
+                            <Percent size={15} />
+                          </button>
+                          <button
                             onClick={() => handleOpenEditModal(cat)}
                             title="Edit Category"
                             className="p-1.5 text-[#57534E] hover:text-[#1C1917] hover:bg-[#FBF9F5] rounded transition-colors"
@@ -816,6 +877,13 @@ export default function AdminCategoriesPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setBulkPriceModalCat(cat)}
+                      title="Bulk Price Adjust"
+                      className="btn btn-outline btn-xs p-1.5 text-amber-600 border-amber-300 hover:bg-amber-50"
+                    >
+                      <Percent size={13} />
+                    </button>
                     <button
                       onClick={() => handleToggleStatus(cat)}
                       className="btn btn-outline btn-xs text-[11px]"
@@ -1112,6 +1180,139 @@ export default function AdminCategoriesPage() {
                 {isDeleting ? 'Deleting...' : 'Delete Category'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Price Adjust Modal */}
+      {bulkPriceModalCat && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-[#E7E0D8]">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-800">
+                  <TrendingUp size={18} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-[#1C1917]">
+                    Bulk Adjust Prices
+                  </h3>
+                  <p className="text-xs text-[#78716C]">
+                    Category: <span className="font-bold text-[#1C1917]">{bulkPriceModalCat.name}</span> ({getProductCount(bulkPriceModalCat)} dishes)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setBulkPriceModalCat(null)}
+                className="p-1 text-[#A8A29E] hover:text-[#1C1917]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleBulkPriceAdjust()
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1.5">
+                  Adjustment Direction
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustDirection('increase')}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      adjustDirection === 'increase'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                    }`}
+                  >
+                    📈 Increase (+ Price)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustDirection('decrease')}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      adjustDirection === 'decrease'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                        : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                    }`}
+                  >
+                    📉 Discount (- Price)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1.5">
+                  Adjustment Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustType('flat')}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      adjustType === 'flat'
+                        ? 'bg-[#1C1917] text-white border-[#1C1917] shadow-xs'
+                        : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                    }`}
+                  >
+                    ₹ Flat Amount
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustType('percent')}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                      adjustType === 'percent'
+                        ? 'bg-[#1C1917] text-white border-[#1C1917] shadow-xs'
+                        : 'bg-white text-[#57534E] border-[#E7E0D8]'
+                    }`}
+                  >
+                    % Percentage
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#1C1917] mb-1">
+                  {adjustType === 'flat' ? 'Amount in ₹' : 'Percentage %'}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={adjustType === 'percent' ? 100 : 1000}
+                  value={adjustDelta}
+                  onChange={(e) => setAdjustDelta(Number(e.target.value))}
+                  required
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15"
+                  placeholder={adjustType === 'flat' ? 'e.g. 20' : 'e.g. 10'}
+                />
+                <p className="text-[11px] text-[#78716C] mt-1.5">
+                  Example: {adjustDirection === 'increase' ? '+' : '-'}{adjustType === 'flat' ? `₹${adjustDelta}` : `${adjustDelta}%`} will be applied to all {getProductCount(bulkPriceModalCat)} items in {bulkPriceModalCat.name}.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setBulkPriceModalCat(null)}
+                  className="btn btn-outline btn-sm text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdjustingPrices}
+                  className="btn btn-primary btn-sm text-xs"
+                >
+                  {isAdjustingPrices ? 'Applying...' : 'Apply Price Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -7,8 +7,9 @@ import ZomatoBrowseMenuModal from '@/components/menu/ZomatoBrowseMenuModal'
 import ProductQuickView from '@/components/menu/ProductQuickView'
 import {
   Search, Star, Flame, Sparkles,
-  ShoppingBag, ArrowRight, UtensilsCrossed, X
+  ShoppingBag, ArrowRight, UtensilsCrossed, X, Mic
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { useCartStore } from '@/store/cartStore'
 import { formatPrice } from '@/lib/utils'
@@ -384,6 +385,48 @@ function MenuContent() {
     setSearchQuery('')
   }
 
+  const [isListening, setIsListening] = useState(false)
+
+  const handleVoiceSearch = () => {
+    if (typeof window === 'undefined') return
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRec) {
+      toast.error('Voice search is not supported in this browser. Try Chrome or Edge.')
+      return
+    }
+
+    try {
+      const recognition = new SpeechRec()
+      recognition.lang = 'en-IN'
+      recognition.interimResults = false
+      recognition.maxAlternatives = 1
+
+      setIsListening(true)
+      toast.info('🎙️ Listening... Speak dish name (e.g. Margherita, Burger)')
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript
+        setSearchQuery(transcript)
+        setIsListening(false)
+        toast.success(`Searching for: "${transcript}"`)
+      }
+
+      recognition.onerror = () => {
+        setIsListening(false)
+        toast.error('Could not catch voice input. Please try again.')
+      }
+
+      recognition.onend = () => {
+        setIsListening(false)
+      }
+
+      recognition.start()
+    } catch (err) {
+      setIsListening(false)
+      toast.error('Could not start microphone')
+    }
+  }
+
   const hasActiveFilters =
     selectedCategory !== 'all' ||
     vegOnly ||
@@ -486,23 +529,38 @@ function MenuContent() {
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E7E0D8] shadow-2xs py-3">
         <div className="container-custom max-w-5xl space-y-2.5">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#B91C1C]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search dishes, burgers, pizzas..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#E7E0D8] text-xs sm:text-sm bg-[#FBF9F5] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-all"
+              placeholder="Search dishes, burgers, pizzas, or tap mic..."
+              className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-[#E7E0D8] text-xs sm:text-sm bg-[#FBF9F5] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-all"
             />
-            {searchQuery && (
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-[#78716C] hover:text-[#1C1917] rounded-full"
+                >
+                  <X size={15} />
+                </button>
+              )}
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#78716C] hover:text-[#1C1917] rounded-full"
+                type="button"
+                onClick={handleVoiceSearch}
+                className={`p-1.5 rounded-lg transition-all ${
+                  isListening
+                    ? 'bg-red-500 text-white animate-pulse shadow-xs'
+                    : 'text-[#78716C] hover:text-[#B91C1C] hover:bg-[#F4EFEA]'
+                }`}
+                title="Search by Voice"
               >
-                <X size={16} />
+                <Mic size={16} className={isListening ? 'animate-bounce' : ''} />
               </button>
-            )}
+            </div>
           </div>
 
           {/* Quick Filter Chips (Zomato Style) */}

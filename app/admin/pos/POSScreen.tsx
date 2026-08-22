@@ -93,7 +93,10 @@ export default function POSScreen() {
   // ── State: Payment ──
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle')
   const [cashTendered, setCashTendered] = useState('')
-  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType']>('cash')
+  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'split'>('cash')
+  const [splitCash, setSplitCash] = useState('')
+  const [splitUpi, setSplitUpi] = useState('')
+  const [splitCard, setSplitCard] = useState('')
   const [placing, setPlacing] = useState(false)
   const [lastOrderId, setLastOrderId] = useState<string>('')
   const [lastKotNumber, setLastKotNumber] = useState<string>('')
@@ -291,6 +294,16 @@ export default function POSScreen() {
         const tendered = parseFloat(cashTendered) || totals.total
         const change = Math.max(0, tendered - totals.total)
         tenders = [{ tenderType: 'cash', amount: tendered, changeGiven: change }]
+      } else if (paymentMode === 'split') {
+        const c = parseFloat(splitCash) || 0
+        const u = parseFloat(splitUpi) || 0
+        const card = parseFloat(splitCard) || 0
+        if (c + u + card < totals.total) {
+          throw new Error(`Total split tender (₹${(c + u + card).toFixed(2)}) is less than total bill (₹${totals.total.toFixed(2)})`)
+        }
+        if (c > 0) tenders.push({ tenderType: 'cash', amount: c, changeGiven: Math.max(0, c + u + card - totals.total) })
+        if (u > 0) tenders.push({ tenderType: 'upi', amount: u })
+        if (card > 0) tenders.push({ tenderType: 'card', amount: card })
       } else {
         tenders = [{ tenderType: paymentMode, amount: totals.total }]
       }
@@ -623,23 +636,24 @@ export default function POSScreen() {
         {paymentStep === 'payment' && (
           <div className="px-4 py-3 border-t border-white/10 bg-[#1A1A1A] space-y-3">
             <p className="text-xs font-bold text-white/60 uppercase tracking-wider">Payment Method</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {([
                 { type: 'cash', icon: Banknote, label: 'Cash' },
                 { type: 'upi', icon: Smartphone, label: 'UPI' },
                 { type: 'card', icon: CreditCard, label: 'Card' },
+                { type: 'split', icon: Layers, label: 'Split' },
               ] as const).map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
                   onClick={() => setPaymentMode(type)}
                   className={cn(
-                    'flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-semibold transition-all',
+                    'flex flex-col items-center gap-1 py-2 rounded-xl border text-[11px] font-semibold transition-all',
                     paymentMode === type
                       ? 'border-[#B91C1C] bg-[#B91C1C]/20 text-white'
                       : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10'
                   )}
                 >
-                  <Icon size={16} />
+                  <Icon size={15} />
                   {label}
                 </button>
               ))}
@@ -665,9 +679,72 @@ export default function POSScreen() {
               </div>
             )}
 
+            {paymentMode === 'split' && (
+              <div className="space-y-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-xs">
+                <div className="flex items-center justify-between text-white/70 font-semibold border-b border-white/10 pb-1.5">
+                  <span>Split Tender Modes</span>
+                  <span className="font-mono text-[#FCA5A5]">Total: ₹{totals.total.toFixed(2)}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">💵 Cash (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={splitCash}
+                      onChange={(e) => setSplitCash(e.target.value)}
+                      className="w-full bg-black/40 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">📱 UPI (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={splitUpi}
+                      onChange={(e) => setSplitUpi(e.target.value)}
+                      className="w-full bg-black/40 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/50 block mb-1">💳 Card (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={splitCard}
+                      onChange={(e) => setSplitCard(e.target.value)}
+                      className="w-full bg-black/40 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Remaining / Balance Calculation */}
+                {(() => {
+                  const splitSum = (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0)
+                  const diff = totals.total - splitSum
+                  return (
+                    <div className="flex items-center justify-between font-mono pt-1 text-[11px]">
+                      <span className="text-white/60">Tendered: ₹{splitSum.toFixed(2)}</span>
+                      {diff > 0 ? (
+                        <span className="text-amber-400 font-bold">Remaining Due: ₹{diff.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-emerald-400 font-bold">✓ Settled {diff < 0 ? `(Change: ₹${Math.abs(diff).toFixed(2)})` : ''}</span>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
             <button
               onClick={processPayment}
-              disabled={placing || (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total)}
+              disabled={
+                placing ||
+                (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
+                (paymentMode === 'split' &&
+                  (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0) < totals.total)
+              }
               className="w-full py-3 rounded-xl bg-[#15803D] hover:bg-[#166534] disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
             >
               {placing ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
