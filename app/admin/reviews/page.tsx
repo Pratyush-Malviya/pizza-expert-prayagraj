@@ -18,6 +18,10 @@ import {
   TrendingUp,
   AlertCircle,
   RefreshCw,
+  Plus,
+  Globe,
+  Smartphone,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -26,16 +30,27 @@ import {
   toggleReviewApprovalAction,
   replyToReviewAction,
   deleteReviewAction,
+  createAdminReviewAction,
   ReviewItem,
 } from '@/app/actions/reviews'
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'five_star' | 'critical'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'google' | 'five_star' | 'critical'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
   const [submitting, setSubmitting] = useState<{ [key: string]: boolean }>({})
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newReview, setNewReview] = useState({
+    customer_name: '',
+    rating: 5,
+    location: 'Allapur, Prayagraj',
+    product_name: 'Wood-Fired Pizza',
+    comment: '',
+    source: 'google' as 'google' | 'storefront' | 'app',
+    is_approved: true,
+  })
 
   useEffect(() => {
     loadReviews()
@@ -63,7 +78,7 @@ export default function AdminReviewsPage() {
     setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, is_approved: newStatus } : r)))
     const res = await toggleReviewApprovalAction(id, newStatus)
     if (res.success) {
-      toast.success(newStatus ? 'Review approved & visible on storefront' : 'Review hidden from storefront')
+      toast.success(newStatus ? 'Review approved & live on website' : 'Review hidden from website')
     } else {
       toast.error('Failed to update review status')
       loadReviews()
@@ -81,14 +96,14 @@ export default function AdminReviewsPage() {
     if (res.success) {
       setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, admin_reply: text.trim() } : r)))
       setReplyText((prev) => ({ ...prev, [id]: '' }))
-      toast.success('Public reply posted successfully')
+      toast.success('Official reply posted successfully')
     } else {
       toast.error('Failed to post reply')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this review?')) return
+    if (!confirm('Are you sure you want to delete this review?')) return
     setReviews((prev) => prev.filter((r) => r.id !== id))
     const res = await deleteReviewAction(id)
     if (res.success) {
@@ -99,10 +114,37 @@ export default function AdminReviewsPage() {
     }
   }
 
+  const handleAddReview = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newReview.customer_name.trim() || !newReview.comment.trim()) {
+      toast.error('Customer name and review text are required')
+      return
+    }
+
+    const res = await createAdminReviewAction(newReview)
+    if (res.success) {
+      toast.success('New review added to website!')
+      setShowAddModal(false)
+      setNewReview({
+        customer_name: '',
+        rating: 5,
+        location: 'Allapur, Prayagraj',
+        product_name: 'Wood-Fired Pizza',
+        comment: '',
+        source: 'google',
+        is_approved: true,
+      })
+      loadReviews()
+    } else {
+      toast.error('Failed to create review')
+    }
+  }
+
   // Analytics Metrics
   const totalCount = reviews.length
   const avgRating = totalCount > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / totalCount).toFixed(1) : '5.0'
   const pendingCount = reviews.filter((r) => !r.is_approved).length
+  const googleReviewsCount = reviews.filter((r) => r.source === 'google').length
   const repliedCount = reviews.filter((r) => Boolean(r.admin_reply)).length
   const replyRate = totalCount > 0 ? Math.round((repliedCount / totalCount) * 100) : 100
 
@@ -114,13 +156,15 @@ export default function AdminReviewsPage() {
         const q = searchQuery.toLowerCase()
         const matchName = r.customer_name.toLowerCase().includes(q)
         const matchComment = r.comment.toLowerCase().includes(q)
+        const matchLocation = r.location?.toLowerCase().includes(q) || false
         const matchProduct = r.product_name?.toLowerCase().includes(q) || false
-        if (!matchName && !matchComment && !matchProduct) return false
+        if (!matchName && !matchComment && !matchProduct && !matchLocation) return false
       }
 
       // Tab filter
       if (filter === 'pending') return !r.is_approved
       if (filter === 'approved') return r.is_approved
+      if (filter === 'google') return r.source === 'google'
       if (filter === 'five_star') return r.rating === 5
       if (filter === 'critical') return r.rating <= 3
       return true
@@ -129,22 +173,31 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* ─── Header & Refresh ─── */}
+      {/* ─── Header & Action Bar ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1C1917]">Review Moderation</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1C1917]">Customer Reviews & Ratings</h1>
           <p className="text-[#57534E] text-xs sm:text-sm mt-0.5">
-            Manage customer feedback, approve ratings for the storefront, and post official responses.
+            Moderating verified Google reviews, in-app customer feedback, and homepage testimonials.
           </p>
         </div>
-        <button
-          onClick={loadReviews}
-          disabled={loading}
-          className="px-3.5 py-2 bg-white border border-[#E7E0D8] hover:bg-[#F4EFEA] text-[#1C1917] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-3.5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer uppercase tracking-wider"
+          >
+            <Plus size={14} />
+            <span>Add Review</span>
+          </button>
+          <button
+            onClick={loadReviews}
+            disabled={loading}
+            className="px-3.5 py-2 bg-white border border-[#E7E0D8] hover:bg-[#F4EFEA] text-[#1C1917] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* ─── Metrics KPI Cards ─── */}
@@ -155,7 +208,7 @@ export default function AdminReviewsPage() {
             <MessageSquare size={16} className="text-[#B91C1C]" />
           </div>
           <p className="text-2xl font-bold text-[#1C1917] font-mono">{totalCount}</p>
-          <p className="text-[11px] text-[#15803D] font-medium">Verified customer submissions</p>
+          <p className="text-[11px] text-[#15803D] font-medium">{googleReviewsCount} Google + In-app</p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
@@ -167,27 +220,25 @@ export default function AdminReviewsPage() {
             <p className="text-2xl font-bold text-[#1C1917] font-mono">{avgRating}</p>
             <span className="text-xs text-amber-600 font-bold">/ 5.0</span>
           </div>
-          <p className="text-[11px] text-amber-700 font-medium">★★★★★ High customer satisfaction</p>
+          <p className="text-[11px] text-amber-700 font-medium">★★★★★ High customer love</p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-[#78716C] font-semibold">
-            <span>Pending Review</span>
-            <Clock size={16} className="text-orange-500" />
+            <span>Homepage Google Reviews</span>
+            <Globe size={16} className="text-blue-500" />
           </div>
-          <p className="text-2xl font-bold text-[#1C1917] font-mono">{pendingCount}</p>
-          <p className="text-[11px] text-orange-700 font-medium">
-            {pendingCount === 0 ? 'All reviews moderated' : 'Awaiting admin approval'}
-          </p>
+          <p className="text-2xl font-bold text-[#1C1917] font-mono">{googleReviewsCount}</p>
+          <p className="text-[11px] text-blue-700 font-medium">Active on main storefront</p>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-[#E7E0D8] shadow-xs space-y-1">
           <div className="flex items-center justify-between text-xs text-[#78716C] font-semibold">
             <span>Reply Rate</span>
-            <Reply size={16} className="text-blue-500" />
+            <Reply size={16} className="text-purple-500" />
           </div>
           <p className="text-2xl font-bold text-[#1C1917] font-mono">{replyRate}%</p>
-          <p className="text-[11px] text-blue-700 font-medium">{repliedCount} official replies posted</p>
+          <p className="text-[11px] text-purple-700 font-medium">{repliedCount} official store replies</p>
         </div>
       </div>
 
@@ -200,7 +251,7 @@ export default function AdminReviewsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by customer name, feedback keywords, or dish..."
+            placeholder="Search by customer name, location (e.g. Allapur, Katra), or keywords..."
             className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#E7E0D8] text-xs bg-[#FBF9F5] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C]"
           />
         </div>
@@ -216,6 +267,26 @@ export default function AdminReviewsPage() {
             All ({totalCount})
           </button>
           <button
+            onClick={() => setFilter('google')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+              filter === 'google'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+            }`}
+          >
+            🌐 Google Reviews ({googleReviewsCount})
+          </button>
+          <button
+            onClick={() => setFilter('approved')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+              filter === 'approved'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            Public ({totalCount - pendingCount})
+          </button>
+          <button
             onClick={() => setFilter('pending')}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
               filter === 'pending'
@@ -226,30 +297,12 @@ export default function AdminReviewsPage() {
             Pending ({pendingCount})
           </button>
           <button
-            onClick={() => setFilter('approved')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-              filter === 'approved'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-            }`}
-          >
-            Approved ({totalCount - pendingCount})
-          </button>
-          <button
             onClick={() => setFilter('five_star')}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
               filter === 'five_star' ? 'bg-amber-500 text-white shadow-xs' : 'bg-[#F4EFEA] text-[#57534E] hover:bg-[#E7E0D8]'
             }`}
           >
             ★ 5-Star
-          </button>
-          <button
-            onClick={() => setFilter('critical')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-              filter === 'critical' ? 'bg-rose-600 text-white shadow-xs' : 'bg-[#F4EFEA] text-[#57534E] hover:bg-[#E7E0D8]'
-            }`}
-          >
-            ≤ 3-Star
           </button>
         </div>
       </div>
@@ -292,13 +345,17 @@ export default function AdminReviewsPage() {
                     ))}
                     <span className="text-xs font-bold text-[#1C1917] ml-1">{review.rating}.0</span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      review.is_approved ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#FEF3C7] text-[#D97706]'
-                    }`}
-                  >
-                    {review.is_approved ? 'Public' : 'Pending'}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {review.source === 'google' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 flex items-center gap-1">
+                        <Globe size={10} /> Google
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 flex items-center gap-1">
+                        <Smartphone size={10} /> In-App
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -307,9 +364,14 @@ export default function AdminReviewsPage() {
                     <p className="text-[11px] text-[#A8A29E] truncate">{review.customer_email}</p>
                   )}
                   {review.location && (
-                    <p className="text-[11px] text-[#78716C] flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-[#78716C] flex items-center gap-1 mt-0.5 font-medium">
                       <MapPin size={11} className="text-[#B91C1C]" />
                       <span>{review.location}</span>
+                    </p>
+                  )}
+                  {review.product_name && (
+                    <p className="text-[10px] text-[#57534E] bg-[#F4EFEA] px-2 py-0.5 rounded-md inline-block mt-1 font-mono">
+                      🍕 {review.product_name}
                     </p>
                   )}
                 </div>
@@ -339,7 +401,7 @@ export default function AdminReviewsPage() {
                 )}
 
                 {/* Comment Text */}
-                <p className="text-xs sm:text-sm text-[#1C1917] leading-relaxed font-normal bg-[#FBF9F5] p-3 rounded-xl border border-[#E7E0D8]">
+                <p className="text-xs sm:text-sm text-[#1C1917] leading-relaxed font-normal bg-[#FBF9F5] p-3.5 rounded-xl border border-[#E7E0D8]">
                   &quot;{review.comment}&quot;
                 </p>
 
@@ -364,7 +426,7 @@ export default function AdminReviewsPage() {
                   <div className="flex gap-2 pt-1">
                     <input
                       type="text"
-                      placeholder="Write a public response (e.g. 'Thank you for your feedback!')..."
+                      placeholder="Write an official response (e.g. 'Thank you for your feedback!')..."
                       value={replyText[review.id] || ''}
                       onChange={(e) => setReplyText({ ...replyText, [review.id]: e.target.value })}
                       className="flex-1 py-1.5 px-3 rounded-xl border border-[#E7E0D8] text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20"
@@ -410,7 +472,7 @@ export default function AdminReviewsPage() {
                     className="w-full py-1.5 px-3 rounded-xl text-xs font-semibold text-[#78716C] hover:text-amber-800 hover:bg-amber-50 border border-[#E7E0D8] transition-colors cursor-pointer flex items-center justify-center gap-1"
                   >
                     <XCircle size={13} />
-                    <span>Hide Review</span>
+                    <span>Hide</span>
                   </button>
                 )}
 
@@ -426,6 +488,111 @@ export default function AdminReviewsPage() {
           ))
         )}
       </div>
+
+      {/* ─── Add Review Modal ─── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E7E0D8] space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <h3 className="font-serif font-bold text-lg text-[#1C1917]">Add Verified Review</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-[#A8A29E] hover:text-[#1C1917]">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddReview} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newReview.customer_name}
+                    onChange={(e) => setNewReview({ ...newReview, customer_name: e.target.value })}
+                    placeholder="e.g. Rahul Sharma"
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Star Rating</label>
+                  <select
+                    value={newReview.rating}
+                    onChange={(e) => setNewReview({ ...newReview, rating: Number(e.target.value) })}
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl bg-white"
+                  >
+                    <option value={5}>⭐⭐⭐⭐⭐ (5 Star)</option>
+                    <option value={4}>⭐⭐⭐⭐ (4 Star)</option>
+                    <option value={3}>⭐⭐⭐ (3 Star)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Location in Prayagraj</label>
+                  <input
+                    type="text"
+                    value={newReview.location}
+                    onChange={(e) => setNewReview({ ...newReview, location: e.target.value })}
+                    placeholder="e.g. Allapur, Prayagraj"
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Dish Ordered</label>
+                  <input
+                    type="text"
+                    value={newReview.product_name}
+                    onChange={(e) => setNewReview({ ...newReview, product_name: e.target.value })}
+                    placeholder="e.g. Paneer Tikka Pizza"
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1C1917] mb-1">Review Feedback *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newReview.comment}
+                  onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                  placeholder="Enter the customer testimonial or Google review text..."
+                  className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-[#1C1917] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newReview.is_approved}
+                    onChange={(e) => setNewReview({ ...newReview, is_approved: e.target.checked })}
+                    className="w-4 h-4 rounded text-[#B91C1C]"
+                  />
+                  <span>Show immediately on Website Homepage</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-[#E7E0D8] text-xs font-bold rounded-xl hover:bg-[#F4EFEA]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold rounded-xl shadow-xs"
+                >
+                  Publish Review
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
