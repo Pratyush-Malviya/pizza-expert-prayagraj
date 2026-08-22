@@ -97,6 +97,7 @@ interface SettingsState {
   reviewsRatingScore: string
   reviewsSectionTitle: string
   reviewsSectionSubtitle: string
+  reviewsBtnText: string
   
   // Features & Flash Banner
   enableInstagramCarousel: boolean
@@ -285,6 +286,7 @@ export const useSettingsStore = create<SettingsState>()(
       reviewsRatingScore: '4.9 / 5.0',
       reviewsSectionTitle: 'PRAYAGRAJ REVIEWS',
       reviewsSectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+      reviewsBtnText: 'WRITE A REVIEW',
 
       enableInstagramCarousel: false,
       enableFlashBanner: true,

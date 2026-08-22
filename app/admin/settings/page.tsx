@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
+import { updateHomepageReviewSettings } from '@/app/actions/settings'
 import EmailTemplateManager from '@/components/admin/EmailTemplateManager'
 import Image from 'next/image'
 
@@ -110,9 +111,15 @@ function AdminSettingsContent() {
     })
   }, [storeSettings])
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     updateSettings(formData)
+    await updateHomepageReviewSettings({
+      ratingScore: formData.reviewsRatingScore,
+      sectionTitle: formData.reviewsSectionTitle,
+      sectionSubtitle: formData.reviewsSectionSubtitle,
+      googleReviewsLink: formData.googleReviewsLink,
+    })
     toast.success('Settings saved successfully!')
   }
 

@@ -5,32 +5,42 @@ import { Star, ShieldCheck, MapPin } from 'lucide-react'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { useState, useEffect } from 'react'
 import { getPublicReviews, ReviewItem } from '@/app/actions/reviews'
+import { getHomepageReviewSettings, HomepageReviewSettings } from '@/app/actions/settings'
 
 export default function GoogleReviews() {
   const [mounted, setMounted] = useState(false)
   const [reviews, setReviews] = useState<ReviewItem[]>([])
-  const {
-    googleReviewsLink,
-    reviewsRatingScore,
-    reviewsSectionTitle,
-    reviewsSectionSubtitle,
-  } = useSettingsStore()
+  const storeSettings = useSettingsStore()
+  const [headerSettings, setHeaderSettings] = useState<HomepageReviewSettings>({
+    ratingScore: '4.9 / 5.0',
+    sectionTitle: 'PRAYAGRAJ REVIEWS',
+    sectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+    btnText: 'WRITE A REVIEW',
+    googleReviewsLink: 'https://g.page/r/pizzaexpert-prayagraj/review',
+  })
 
   useEffect(() => {
     setMounted(true)
+    // 1. Fetch live review items
     getPublicReviews().then((data) => {
       if (data && data.length > 0) {
         setReviews(data)
       }
     })
-  }, [])
 
-  const ratingScore = mounted && reviewsRatingScore ? reviewsRatingScore : '4.9 / 5.0'
-  const sectionTitle = mounted && reviewsSectionTitle ? reviewsSectionTitle : 'PRAYAGRAJ REVIEWS'
-  const sectionSubtitle =
-    mounted && reviewsSectionSubtitle
-      ? reviewsSectionSubtitle
-      : 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.'
+    // 2. Fetch server persisted settings
+    getHomepageReviewSettings().then((res) => {
+      if (res) {
+        setHeaderSettings({
+          ratingScore: res.ratingScore || storeSettings.reviewsRatingScore || '4.9 / 5.0',
+          sectionTitle: res.sectionTitle || storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
+          sectionSubtitle: res.sectionSubtitle || storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+          btnText: res.btnText || storeSettings.reviewsBtnText || 'WRITE A REVIEW',
+          googleReviewsLink: res.googleReviewsLink || storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
+        })
+      }
+    })
+  }, [storeSettings])
 
   return (
     <section className="section-py bg-[#08080B] border-y border-white/10" aria-labelledby="reviews-heading">
@@ -45,24 +55,24 @@ export default function GoogleReviews() {
                 ))}
               </div>
               <span className="font-mono font-black text-white text-sm bg-white/10 px-2 py-0.5 rounded-md">
-                {ratingScore}
+                {headerSettings.ratingScore}
               </span>
             </div>
             <h2 id="reviews-heading" className="section-title text-white">
-              {sectionTitle}
+              {headerSettings.sectionTitle}
             </h2>
             <p className="section-subtitle">
-              {sectionSubtitle}
+              {headerSettings.sectionSubtitle}
             </p>
           </div>
 
           <a
-            href={mounted ? googleReviewsLink : '#'}
+            href={mounted ? headerSettings.googleReviewsLink : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto border border-white/15 hover:border-white/30"
           >
-            WRITE A REVIEW
+            {headerSettings.btnText}
           </a>
         </div>
 

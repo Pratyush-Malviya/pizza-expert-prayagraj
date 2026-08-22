@@ -33,6 +33,7 @@ import {
   createAdminReviewAction,
   ReviewItem,
 } from '@/app/actions/reviews'
+import { getHomepageReviewSettings, updateHomepageReviewSettings } from '@/app/actions/settings'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { Edit3, ExternalLink } from 'lucide-react'
 
@@ -50,15 +51,22 @@ export default function AdminReviewsPage() {
     ratingScore: '4.9 / 5.0',
     sectionTitle: 'PRAYAGRAJ REVIEWS',
     sectionSubtitle: 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+    btnText: 'WRITE A REVIEW',
     googleReviewsLink: 'https://g.page/r/pizzaexpert-prayagraj/review',
   })
 
   useEffect(() => {
-    setHeaderSettings({
-      ratingScore: storeSettings.reviewsRatingScore || '4.9 / 5.0',
-      sectionTitle: storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
-      sectionSubtitle: storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
-      googleReviewsLink: storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
+    // Load from server and store
+    getHomepageReviewSettings().then((res) => {
+      if (res) {
+        setHeaderSettings({
+          ratingScore: res.ratingScore || storeSettings.reviewsRatingScore || '4.9 / 5.0',
+          sectionTitle: res.sectionTitle || storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
+          sectionSubtitle: res.sectionSubtitle || storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+          btnText: res.btnText || storeSettings.reviewsBtnText || 'WRITE A REVIEW',
+          googleReviewsLink: res.googleReviewsLink || storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
+        })
+      }
     })
   }, [storeSettings])
 
@@ -72,16 +80,25 @@ export default function AdminReviewsPage() {
     is_approved: true,
   })
 
-  const handleSaveHeaderSettings = (e: React.FormEvent) => {
+  const handleSaveHeaderSettings = async (e: React.FormEvent) => {
     e.preventDefault()
+    // 1. Update local store
     storeSettings.updateSettings({
       reviewsRatingScore: headerSettings.ratingScore,
       reviewsSectionTitle: headerSettings.sectionTitle,
       reviewsSectionSubtitle: headerSettings.sectionSubtitle,
+      reviewsBtnText: headerSettings.btnText,
       googleReviewsLink: headerSettings.googleReviewsLink,
     })
-    toast.success('Homepage Reviews Section updated successfully!')
-    setShowSectionSettings(false)
+
+    // 2. Persist to server DB
+    const res = await updateHomepageReviewSettings(headerSettings)
+    if (res.success) {
+      toast.success('Homepage Reviews Section updated successfully!')
+      setShowSectionSettings(false)
+    } else {
+      toast.error('Failed to save settings to server')
+    }
   }
 
   useEffect(() => {
@@ -292,18 +309,31 @@ export default function AdminReviewsPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#1C1917] mb-1">Google Maps / My Business Review Link (For &apos;Write a Review&apos; button)</label>
-            <div className="relative">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Button Label (e.g. WRITE A REVIEW)</label>
               <input
-                type="url"
-                value={headerSettings.googleReviewsLink}
-                onChange={(e) => setHeaderSettings({ ...headerSettings, googleReviewsLink: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl pl-8"
-                placeholder="https://g.page/r/pizzaexpert-prayagraj/review"
+                type="text"
+                value={headerSettings.btnText}
+                onChange={(e) => setHeaderSettings({ ...headerSettings, btnText: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl font-bold uppercase"
+                placeholder="WRITE A REVIEW"
                 required
               />
-              <ExternalLink size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1C1917] mb-1">Google Maps Review Link</label>
+              <div className="relative">
+                <input
+                  type="url"
+                  value={headerSettings.googleReviewsLink}
+                  onChange={(e) => setHeaderSettings({ ...headerSettings, googleReviewsLink: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl pl-8"
+                  placeholder="https://g.page/r/pizzaexpert-prayagraj/review"
+                  required
+                />
+                <ExternalLink size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E]" />
+              </div>
             </div>
           </div>
 
