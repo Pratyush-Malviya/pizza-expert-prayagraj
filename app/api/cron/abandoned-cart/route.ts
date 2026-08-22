@@ -1,10 +1,19 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { sendAbandonedCartRecoveryEmail } from '@/lib/utils/resend'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient()
+    // 1. Authenticate Cron Execution
+    const cronSecret = process.env.CRON_SECRET
+    if (cronSecret && process.env.NODE_ENV === 'production') {
+      const authHeader = req.headers.get('authorization')
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ success: false, error: 'Unauthorized: Invalid CRON_SECRET' }, { status: 401 })
+      }
+    }
+
+    const supabase = await createAdminClient()
 
     // 30 minutes ago timestamp threshold
     const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
@@ -28,8 +37,9 @@ export async function GET() {
       const userEmail = cart.profile?.email
 
       if (userEmail) {
-        await sendAbandonedCartRecoveryEmail(userEmail, itemsCount)
-          .catch(err => console.warn('Abandoned cart email note:', err))
+        await sendAbandonedCartRecoveryEmail(userEmail, itemsCount).catch((err) =>
+          console.warn('Abandoned cart email note:', err)
+        )
       }
 
       // Log notification entry

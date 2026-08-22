@@ -1,13 +1,29 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 /**
  * POST /api/webhooks/aggregator
  * Ingests orders from Zomato/Swiggy partner webhook.
- * Uses external_order_id as idempotency key to prevent duplicate ingestion.
+ * Enforces secret validation and external_order_id idempotency.
  */
 export async function POST(request: Request) {
   try {
+    // 1. Verify Webhook Secret / Signature Header
+    const webhookSecret = process.env.AGGREGATOR_WEBHOOK_SECRET
+    if (webhookSecret) {
+      const incomingSecret =
+        request.headers.get('x-aggregator-secret') ||
+        request.headers.get('x-webhook-secret') ||
+        request.headers.get('authorization')?.replace('Bearer ', '')
+
+      if (incomingSecret !== webhookSecret) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Invalid or missing aggregator webhook secret' },
+          { status: 401 }
+        )
+      }
+    }
+
     const payload = await request.json()
     const { source, externalOrderId, customerName, customerPhone, items, subtotal, tax, total } = payload
 
@@ -19,9 +35,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'externalOrderId is required for idempotency' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
 
-    // ─── Idempotency check: reject duplicate external order IDs ──────────
+    // 2. Idempotency check: reject duplicate external order IDs
     const { data: existingOrder } = await supabase
       .from('orders')
       .select('id, status')
@@ -29,7 +45,6 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existingOrder) {
-      // Already processed — return success silently (idempotent)
       return NextResponse.json({
         success: true,
         message: `Order ${externalOrderId} already ingested (idempotent)`,
@@ -38,7 +53,7 @@ export async function POST(request: Request) {
       })
     }
 
-    // Normalize and insert order into Supabase
+    // 3. Normalize and insert order into Supabase
     const { data: order, error: orderErr } = await supabase
       .from('orders')
       .insert({
@@ -64,7 +79,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: orderErr.message }, { status: 500 })
     }
 
-    // Record status history
+    // 4. Record status history
     await supabase.from('order_status_history').insert({
       order_id: order.id,
       status: 'confirmed',

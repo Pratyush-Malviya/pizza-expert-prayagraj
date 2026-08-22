@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { logAudit } from '@/lib/audit'
+import { requireUser } from '@/lib/auth/requireUser'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,6 +19,7 @@ function getSupabaseAdmin() {
 
 export async function blockCustomer(userId: string) {
   try {
+    const user = await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const { error } = await admin
       .from('profiles')
@@ -55,6 +57,7 @@ export async function blockCustomer(userId: string) {
 
 export async function unblockCustomer(userId: string) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const { error } = await admin
       .from('profiles')
@@ -82,6 +85,7 @@ export async function unblockCustomer(userId: string) {
 
 export async function adjustLoyaltyPoints(userId: string, deltaPoints: number, reason: string) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const { data: profile, error: fetchErr } = await admin
       .from('profiles')
@@ -122,6 +126,7 @@ export async function adjustLoyaltyPoints(userId: string, deltaPoints: number, r
 
 export async function getCustomerDetails(userId: string) {
   try {
+    await requireUser(['super_admin', 'manager', 'staff', 'viewer'])
     const admin = getSupabaseAdmin()
 
     // 1. Fetch addresses
@@ -151,6 +156,7 @@ export async function getCustomerDetails(userId: string) {
 
 export async function getCustomerAuditLogs(userId: string) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const { data: logs } = await admin
       .from('audit_log')
@@ -167,6 +173,7 @@ export async function getCustomerAuditLogs(userId: string) {
 
 export async function createCustomer(formData: FormData) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const phone = (formData.get('phone') as string) || null
@@ -248,6 +255,7 @@ export async function updateCustomer(userId: string, data: {
   is_active?: boolean
 }) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const supabase = await createServerClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
@@ -291,6 +299,7 @@ export async function updateCustomer(userId: string, data: {
 
 export async function deleteCustomer(userId: string) {
   try {
+    await requireUser(['super_admin', 'manager'])
     const admin = getSupabaseAdmin()
     const supabase = await createServerClient()
     const { data: { user: currentUser } } = await supabase.auth.getUser()
