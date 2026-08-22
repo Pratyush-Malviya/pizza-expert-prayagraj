@@ -137,6 +137,9 @@ export default function CartDrawer() {
               {items.length > 0 && <CartUpsell />}
             </div>
 
+            {/* Footer Summary */}
+            {items.length > 0 && (
+              <div className="p-6 bg-white border-t border-[#E7E0D8] space-y-4">
                 {/* 1-Line Promo Coupon Accordion */}
                 <div className="bg-[#FBF9F5] border border-[#E7E0D8] rounded-xl p-3">
                   <div className="flex items-center justify-between">
