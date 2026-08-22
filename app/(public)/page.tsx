@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import HeroBanner from '@/components/home/HeroBanner'
-import OfferCarousel from '@/components/home/OfferCarousel'
-import PromoCards from '@/components/home/PromoCards'
 import CategoryTabs from '@/components/home/CategoryTabs'
 import FeatureIcons from '@/components/home/FeatureIcons'
 import GoogleReviews from '@/components/home/GoogleReviews'
-import InstagramCarousel from '@/components/home/InstagramCarousel'
 import FaqSnippet from '@/components/home/FaqSnippet'
 import ReorderCTA from '@/components/home/ReorderCTA'
 import PersonalizedPicks from '@/components/ai/PersonalizedPicks'
@@ -297,33 +294,25 @@ export default async function HomePage() {
 
       <ReorderCTA />
 
-      {/* 1. Dark Hero Section */}
+      {/* 1. Minimal Hero Section */}
       <HeroBanner />
 
-      {/* 2. Auto-Sliding Flash Offer Carousel */}
-      <OfferCarousel />
-
-      {/* 3. Light Menu Section */}
+      {/* 2. Interactive Menu Showcase */}
       <CategoryTabs
         categories={HOMEPAGE_CATEGORIES}
         productsByCategory={PRODUCTS_BY_CATEGORY}
       />
 
+      {/* 3. AI Personalized Recommendations */}
       <PersonalizedPicks />
 
-      {/* 4. Surface Offers Section */}
-      <PromoCards />
-
-      {/* 5. Subtle Brand Story Section */}
-      <FeatureIcons />
-
-      {/* 6. Dark Social Proof Section */}
+      {/* 4. Verified Prayagraj Customer Reviews */}
       <GoogleReviews />
 
-      {/* Instagram Carousel */}
-      <InstagramCarousel />
+      {/* 5. Artisanal Quality Pillars */}
+      <FeatureIcons />
 
-      {/* 7. Light FAQ Section */}
+      {/* 6. Clean FAQ Accordions */}
       <FaqSnippet />
     </>
   )
