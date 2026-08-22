@@ -682,7 +682,7 @@ export default function AIChatWidget() {
         )
 
       case 'welcome':
-        return <WelcomeCard onBrowse={handleBrowse} onCheckout={handleCheckout} />
+        return <WelcomeCard onBrowse={handleBrowse} />
 
       case 'categories':
         return <CategoriesCard categories={msg.categories} onSelect={handleOpenCategory} />
@@ -812,10 +812,8 @@ export default function AIChatWidget() {
 // ─── Message Components ──────────────────────────────────────────────────
 function WelcomeCard({
   onBrowse,
-  onCheckout,
 }: {
   onBrowse: () => void
-  onCheckout: () => void
 }) {
   return (
     <div className="flex justify-start">
@@ -823,20 +821,12 @@ function WelcomeCard({
         <p className="text-xs sm:text-sm text-[#1C1917] leading-relaxed">
           Welcome to <strong>Pizza Expert</strong>! 🍕 Browse our visual menu cards below, add your favorites to cart, and place your order directly.
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={onBrowse}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
-          >
-            🍕 View Menu
-          </button>
-          <button
-            onClick={onCheckout}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#1C1917] text-white text-xs font-bold hover:bg-[#44403C] transition-colors shadow-xs"
-          >
-            🛒 Checkout
-          </button>
-        </div>
+        <button
+          onClick={onBrowse}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-bold hover:bg-rose-700 transition-colors shadow-xs"
+        >
+          🍕 View Menu
+        </button>
       </div>
     </div>
   )
