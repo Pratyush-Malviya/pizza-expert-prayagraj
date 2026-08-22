@@ -628,37 +628,70 @@ export default function AdminProductsPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#1C1917] mb-1">Product Name</label>
-                    <input value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value, slug: slugify(event.target.value) })} className="input-field" required />
+                    <input
+                      value={formData.name}
+                      onChange={(event) => setFormData({ ...formData, name: event.target.value, slug: slugify(event.target.value) })}
+                      className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                      required
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#1C1917] mb-1">URL Slug</label>
-                    <input value={formData.slug} onChange={(event) => setFormData({ ...formData, slug: slugify(event.target.value) })} className="input-field font-mono text-xs" required />
+                    <input
+                      value={formData.slug}
+                      onChange={(event) => setFormData({ ...formData, slug: slugify(event.target.value) })}
+                      className="w-full bg-[#FBF9F5] border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] font-mono text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                      required
+                    />
                   </div>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-[#1C1917] mb-1">Category</label>
-                    <select value={formData.category_id} onChange={(event) => updateFormCategory(event.target.value)} className="input-field bg-white">
+                    <select
+                      value={formData.category_id}
+                      onChange={(event) => updateFormCategory(event.target.value)}
+                      className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs cursor-pointer"
+                    >
                       {categories.map((category) => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
+                        <option key={category.id} value={category.id} className="text-[#1C1917] bg-white py-1">
+                          {category.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#1C1917] mb-1">Price (INR)</label>
-                    <input type="number" min={0} value={formData.price} onChange={(event) => setFormData({ ...formData, price: Number(event.target.value) })} className="input-field" required />
+                    <input
+                      type="number"
+                      min={0}
+                      value={formData.price}
+                      onChange={(event) => setFormData({ ...formData, price: Number(event.target.value) })}
+                      className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                      required
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-[#1C1917] mb-1">Description</label>
-                  <textarea rows={3} value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="input-field" />
+                  <textarea
+                    rows={3}
+                    value={formData.description}
+                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs resize-none"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-[#1C1917] mb-1">Product Image URL</label>
-                  <input value={formData.image_url} onChange={(event) => setFormData({ ...formData, image_url: event.target.value })} className="input-field" placeholder="https://..." />
+                  <input
+                    value={formData.image_url}
+                    onChange={(event) => setFormData({ ...formData, image_url: event.target.value })}
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                    placeholder="https://..."
+                  />
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -718,7 +751,13 @@ export default function AdminProductsPage() {
             <form onSubmit={handleAddCategory} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#1C1917] mb-1">Category Name</label>
-                <input value={newCategoryInput} onChange={(event) => setNewCategoryInput(event.target.value)} className="input-field" placeholder="e.g. Combos" required />
+                <input
+                  value={newCategoryInput}
+                  onChange={(event) => setNewCategoryInput(event.target.value)}
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                  placeholder="e.g. Combos"
+                  required
+                />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowCategoryModal(false)} className="btn btn-outline btn-sm text-xs">Cancel</button>

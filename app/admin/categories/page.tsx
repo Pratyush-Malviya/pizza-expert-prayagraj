@@ -855,7 +855,7 @@ export default function AdminCategoriesPage() {
                       setFormSlug(slugify(e.target.value))
                     }
                   }}
-                  className="input-field"
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
                   placeholder="e.g. Sourdough Pizzas, Mocktails"
                   required
                 />
@@ -869,7 +869,7 @@ export default function AdminCategoriesPage() {
                   type="text"
                   value={formSlug}
                   onChange={(e) => setFormSlug(slugify(e.target.value))}
-                  className="input-field font-mono text-xs"
+                  className="w-full bg-[#FBF9F5] border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] font-mono text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
                   placeholder="e.g. sourdough-pizzas"
                   required
                 />
@@ -886,7 +886,7 @@ export default function AdminCategoriesPage() {
                   type="url"
                   value={formImageUrl}
                   onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
                   placeholder="https://images.unsplash.com/..."
                 />
                 {formImageUrl && (
@@ -912,7 +912,7 @@ export default function AdminCategoriesPage() {
                     min={1}
                     value={formSortOrder}
                     onChange={(e) => setFormSortOrder(Number(e.target.value))}
-                    className="input-field"
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
                   />
                 </div>
 
@@ -1008,10 +1008,10 @@ export default function AdminCategoriesPage() {
                             <select
                               value={reassignTargetId}
                               onChange={(e) => setReassignTargetId(e.target.value)}
-                              className="input-field text-xs py-1.5 bg-[#FBF9F5]"
+                              className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15"
                             >
                               {otherCategoriesForReassign.map((c) => (
-                                <option key={c.id} value={c.id}>
+                                <option key={c.id} value={c.id} className="text-[#1C1917] bg-white">
                                   {c.name} (/{c.slug})
                                 </option>
                               ))}
