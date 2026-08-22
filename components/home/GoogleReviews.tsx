@@ -31,16 +31,39 @@ export default function GoogleReviews() {
     // 2. Fetch server persisted settings
     getHomepageReviewSettings().then((res) => {
       if (res) {
-        setHeaderSettings({
-          ratingScore: res.ratingScore || storeSettings.reviewsRatingScore || '4.9 / 5.0',
-          sectionTitle: res.sectionTitle || storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
-          sectionSubtitle: res.sectionSubtitle || storeSettings.reviewsSectionSubtitle || 'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
-          btnText: res.btnText || storeSettings.reviewsBtnText || 'WRITE A REVIEW',
-          googleReviewsLink: res.googleReviewsLink || storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
+        setHeaderSettings(res)
+        storeSettings.updateSettings({
+          reviewsRatingScore: res.ratingScore,
+          reviewsSectionTitle: res.sectionTitle,
+          reviewsSectionSubtitle: res.sectionSubtitle,
+          reviewsBtnText: res.btnText,
+          googleReviewsLink: res.googleReviewsLink,
         })
       }
     })
-  }, [storeSettings])
+  }, [])
+
+  const ratingScore =
+    mounted && storeSettings.reviewsRatingScore
+      ? storeSettings.reviewsRatingScore
+      : headerSettings.ratingScore || '4.9 / 5.0'
+  const sectionTitle =
+    mounted && storeSettings.reviewsSectionTitle
+      ? storeSettings.reviewsSectionTitle
+      : headerSettings.sectionTitle || 'PRAYAGRAJ REVIEWS'
+  const sectionSubtitle =
+    mounted && storeSettings.reviewsSectionSubtitle
+      ? storeSettings.reviewsSectionSubtitle
+      : headerSettings.sectionSubtitle ||
+        'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.'
+  const btnText =
+    mounted && storeSettings.reviewsBtnText
+      ? storeSettings.reviewsBtnText
+      : headerSettings.btnText || 'WRITE A REVIEW'
+  const googleLink =
+    mounted && storeSettings.googleReviewsLink
+      ? storeSettings.googleReviewsLink
+      : headerSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review'
 
   return (
     <section className="section-py bg-[#08080B] border-y border-white/10" aria-labelledby="reviews-heading">
@@ -55,24 +78,24 @@ export default function GoogleReviews() {
                 ))}
               </div>
               <span className="font-mono font-black text-white text-sm bg-white/10 px-2 py-0.5 rounded-md">
-                {headerSettings.ratingScore}
+                {ratingScore}
               </span>
             </div>
             <h2 id="reviews-heading" className="section-title text-white">
-              {headerSettings.sectionTitle}
+              {sectionTitle}
             </h2>
             <p className="section-subtitle">
-              {headerSettings.sectionSubtitle}
+              {sectionSubtitle}
             </p>
           </div>
 
           <a
-            href={mounted ? headerSettings.googleReviewsLink : '#'}
+            href={mounted ? googleLink : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto border border-white/15 hover:border-white/30"
           >
-            {headerSettings.btnText}
+            {btnText}
           </a>
         </div>
 

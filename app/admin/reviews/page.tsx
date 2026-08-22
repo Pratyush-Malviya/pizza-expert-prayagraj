@@ -56,7 +56,7 @@ export default function AdminReviewsPage() {
   })
 
   useEffect(() => {
-    // Load from server and store
+    // Initial fetch from server/DB settings
     getHomepageReviewSettings().then((res) => {
       if (res) {
         setHeaderSettings({
@@ -66,9 +66,16 @@ export default function AdminReviewsPage() {
           btnText: res.btnText || storeSettings.reviewsBtnText || 'WRITE A REVIEW',
           googleReviewsLink: res.googleReviewsLink || storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
         })
+        storeSettings.updateSettings({
+          reviewsRatingScore: res.ratingScore,
+          reviewsSectionTitle: res.sectionTitle,
+          reviewsSectionSubtitle: res.sectionSubtitle,
+          reviewsBtnText: res.btnText,
+          googleReviewsLink: res.googleReviewsLink,
+        })
       }
     })
-  }, [storeSettings])
+  }, [])
 
   const [newReview, setNewReview] = useState({
     customer_name: '',
@@ -80,24 +87,33 @@ export default function AdminReviewsPage() {
     is_approved: true,
   })
 
+  const [savingSettings, setSavingSettings] = useState(false)
+
   const handleSaveHeaderSettings = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 1. Update local store
-    storeSettings.updateSettings({
-      reviewsRatingScore: headerSettings.ratingScore,
-      reviewsSectionTitle: headerSettings.sectionTitle,
-      reviewsSectionSubtitle: headerSettings.sectionSubtitle,
-      reviewsBtnText: headerSettings.btnText,
-      googleReviewsLink: headerSettings.googleReviewsLink,
-    })
+    setSavingSettings(true)
+    try {
+      // 1. Update local store immediately
+      storeSettings.updateSettings({
+        reviewsRatingScore: headerSettings.ratingScore,
+        reviewsSectionTitle: headerSettings.sectionTitle,
+        reviewsSectionSubtitle: headerSettings.sectionSubtitle,
+        reviewsBtnText: headerSettings.btnText,
+        googleReviewsLink: headerSettings.googleReviewsLink,
+      })
 
-    // 2. Persist to server DB
-    const res = await updateHomepageReviewSettings(headerSettings)
-    if (res.success) {
-      toast.success('Homepage Reviews Section updated successfully!')
-      setShowSectionSettings(false)
-    } else {
-      toast.error('Failed to save settings to server')
+      // 2. Persist to server DB
+      const res = await updateHomepageReviewSettings(headerSettings)
+      if (res.success) {
+        toast.success('Homepage Reviews Section updated and saved successfully!')
+        setShowSectionSettings(false)
+      } else {
+        toast.error(res.error || 'Failed to save settings to server')
+      }
+    } catch {
+      toast.error('An error occurred while saving')
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -347,9 +363,11 @@ export default function AdminReviewsPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold rounded-xl shadow-xs"
+              disabled={savingSettings}
+              className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold rounded-xl shadow-xs disabled:opacity-50 flex items-center gap-1.5"
             >
-              Save Homepage Changes
+              {savingSettings && <RefreshCw size={12} className="animate-spin" />}
+              <span>{savingSettings ? 'Saving to Database...' : 'Save Homepage Changes'}</span>
             </button>
           </div>
         </form>
