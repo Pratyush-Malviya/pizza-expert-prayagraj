@@ -68,13 +68,13 @@ export default function GoogleReviews() {
 
         {/* Dynamic Reviews Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {reviews.slice(0, 6).map((review, i) => (
+          {reviews.slice(0, 9).map((review, i) => (
             <motion.div
               key={review.id}
               initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
+              transition={{ duration: 0.4, delay: (i % 3) * 0.1 }}
               className="bg-[#16161E] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full hover:border-white/20 transition-all shadow-xl"
             >
               <div>
