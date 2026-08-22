@@ -249,6 +249,23 @@ export default function AdminCategoriesPage() {
     setShowModal(true)
   }
 
+  // Image Upload Handler
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Category image must be less than 2MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFormImageUrl(reader.result as string)
+      toast.success('Category image uploaded')
+    }
+    reader.readAsDataURL(file)
+  }
+
   // Save Category
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -878,28 +895,58 @@ export default function AdminCategoriesPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                  Banner / Thumbnail Image URL
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-[#1C1917]">
+                  Category Banner / Image
                 </label>
-                <input
-                  type="url"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs sm:text-sm font-medium rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
-                  placeholder="https://images.unsplash.com/..."
-                />
-                {formImageUrl && (
-                  <div className="relative h-24 mt-2 rounded-lg border border-[#E7E0D8] overflow-hidden">
+
+                {/* Preview Box if image exists */}
+                {formImageUrl ? (
+                  <div className="relative h-28 rounded-xl border border-[#E7E0D8] overflow-hidden bg-[#FBF9F5] group">
                     <Image
                       src={formImageUrl}
-                      alt="Preview"
+                      alt="Category preview"
                       fill
                       className="object-cover"
                       unoptimized
                     />
+                    <button
+                      type="button"
+                      onClick={() => setFormImageUrl('')}
+                      className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white p-1 rounded-full text-xs transition-colors shadow-xs"
+                      title="Remove Image"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-20 rounded-xl border border-dashed border-[#E7E0D8] bg-[#FBF9F5] flex flex-col items-center justify-center text-[#A8A29E] gap-1">
+                    <ImageIcon size={22} />
+                    <span className="text-[11px]">No category image selected</span>
                   </div>
                 )}
+
+                {/* Upload Button + URL Input */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <label className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 cursor-pointer relative overflow-hidden text-xs py-2 bg-white">
+                    <Upload size={14} className="text-[#B91C1C]" />
+                    <span>Upload Image File</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+
+                  <input
+                    type="url"
+                    value={formImageUrl.startsWith('data:') ? '' : formImageUrl}
+                    onChange={(e) => setFormImageUrl(e.target.value)}
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                    placeholder="Or paste image URL"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

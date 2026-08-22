@@ -26,6 +26,7 @@ interface CategoryOption {
   id: string
   name: string
   slug: string
+  image_url?: string | null
   is_active: boolean
   sort_order: number
 }
@@ -34,6 +35,7 @@ interface RemoteCategory {
   id: string
   name: string
   slug: string
+  image_url?: string | null
   is_active: boolean
   sort_order: number
 }
@@ -148,6 +150,7 @@ export default function AdminProductsPage() {
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [newCategoryInput, setNewCategoryInput] = useState('')
+  const [newCategoryImageUrl, setNewCategoryImageUrl] = useState('')
   const [formData, setFormData] = useState<Omit<Product, 'id'>>(emptyProductForm(DEFAULT_CATEGORIES[0]))
 
   const categoryNames = useMemo(() => ['All', ...categories.map((category) => category.name)], [categories])
@@ -407,6 +410,22 @@ export default function AdminProductsPage() {
     toast.success(`${product.name} is now ${nextState ? 'in stock' : 'out of stock'}`)
   }
 
+  const handleNewCategoryImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Category image must be less than 2MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setNewCategoryImageUrl(reader.result as string)
+      toast.success('Category image uploaded')
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleAddCategory = async (event: React.FormEvent) => {
     event.preventDefault()
     const name = newCategoryInput.trim()
@@ -422,6 +441,7 @@ export default function AdminProductsPage() {
       id: `cat-${Date.now()}`,
       name,
       slug,
+      image_url: newCategoryImageUrl.trim() || null,
       is_active: true,
       sort_order: categories.length + 1,
     }
@@ -430,14 +450,15 @@ export default function AdminProductsPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('categories')
-        .insert({ name, slug, is_active: true, sort_order: category.sort_order })
-        .select('id,name,slug,is_active,sort_order')
+        .insert({ name, slug, image_url: category.image_url, is_active: true, sort_order: category.sort_order })
+        .select('id,name,slug,image_url,is_active,sort_order')
         .single()
       if (data) {
         category = {
           id: data.id,
           name: data.name,
           slug: data.slug,
+          image_url: data.image_url ?? category.image_url,
           is_active: Boolean(data.is_active),
           sort_order: Number(data.sort_order) || category.sort_order,
         }
@@ -449,6 +470,7 @@ export default function AdminProductsPage() {
     persistCategories([...categories, category])
     setSelectedCategory(category.name)
     setNewCategoryInput('')
+    setNewCategoryImageUrl('')
     setShowCategoryModal(false)
     toast.success('Category created')
   }
@@ -759,7 +781,60 @@ export default function AdminProductsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
+
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-[#1C1917]">
+                  Category Banner / Image
+                </label>
+
+                {newCategoryImageUrl ? (
+                  <div className="relative h-24 rounded-xl border border-[#E7E0D8] overflow-hidden bg-[#FBF9F5]">
+                    <Image
+                      src={newCategoryImageUrl}
+                      alt="Category preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewCategoryImageUrl('')}
+                      className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded-full text-xs transition-colors shadow-xs"
+                      title="Remove Image"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-16 rounded-xl border border-dashed border-[#E7E0D8] bg-[#FBF9F5] flex flex-col items-center justify-center text-[#A8A29E] gap-1">
+                    <ImageIcon size={18} />
+                    <span className="text-[10px]">No image selected</span>
+                  </div>
+                )}
+
+                <div className="space-y-2 pt-1">
+                  <label className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 cursor-pointer relative overflow-hidden text-xs py-2 bg-white">
+                    <Upload size={13} className="text-[#B91C1C]" />
+                    <span>Upload Image File</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={handleNewCategoryImageUpload}
+                    />
+                  </label>
+
+                  <input
+                    type="url"
+                    value={newCategoryImageUrl.startsWith('data:') ? '' : newCategoryImageUrl}
+                    onChange={(e) => setNewCategoryImageUrl(e.target.value)}
+                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                    placeholder="Or paste image URL"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E0D8]">
                 <button type="button" onClick={() => setShowCategoryModal(false)} className="btn btn-outline btn-sm text-xs">Cancel</button>
                 <button type="submit" className="btn btn-primary btn-sm text-xs">Create Category</button>
               </div>
