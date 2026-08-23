@@ -23,7 +23,7 @@ import {
   Tag, LogOut, Printer, Sparkles, SlidersHorizontal, ArrowRight,
   HelpCircle, Eye, RefreshCw, ChefHat, Bike, Receipt, CheckCircle2,
   Percent, ShieldAlert, Coffee, QrCode, Globe, MessageSquare, Copy,
-  ExternalLink, Share2, Flame, Gift
+  ExternalLink, Share2, Flame, Gift, GripVertical
 } from 'lucide-react'
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/constants/defaultMenu'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
@@ -232,6 +232,80 @@ export default function POSScreen() {
   const [tables, setTables] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // ── State: Resizable Splitter (Cart Panel Width %) ──
+  const [cartPanelWidth, setCartPanelWidth] = useState<number>(40) // Default 40% cart width
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Load saved panel width from localStorage
+  useEffect(() => {
+    try {
+      const savedWidth = localStorage.getItem('pos_cart_panel_width')
+      if (savedWidth) {
+        const val = parseFloat(savedWidth)
+        if (val >= 22 && val <= 65) setCartPanelWidth(val)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Dragging logic for desktop mouse and mobile/tablet touch
+  const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDraggingSplitter(true)
+  }, [])
+
+  const handleSplitterTouchStart = useCallback(() => {
+    setIsDraggingSplitter(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isDraggingSplitter) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const totalWidth = rect.width
+      if (totalWidth <= 0) return
+      const leftRatio = mouseX / totalWidth
+      // Clamp between 22% (slim cart) and 65% (wide cart)
+      const newCartPercent = Math.min(65, Math.max(22, (1 - leftRatio) * 100))
+      setCartPanelWidth(newCartPercent)
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!containerRef.current || !e.touches[0]) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const touchX = e.touches[0].clientX - rect.left
+      const totalWidth = rect.width
+      if (totalWidth <= 0) return
+      const leftRatio = touchX / totalWidth
+      const newCartPercent = Math.min(65, Math.max(22, (1 - leftRatio) * 100))
+      setCartPanelWidth(newCartPercent)
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingSplitter(false)
+      try {
+        localStorage.setItem('pos_cart_panel_width', cartPanelWidth.toString())
+      } catch {}
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleMouseUp)
+    }
+  }, [isDraggingSplitter, cartPanelWidth])
 
   // ── Load Razorpay Checkout Script on Mount ────────────────────────────────
   useEffect(() => {
@@ -847,10 +921,19 @@ export default function POSScreen() {
   const menuQrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(customerMenuUrl)}`
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden bg-[#0A0A0A] text-white font-sans">
+    <div
+      ref={containerRef}
+      className={cn(
+        'flex h-[calc(100vh-56px)] overflow-hidden bg-[#0A0A0A] text-white font-sans relative',
+        isDraggingSplitter ? 'cursor-col-resize select-none' : ''
+      )}
+    >
 
-      {/* ─── LEFT PANEL: Menu & Catalog (58% width) ────────────────────── */}
-      <div className="flex flex-col w-[58%] border-r border-white/10 overflow-hidden bg-[#111111]">
+      {/* ─── LEFT PANEL: Menu & Catalog ──────────────────────────────────── */}
+      <div
+        className="flex flex-col border-r border-white/10 overflow-hidden bg-[#111111]"
+        style={{ width: `${100 - cartPanelWidth}%` }}
+      >
 
         {/* Top Control Bar: Order Types, Menu Selector & Quick Filters */}
         <div className="p-3 border-b border-white/10 space-y-2.5 bg-[#161616]">
@@ -1185,8 +1268,41 @@ export default function POSScreen() {
         </div>
       </div>
 
-      {/* ─── RIGHT PANEL: Live Order, Running Ticket & Billing (42% width) ─ */}
-      <div className="flex flex-col w-[42%] bg-[#141414] overflow-hidden border-l border-white/10">
+      {/* ─── RESIZABLE SPLITTER DRAG HANDLE ──────────────────────────────── */}
+      <div
+        onMouseDown={handleSplitterMouseDown}
+        onTouchStart={handleSplitterTouchStart}
+        onDoubleClick={() => {
+          setCartPanelWidth(40)
+          try { localStorage.setItem('pos_cart_panel_width', '40') } catch {}
+          toast.info('Layout reset to default 60/40 ratio')
+        }}
+        className={cn(
+          'relative z-30 flex-none w-2 hover:w-3 -mx-1 flex items-center justify-center cursor-col-resize select-none transition-all group',
+          isDraggingSplitter ? 'w-3 bg-red-600/40' : 'bg-transparent hover:bg-red-500/20'
+        )}
+        title="Drag left/right to resize menu & cart panel. Double-click to reset."
+      >
+        {/* Visual Grip Handle */}
+        <div
+          className={cn(
+            'w-1 rounded-full transition-all flex flex-col items-center justify-center gap-1 shadow-sm',
+            isDraggingSplitter
+              ? 'h-20 bg-[#EF4444] shadow-red-500/60 ring-2 ring-red-500/30'
+              : 'h-12 bg-white/25 group-hover:bg-red-400 group-hover:h-16'
+          )}
+        >
+          <span className="w-0.5 h-0.5 rounded-full bg-white/90" />
+          <span className="w-0.5 h-0.5 rounded-full bg-white/90" />
+          <span className="w-0.5 h-0.5 rounded-full bg-white/90" />
+        </div>
+      </div>
+
+      {/* ─── RIGHT PANEL: Live Order, Running Ticket & Billing ───────────── */}
+      <div
+        className="flex flex-col bg-[#141414] overflow-hidden border-l border-white/10"
+        style={{ width: `${cartPanelWidth}%` }}
+      >
 
         {/* Panel Header: Mode, Table Info & Shift Details */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[#191919]">
