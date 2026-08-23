@@ -57,23 +57,46 @@ export default function CartDrawer() {
               </button>
             </div>
 
+            {/* Goal-Gradient Effect: Free Delivery Progress Meter */}
+            {items.length > 0 && (
+              <div className="bg-[#FFFBEB] border-b border-[#FDE68A] px-6 py-3">
+                <div className="flex items-center justify-between text-xs font-bold text-[#92400E] mb-1.5">
+                  <span>
+                    {subtotal >= 499 ? (
+                      '🎉 You unlocked FREE Delivery!'
+                    ) : (
+                      <>Add <strong className="text-[#B91C1C] font-extrabold">{formatPrice(499 - subtotal)}</strong> more for FREE Delivery 🚚</>
+                    )}
+                  </span>
+                  <span className="font-mono text-[11px]">{Math.min(100, Math.round((subtotal / 499) * 100))}%</span>
+                </div>
+                <div className="w-full bg-[#FEF3C7] h-2 rounded-full overflow-hidden border border-[#FCD34D]/60">
+                  <div
+                    className="bg-[#16A34A] h-full rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(100, Math.round((subtotal / 499) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Cart Items List */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {items.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
-                  <div className="w-16 h-16 bg-[#F4EFEA] rounded-full flex items-center justify-center text-[#A8A29E]">
-                    <ShoppingBag size={32} />
+                  {/* Picture Superiority Effect: Expressive visual empty state */}
+                  <div className="w-24 h-24 bg-[#FEF2F2] rounded-3xl flex items-center justify-center text-5xl shadow-inner border border-[#FEE2E2]">
+                    🍕
                   </div>
-                  <h3 className="font-serif font-bold text-lg text-[#1C1917]">Your cart is empty</h3>
-                  <p className="text-sm text-[#57534E] max-w-xs">
-                    Explore our menu and add your favourite wood-fired pizzas or juicy burgers!
+                  <h3 className="font-serif font-bold text-xl text-[#1C1917]">Your Cart is Craving Pizza!</h3>
+                  <p className="text-xs sm:text-sm text-[#57534E] max-w-xs leading-relaxed">
+                    Explore our authentic wood-fired pizzas, cheesy garlic breads, and chilled beverages.
                   </p>
                   <Link
                     href="/menu"
                     onClick={closeCart}
-                    className="btn btn-primary btn-sm mt-2"
+                    className="btn btn-primary btn-md mt-2 shadow-lg shadow-[#FF3B00]/20 font-bold"
                   >
-                    Explore Menu
+                    Browse Our Delicious Menu →
                   </Link>
                 </div>
               ) : (
@@ -168,13 +191,13 @@ export default function CartDrawer() {
                 </div>
 
                 <div className="flex flex-col gap-2.5 pt-2">
-                  {/* Primary Fitts's Law Target: Dominant Full-Width Checkout */}
+                  {/* Primary Target (Von Restorff Isolation & Information Scent): Dominant Full-Width Checkout */}
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="btn btn-primary w-full min-h-[50px] flex items-center justify-center gap-2 text-sm sm:text-base font-extrabold uppercase tracking-wider rounded-2xl shadow-xl shadow-[#FF3B00]/30 active:scale-[0.99] transition-transform"
+                    className="btn btn-primary w-full min-h-[52px] flex items-center justify-center gap-2 text-sm sm:text-base font-extrabold uppercase tracking-wider rounded-2xl shadow-xl shadow-[#FF3B00]/30 active:scale-[0.99] transition-transform"
                   >
-                    <span>Proceed to Checkout</span>
+                    <span>Proceed to Checkout ({formatPrice(subtotal)})</span>
                     <ArrowRight size={18} />
                   </Link>
 
@@ -184,7 +207,7 @@ export default function CartDrawer() {
                     onClick={closeCart}
                     className="text-center text-xs font-bold text-[#57534E] hover:text-[#1C1917] hover:underline py-1.5 transition-colors"
                   >
-                    Review full cart breakdown & coupons →
+                    Review full order breakdown & coupons →
                   </Link>
                 </div>
               </div>

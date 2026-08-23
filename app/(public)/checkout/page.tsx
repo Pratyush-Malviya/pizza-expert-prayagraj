@@ -533,6 +533,47 @@ export default function CheckoutPage() {
           Checkout
         </h1>
 
+        {/* Goal-Gradient Effect: 2-Step Order Progress Meter */}
+        <div className="bg-white border border-[#E7E0D8] rounded-2xl p-4 sm:p-5 mb-8 shadow-xs">
+          <div className="flex items-center justify-between max-w-xl mx-auto">
+            {/* Step 1 */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                1
+              </div>
+              <div>
+                <span className="block text-xs font-bold text-[#1C1917]">Delivery Details</span>
+                <span className="block text-[10px] text-[#16A34A] font-semibold">In Progress</span>
+              </div>
+            </div>
+
+            <div className="flex-1 mx-3 sm:mx-6 h-0.5 bg-[#E7E0D8] relative">
+              <div className="absolute inset-0 bg-[#B91C1C] w-1/2 rounded-full" />
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#F4EFEA] text-[#57534E] border border-[#E7E0D8] flex items-center justify-center font-bold text-xs">
+                2
+              </div>
+              <div>
+                <span className="block text-xs font-bold text-[#57534E]">Payment & Place</span>
+                <span className="block text-[10px] text-[#A8A29E]">Final Step</span>
+              </div>
+            </div>
+
+            <div className="flex-1 mx-3 sm:mx-6 h-0.5 bg-[#E7E0D8]" />
+
+            {/* Step 3: Reward */}
+            <div className="flex items-center gap-2 opacity-60">
+              <div className="w-8 h-8 rounded-full bg-[#FEF3C7] text-[#D97706] flex items-center justify-center font-bold text-sm">
+                🍕
+              </div>
+              <span className="hidden sm:inline text-xs font-bold text-[#78716C]">Hot Pizza!</span>
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={handlePlaceOrder} className="grid lg:grid-cols-3 gap-8">
           {/* Left Form Column */}
           <div className="lg:col-span-2 space-y-8">
@@ -540,7 +581,7 @@ export default function CheckoutPage() {
             {/* SUPER-CHUNK 1: Delivery Information */}
             <div className="space-y-6 bg-white/40 p-4 sm:p-6 rounded-2xl border border-[#E7E0D8]/50">
               <h2 className="font-serif font-bold text-xl text-[#1C1917] flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#B91C1C] text-white flex items-center justify-center text-xs">1</span>
+                <span className="w-6 h-6 rounded-full bg-[#B91C1C] text-white flex items-center justify-center text-xs font-bold">1</span>
                 Delivery Information
               </h2>
 
@@ -569,14 +610,21 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1C1917] mb-1">
-                    Phone Number *
+                  <label className="block text-xs font-semibold text-[#1C1917] mb-1 flex items-center justify-between">
+                    <span>Phone Number *</span>
+                    <span className="text-[10px] text-[#A8A29E]">10-digit mobile</span>
                   </label>
+                  {/* Postel's Law: Forgiving phone input, automatically handles +91, spaces, dashes */}
                   <input
                     type="tel"
                     required
                     value={contactInfo.phone}
-                    onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      // Remove non-digit chars except plus at start for gentle editing
+                      const cleaned = val.replace(/[^\d+ ]/g, '')
+                      setContactInfo({ ...contactInfo, phone: cleaned })
+                    }}
                     placeholder="+91 98765 43210"
                     className="input-field-light text-xs sm:text-sm"
                   />
@@ -1043,12 +1091,23 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Von Restorff Effect & Information Scent: Isolated Primary CTA */}
               <button
                 type="submit"
                 disabled={loading || hasZoneOrOrderError}
-                className="btn btn-primary btn-lg w-full mt-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-primary btn-lg w-full mt-3 font-extrabold uppercase tracking-wider py-4 text-sm sm:text-base rounded-2xl shadow-xl shadow-[#FF3B00]/30 hover:shadow-[#FF3B00]/50 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Processing Order...' : `Place Order (${paymentMethod.toUpperCase()})`}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={18} className="animate-spin" /> Processing Your Order...
+                  </span>
+                ) : (
+                  <span>
+                    {paymentMethod === 'razorpay'
+                      ? `Pay ${formatPrice(grandTotal)} Online (Razorpay) →`
+                      : `Confirm Cash on Delivery (${formatPrice(grandTotal)}) →`}
+                  </span>
+                )}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#A8A29E] pt-2">

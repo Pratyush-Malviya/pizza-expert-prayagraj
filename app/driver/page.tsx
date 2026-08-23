@@ -249,10 +249,14 @@ export default function DriverPWAPage() {
         )}
 
         {activeTrip ? (
-          <div className="bg-[#27272A] rounded-3xl p-5 border border-[#3F3F46] shadow-2xl space-y-5">
+          <div className="bg-[#27272A] rounded-3xl p-5 border-2 border-[#16A34A]/50 shadow-[0_0_30px_rgba(22,163,74,0.15)] space-y-5">
+            {/* Top Bar with Von Restorff Badge */}
             <div className="flex items-center justify-between border-b border-[#3F3F46] pb-3.5">
               <div>
-                <span className="text-[10px] text-[#A8A29E] uppercase font-black tracking-widest block">Active Delivery</span>
+                <span className="text-[10px] text-[#22C55E] uppercase font-black tracking-widest block flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                  Active Live Delivery
+                </span>
                 <span className="font-mono font-black text-white text-base tracking-tight">{activeTrip.order_id.slice(0, 12).toUpperCase()}</span>
               </div>
               <span className="text-[11px] font-black bg-[#B91C1C] text-white px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
@@ -260,14 +264,42 @@ export default function DriverPWAPage() {
               </span>
             </div>
 
+            {/* Goal-Gradient Effect: 4-Stage Delivery Progress Meter */}
+            <div className="bg-[#18181B] rounded-2xl p-3.5 border border-[#3F3F46] space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#A8A29E]">
+                <span className="text-white flex items-center gap-1">
+                  <span>⚡ Delivery Step:</span>
+                  <span className="text-[#22C55E] capitalize">
+                    {activeTrip.status === 'assigned' ? '1. Accept Trip' : activeTrip.status === 'accepted' ? '2. Pick Up Pizza' : '3. OTP Verification'}
+                  </span>
+                </span>
+                <span className="font-mono text-[#22C55E]">
+                  {activeTrip.status === 'assigned' ? '25%' : activeTrip.status === 'accepted' ? '50%' : '75%'}
+                </span>
+              </div>
+              <div className="w-full bg-[#27272A] h-2 rounded-full overflow-hidden border border-white/5">
+                <div
+                  className="bg-[#16A34A] h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: activeTrip.status === 'assigned' ? '25%' : activeTrip.status === 'accepted' ? '50%' : '75%'
+                  }}
+                />
+              </div>
+            </div>
+
             {/* ── CHUNK 1: Destination ── */}
             <div className="space-y-3.5 bg-[#18181B] p-4 sm:p-5 rounded-t-2xl border border-[#3F3F46] text-xs">
               <div className="flex items-center justify-between border-b border-[#3F3F46] pb-3">
-                <span className="text-[10px] text-[#A8A29E] font-bold uppercase tracking-wider">1. Destination Info</span>
+                <span className="text-[10px] text-[#A8A29E] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📍 1. Customer Destination</span>
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-base text-white truncate max-w-[190px]">{activeTrip.customer_name}</span>
-                {/* Large Call Target */}
+                <div className="flex items-center gap-2 truncate max-w-[190px]">
+                  <span className="text-base">👤</span>
+                  <span className="font-extrabold text-base text-white truncate">{activeTrip.customer_name}</span>
+                </div>
+                {/* Large Call Target with Explicit Information Scent */}
                 <a
                   href={`tel:${activeTrip.customer_phone}`}
                   className="min-h-[40px] flex items-center gap-2 px-4 py-2 bg-[#16A34A] hover:bg-[#15803D] text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md active:scale-95 transition-transform"
@@ -281,7 +313,7 @@ export default function DriverPWAPage() {
                 <span className="leading-snug">{activeTrip.address}</span>
               </div>
 
-              {/* Fitts's Law: Massive Navigation Button */}
+              {/* Fitts's Law & Information Scent: Massive Navigation Button */}
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeTrip.address)}`}
                 target="_blank"
@@ -289,7 +321,7 @@ export default function DriverPWAPage() {
                 className="w-full min-h-[48px] mt-2 flex items-center justify-center gap-2.5 py-3.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs sm:text-sm font-black uppercase tracking-wider rounded-2xl shadow-lg active:scale-[0.98] transition-all"
               >
                 <Navigation size={18} />
-                Open GPS Navigation
+                Open GPS Navigation in Google Maps →
               </a>
             </div>
 

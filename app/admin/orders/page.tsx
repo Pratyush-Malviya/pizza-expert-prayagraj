@@ -300,14 +300,26 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // Postel's Law: Robust, forgiving search filtering
   const filteredOrders = orders.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false
     if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase().trim()
+      // Strip common prefixes (#, ord, ord-) and punctuation
+      const cleanQ = q.replace(/^[#]/, '').replace(/^ord[-_]?/i, '').replace(/[\s-_]/g, '')
+      const cleanId = (o.id || '').toLowerCase().replace(/^[#]/, '').replace(/^ord[-_]?/i, '').replace(/[\s-_]/g, '')
+      const cleanPhone = (o.phone || '').replace(/[\s-+()]/g, '')
+      const cleanCustomer = (o.customer || '').toLowerCase()
+      const cleanAddress = (o.address || '').toLowerCase()
+      const cleanItems = (o.items_summary || '').toLowerCase()
+
       return (
-        o.id.toLowerCase().includes(q) ||
-        o.customer.toLowerCase().includes(q) ||
-        o.phone.includes(q)
+        cleanId.includes(cleanQ) ||
+        cleanPhone.includes(cleanQ) ||
+        cleanCustomer.includes(q) ||
+        cleanAddress.includes(q) ||
+        cleanItems.includes(q) ||
+        o.id.toLowerCase().includes(q)
       )
     }
     return true
@@ -401,14 +413,24 @@ export default function AdminOrdersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-[#FBF9F5] transition-colors">
+                filteredOrders.map((order) => {
+                  const isUrgent = order.status === 'cod_pending' || order.status === 'pending'
+                  return (
+                  <tr
+                    key={order.id}
+                    className={`transition-colors ${
+                      isUrgent
+                        ? 'bg-[#FFFBEB]/70 hover:bg-[#FEF3C7]/80 border-l-4 border-l-[#D97706]'
+                        : 'hover:bg-[#FBF9F5]'
+                    }`}
+                  >
                     <td className="py-3.5 pl-5 font-mono font-bold text-[#1C1917]">
                       <button
                         onClick={() => setSelectedOrder(order)}
-                        className="text-[#B91C1C] hover:underline flex items-center gap-1 text-left"
+                        className="text-[#B91C1C] hover:underline flex items-center gap-1.5 text-left"
                       >
-                        {order.id.length > 12 ? `${order.id.slice(0, 10)}...` : order.id}
+                        {isUrgent && <span className="w-2 h-2 rounded-full bg-[#D97706] animate-ping shrink-0" />}
+                        <span>{order.id.length > 12 ? `${order.id.slice(0, 10)}...` : order.id}</span>
                       </button>
                     </td>
                     <td className="py-3.5">
@@ -466,7 +488,7 @@ export default function AdminOrdersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>

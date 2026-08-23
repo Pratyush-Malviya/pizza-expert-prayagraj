@@ -118,14 +118,40 @@ export default function AdminDashboardPage() {
         </div>
         <button
           onClick={fetchDashboardStats}
-          className="btn btn-outline btn-sm flex items-center gap-1.5 text-xs self-start sm:self-auto"
+          className="btn btn-outline btn-sm flex items-center gap-1.5 text-xs self-start sm:self-auto shadow-xs"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           <span>Refresh Data</span>
         </button>
       </div>
 
-      {/* Stats Grid - 2 columns on mobile (grid-cols-2), 4 on desktop */}
+      {/* Goal-Gradient Effect: Store Readiness & Profile Completion Meter */}
+      <div className="bg-gradient-to-r from-[#FFFBEB] to-[#FEF3C7] border border-[#FDE68A] rounded-2xl p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🚀</span>
+            <div>
+              <h3 className="text-xs sm:text-sm font-extrabold text-[#92400E]">
+                Store Operational Readiness: 85% Complete
+              </h3>
+              <p className="text-[11px] text-[#A16207]">
+                Only 1 task remaining: Configure FSSAI & GST details in Store Settings.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/settings"
+            className="text-xs font-bold text-[#B91C1C] hover:underline bg-white px-3 py-1.5 rounded-xl border border-[#FDE68A] self-start sm:self-auto flex items-center gap-1 shadow-xs"
+          >
+            Complete Setup →
+          </Link>
+        </div>
+        <div className="w-full bg-white/80 h-2 rounded-full overflow-hidden border border-[#FCD34D]/70">
+          <div className="bg-[#16A34A] h-full rounded-full w-[85%] transition-all duration-500" />
+        </div>
+      </div>
+
+      {/* Stats Grid - Picture Superiority & Visual Scannability */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {/* Today's Revenue */}
         <div className="bg-white rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8] shadow-xs space-y-2">

@@ -61,18 +61,19 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="bg-[#FBF9F5] min-h-[70vh] flex items-center justify-center py-16">
-        <div className="container-custom max-w-md text-center bg-white rounded-xl p-8 shadow-xs border border-[#E7E0D8]">
-          <div className="w-16 h-16 bg-[#FEF2F2] text-[#B91C1C] rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShoppingBag size={28} />
+        <div className="container-custom max-w-md text-center bg-white rounded-2xl p-8 sm:p-10 shadow-xs border border-[#E7E0D8] space-y-4">
+          {/* Picture Superiority Effect: Expressive visual empty state */}
+          <div className="w-24 h-24 bg-[#FEF2F2] rounded-3xl flex items-center justify-center text-5xl mx-auto shadow-inner border border-[#FEE2E2]">
+            🍕
           </div>
-          <h2 className="font-serif font-bold text-2xl text-[#1C1917] mb-2">
+          <h2 className="font-serif font-bold text-2xl sm:text-3xl text-[#1C1917]">
             Your Cart is Empty
           </h2>
-          <p className="text-[#57534E] text-xs sm:text-sm mb-6">
-            Looks like you haven&apos;t added any wood-fired pizzas or burgers yet.
+          <p className="text-[#57534E] text-xs sm:text-sm max-w-xs mx-auto leading-relaxed">
+            You haven&apos;t added any hot wood-fired pizzas, gourmet pastas, or garlic breads yet.
           </p>
-          <Link href="/menu" className="btn btn-primary btn-lg w-full">
-            Browse Menu
+          <Link href="/menu" className="btn btn-primary btn-lg w-full font-bold shadow-lg shadow-[#FF3B00]/20">
+            Browse Authentic Pizza Menu →
           </Link>
         </div>
       </div>
@@ -85,8 +86,33 @@ export default function CartPage() {
         {/* Back link */}
         <div className="mb-6">
           <Link href="/menu" className="text-xs font-semibold text-[#57534E] hover:text-[#B91C1C] flex items-center gap-1.5 transition-colors">
-            <ArrowLeft size={15} /> Continue Shopping
+            <ArrowLeft size={15} /> Continue Browsing Menu
           </Link>
+        </div>
+
+        {/* Goal-Gradient Effect: Free Delivery Progress Bar */}
+        <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl p-4 sm:p-5 mb-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🚚</span>
+              <span className="text-xs sm:text-sm font-extrabold text-[#92400E]">
+                {subtotal >= 499 ? (
+                  '🎉 Congratulations! You unlocked FREE Express Delivery on this order.'
+                ) : (
+                  <>Add <strong className="text-[#B91C1C] text-sm sm:text-base font-black">{formatPrice(499 - subtotal)}</strong> more to unlock FREE Delivery!</>
+                )}
+              </span>
+            </div>
+            <span className="text-xs font-mono font-bold text-[#92400E] bg-white px-2.5 py-1 rounded-full border border-[#FDE68A] self-start sm:self-auto">
+              {Math.min(100, Math.round((subtotal / 499) * 100))}% Completed
+            </span>
+          </div>
+          <div className="w-full bg-[#FEF3C7] h-2.5 rounded-full overflow-hidden border border-[#FCD34D]/70">
+            <div
+              className="bg-[#16A34A] h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.min(100, Math.round((subtotal / 499) * 100))}%` }}
+            />
+          </div>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#1C1917] mb-8">
