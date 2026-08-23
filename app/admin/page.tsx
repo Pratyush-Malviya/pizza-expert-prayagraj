@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
       {/* Stats Grid - Picture Superiority & Visual Scannability */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {/* Today's Revenue */}
-        <div className="bg-white rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8] shadow-xs space-y-2">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8]/60 shadow-xs hover:shadow-sm transition-all duration-300 space-y-2">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md flex items-center justify-center bg-[#FEF2F2]">
               <DollarSign size={18} className="text-[#B91C1C]" />
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8] shadow-xs space-y-2">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8]/60 shadow-xs hover:shadow-sm transition-all duration-300 space-y-2">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md flex items-center justify-center bg-[#F0FDF4]">
               <ShoppingBag size={18} className="text-[#15803D]" />
@@ -194,7 +194,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Active Menu Items */}
-        <div className="bg-white rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8] shadow-xs space-y-2">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8]/60 shadow-xs hover:shadow-sm transition-all duration-300 space-y-2">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md flex items-center justify-center bg-[#F4EFEA]">
               <Pizza size={18} className="text-[#18181B]" />
@@ -214,7 +214,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Rating */}
-        <div className="bg-white rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8] shadow-xs space-y-2">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl p-3.5 sm:p-5 border border-[#E7E0D8]/60 shadow-xs hover:shadow-sm transition-all duration-300 space-y-2">
           <div className="flex items-center justify-between">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md flex items-center justify-center bg-[#FFFBEB]">
               <Star size={18} className="text-[#D97706]" />
@@ -300,7 +300,7 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody className="divide-y divide-[#E7E0D8]/60">
               {recentOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-[#FBF9F5] transition-colors">
+                <tr key={order.id} className="hover:bg-white transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:-translate-y-[1px] relative z-10 rounded-lg group cursor-pointer">
                   <td className="py-3 pl-2 font-mono font-bold text-[#1C1917] max-w-[130px] truncate" title={order.id}>
                     {order.id.length > 12 ? `#${order.id.slice(0, 8)}...` : order.id}
                   </td>

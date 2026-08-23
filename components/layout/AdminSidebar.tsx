@@ -491,10 +491,10 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                     href={group.href}
                     onClick={() => setMobileOpen?.(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold transition-all',
+                      'flex items-center gap-3 px-3.5 py-2.5 min-h-[40px] rounded-r-xl text-xs font-bold transition-all',
                       isActive
-                        ? 'bg-[#B91C1C] text-white shadow-xs'
-                        : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
+                        ? 'bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white shadow-md shadow-[#B91C1C]/20 border-l-[3px] border-[#FCA5A5]'
+                        : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white border-l-[3px] border-transparent'
                     )}
                   >
                     <GroupIcon size={16} />
@@ -551,10 +551,10 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                               setMobileOpen?.(false)
                             }}
                             className={cn(
-                              'flex items-center gap-2.5 px-3 py-2 min-h-[38px] rounded-xl text-xs transition-all',
+                              'flex items-center gap-2.5 px-3 py-2 min-h-[38px] rounded-r-xl text-xs transition-all',
                               isActive
-                                ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
-                                : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium'
+                                ? 'bg-gradient-to-r from-[#B91C1C] to-[#991B1B] text-white font-bold shadow-md shadow-[#B91C1C]/20 border-l-[3px] border-[#FCA5A5]'
+                                : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium border-l-[3px] border-transparent'
                             )}
                           >
                             <ItemIcon size={14} className={isActive ? 'text-white' : 'text-[#A8A29E]'} />

@@ -57,7 +57,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="group flex flex-col cursor-pointer bg-[#16161E] rounded-3xl p-4 border border-white/10 hover:border-[#FF3B00]/50 shadow-xl hover:shadow-[0_12px_30px_rgba(255,59,0,0.15)] transition-all duration-300 relative overflow-hidden"
+      className="group flex flex-col cursor-pointer bg-[#16161E] rounded-3xl p-4 border border-white/10 hover:border-[#FF3B00]/50 shadow-xl hover:shadow-[0_15px_40px_rgba(255,59,0,0.25)] transition-all duration-300 relative overflow-hidden"
       onClick={() => onQuickView && onQuickView(product)}
     >
       {/* Food Image Container */}
@@ -65,7 +65,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         <motion.img
           src={imageUrl}
           alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[800ms] ease-out"
         />
 
         {/* Dietary FSSAI Indicators & Spicy Badge */}

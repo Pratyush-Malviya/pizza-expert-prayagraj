@@ -56,10 +56,10 @@ export default function HeroBanner() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="space-y-1"
+              className="space-y-1 drop-shadow-2xl"
             >
               <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-[80px] uppercase leading-[0.9] tracking-tight text-white">
-                <span className="text-[#FF3B00]">{titleLine1}</span>
+                <span className="text-[#FF3B00] drop-shadow-[0_4px_24px_rgba(255,59,0,0.4)]">{titleLine1}</span>
                 <span className="block text-2xl sm:text-4xl lg:text-[44px] font-serif italic font-normal text-[#FFC01D] my-1.5 tracking-normal lowercase first-letter:uppercase">
                   {titleSub}
                 </span>
@@ -138,7 +138,7 @@ export default function HeroBanner() {
               <img
                 src={heroImg}
                 alt="Pizza Expert Prayagraj Signature Pizza"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[800ms] ease-out"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
               

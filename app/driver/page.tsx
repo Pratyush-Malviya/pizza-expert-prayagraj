@@ -296,8 +296,8 @@ export default function DriverPWAPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 truncate max-w-[190px]">
-                  <span className="text-base">👤</span>
-                  <span className="font-extrabold text-base text-white truncate">{activeTrip.customer_name}</span>
+                  <span className="text-lg">👤</span>
+                  <span className="font-extrabold text-lg sm:text-xl text-white truncate drop-shadow-md">{activeTrip.customer_name}</span>
                 </div>
                 {/* Large Call Target with Explicit Information Scent */}
                 <a
@@ -308,8 +308,8 @@ export default function DriverPWAPage() {
                 </a>
               </div>
 
-              <div className="flex items-start gap-2.5 text-zinc-300 text-xs sm:text-sm">
-                <MapPin size={18} className="text-[#B91C1C] shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 text-zinc-200 text-sm sm:text-base font-medium">
+                <MapPin size={20} className="text-[#B91C1C] shrink-0 mt-0.5" />
                 <span className="leading-snug">{activeTrip.address}</span>
               </div>
 
@@ -400,7 +400,7 @@ export default function DriverPWAPage() {
                   <button
                     onClick={handleVerifyOtpAndDeliver}
                     disabled={!enteredOtp || enteredOtp.length < 4 || loading}
-                    className="w-full min-h-[54px] py-4 bg-[#16A34A] disabled:opacity-40 hover:bg-[#15803D] text-white font-black rounded-2xl text-sm sm:text-base uppercase tracking-wider shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="w-full min-h-[54px] py-4 bg-[#16A34A] disabled:opacity-40 hover:bg-[#15803D] text-white font-black rounded-2xl text-sm sm:text-base uppercase tracking-wider shadow-[0_0_20px_rgba(22,163,74,0.3)] hover:shadow-[0_0_30px_rgba(22,163,74,0.5)] active:scale-[0.95] transition-all duration-300 flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 size={18} className="animate-spin" /> : 'Verify OTP & Mark Delivered'}
                   </button>
