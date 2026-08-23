@@ -240,7 +240,7 @@ export default function MediaLibraryModal({
         const titleName = file.name.replace(/\.[^/.]+$/, '')
         const autoAlt = `${titleName} - Pizza Expert Prayagraj`
 
-        saveUploadedImageToHistory(dataUrl, titleName, autoAlt)
+        await saveUploadedImageToHistory(dataUrl, titleName, autoAlt)
         setSelectedUrl(dataUrl)
         setSelectedTitle(titleName)
         setSelectedAlt(autoAlt)
@@ -300,7 +300,7 @@ export default function MediaLibraryModal({
     const cleanUrl = customUrlInput.trim()
     const autoAlt = customAltInput.trim() || 'Custom Web Image'
 
-    saveUploadedImageToHistory(cleanUrl, 'Web Linked Image', autoAlt)
+    await saveUploadedImageToHistory(cleanUrl, 'Web Linked Image', autoAlt)
     setSelectedUrl(cleanUrl)
     setSelectedAlt(autoAlt)
     await loadImages()

@@ -296,9 +296,9 @@ function AdminSettingsContent() {
     reader.onload = async () => {
       try {
         const raw = reader.result as string
-        const compressed = await compressImageDataUrl(raw, 800, 0.9)
+        const compressed = await compressImageDataUrl(raw, 400, 0.85)
         setLogoDataUrl(compressed)
-        saveUploadedImageToHistory(compressed, 'Store Logo')
+        await saveUploadedImageToHistory(compressed, 'Store Logo')
         toast.success('Store logo uploaded and applied! Click "Save All Business Settings" to permanently save.', {
           id: toastId,
         })
@@ -334,9 +334,9 @@ function AdminSettingsContent() {
     reader.onload = async () => {
       try {
         const raw = reader.result as string
-        const compressed = await compressImageDataUrl(raw, 600, 0.88)
+        const compressed = await compressImageDataUrl(raw, 300, 0.85)
         setFormData({ ...formData, adminAvatarUrl: compressed })
-        saveUploadedImageToHistory(compressed, 'Admin Avatar')
+        await saveUploadedImageToHistory(compressed, 'Admin Avatar')
         toast.success('Admin avatar photo uploaded! Click "Save All Business Settings" to save.', {
           id: toastId,
         })
@@ -1890,12 +1890,14 @@ function AdminSettingsContent() {
         onClose={() => setMediaModalOpen(false)}
         currentImage={mediaTarget === 'logo' ? logoDataUrl : formData.adminAvatarUrl}
         title={mediaTarget === 'logo' ? 'Select Store Logo' : 'Select Admin Avatar Photo'}
-        onSelect={(url) => {
+        onSelect={async (url) => {
           if (mediaTarget === 'logo') {
-            setLogoDataUrl(url)
+            const compressed = await compressImageDataUrl(url, 400, 0.85)
+            setLogoDataUrl(compressed)
             toast.success('Logo selected from library!')
           } else {
-            setFormData({ ...formData, adminAvatarUrl: url })
+            const compressed = await compressImageDataUrl(url, 300, 0.85)
+            setFormData({ ...formData, adminAvatarUrl: compressed })
             toast.success('Avatar selected from library!')
           }
         }}

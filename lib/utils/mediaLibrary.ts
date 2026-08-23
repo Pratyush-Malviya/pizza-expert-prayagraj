@@ -1,5 +1,6 @@
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { createClient } from '@/lib/supabase/client'
+import { idbGet, idbSet, idbDelete, safeLocalStorage } from '@/lib/utils/safeStorage'
 
 export interface MediaImage {
   id: string
@@ -11,13 +12,26 @@ export interface MediaImage {
   addedAt?: string
 }
 
-const UPLOADS_STORAGE_KEY = 'pizza_uploaded_images_history'
+const IDB_UPLOADS_KEY = 'pizza_uploaded_images_history'
+const METADATA_STORAGE_KEY = 'pizza_media_metadata_v2'
 const DELETED_STORAGE_KEY = 'pizza_deleted_media_urls'
-const METADATA_STORAGE_KEY = 'pizza_media_metadata'
+
+// Helper to make a short safe key for metadata (avoids 2MB base64 keys)
+function getSafeMetaKey(url: string): string {
+  if (!url) return ''
+  if (!url.startsWith('data:')) return url
+  // For data URLs, create a lightweight signature:
+  let hash = 0
+  for (let i = 0; i < Math.min(url.length, 300); i++) {
+    hash = (hash << 5) - hash + url.charCodeAt(i)
+    hash |= 0
+  }
+  return `data_img_${Math.abs(hash)}_${url.length}`
+}
 
 // Categorize known food image keys or titles
 export function categorizeImage(titleOrKey: string): MediaImage['category'] {
-  const lower = titleOrKey.toLowerCase()
+  const lower = (titleOrKey || '').toLowerCase()
   if (lower.includes('pizza') || lower.includes('margherita') || lower.includes('farm-house') || lower.includes('paneer-tikka')) return 'pizzas'
   if (lower.includes('burger') || lower.includes('patty') || lower.includes('zinger')) return 'burgers'
   if (lower.includes('pasta') || lower.includes('penne') || lower.includes('alfredo') || lower.includes('arrabiata')) return 'pasta'
@@ -35,15 +49,15 @@ export function formatSlugTitle(slug: string): string {
     .join(' ')
 }
 
-// Helper to safely compress data URL images before local storage
-export function compressImageDataUrl(dataUrl: string, maxDim: number = 1000, quality: number = 0.85): Promise<string> {
+// Helper to safely compress data URL images to compact sizes (max 400-800px, 20-40KB)
+export function compressImageDataUrl(dataUrl: string, maxDim: number = 600, quality: number = 0.85): Promise<string> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined' || !dataUrl.startsWith('data:image')) {
       resolve(dataUrl)
       return
     }
-    // If it's a small image already, don't recompress
-    if (dataUrl.length < 250000) {
+    // If it's already tiny (< 60KB), return as is
+    if (dataUrl.length < 60000) {
       resolve(dataUrl)
       return
     }
@@ -51,7 +65,7 @@ export function compressImageDataUrl(dataUrl: string, maxDim: number = 1000, qua
     const img = new Image()
     img.onload = () => {
       let { width, height } = img
-      if (width <= maxDim && height <= maxDim && dataUrl.length < 350000) {
+      if (width <= maxDim && height <= maxDim && dataUrl.length < 80000) {
         resolve(dataUrl)
         return
       }
@@ -89,25 +103,26 @@ export function compressImageDataUrl(dataUrl: string, maxDim: number = 1000, qua
 export function getAllMediaMetadata(): Record<string, { alt?: string; title?: string }> {
   if (typeof window === 'undefined') return {}
   try {
-    const raw = localStorage.getItem(METADATA_STORAGE_KEY)
+    const raw = safeLocalStorage.getItem(METADATA_STORAGE_KEY)
     return raw ? JSON.parse(raw) : {}
   } catch {
     return {}
   }
 }
 
-// Save or update alt text & metadata for an image
+// Save or update alt text & metadata for an image without quota errors
 export function updateImageMetadata(url: string, data: { alt?: string; title?: string }): void {
   if (typeof window === 'undefined' || !url) return
   try {
+    const metaKey = getSafeMetaKey(url)
     const meta = getAllMediaMetadata()
-    meta[url] = {
-      ...(meta[url] || {}),
+    meta[metaKey] = {
+      ...(meta[metaKey] || {}),
       ...data,
     }
-    localStorage.setItem(METADATA_STORAGE_KEY, JSON.stringify(meta))
+    safeLocalStorage.setItem(METADATA_STORAGE_KEY, JSON.stringify(meta))
   } catch (err) {
-    console.error('Failed to update image metadata', err)
+    console.warn('Could not update image metadata', err)
   }
 }
 
@@ -115,7 +130,7 @@ export function updateImageMetadata(url: string, data: { alt?: string; title?: s
 export function getDeletedImageUrls(): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
-    const raw = localStorage.getItem(DELETED_STORAGE_KEY)
+    const raw = safeLocalStorage.getItem(DELETED_STORAGE_KEY)
     if (raw) {
       const arr = JSON.parse(raw)
       return new Set(Array.isArray(arr) ? arr : [])
@@ -125,41 +140,37 @@ export function getDeletedImageUrls(): Set<string> {
 }
 
 // Delete one or multiple images
-export function deleteMediaImages(urls: string[]): void {
+export async function deleteMediaImages(urls: string[]): Promise<void> {
   if (typeof window === 'undefined' || !urls || urls.length === 0) return
 
   const urlSet = new Set(urls)
 
-  // 1. Remove from uploads history
+  // 1. Remove from IndexedDB
   try {
-    const rawUploads = localStorage.getItem(UPLOADS_STORAGE_KEY)
-    if (rawUploads) {
-      let uploads: Array<{ id: string; url: string; title: string; addedAt?: string }> = JSON.parse(rawUploads)
-      if (Array.isArray(uploads)) {
-        uploads = uploads.filter((item) => !urlSet.has(item.url))
-        localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(uploads))
-      }
-    }
+    const currentUploads = (await idbGet<Array<{ id: string; url: string; title: string }>>(IDB_UPLOADS_KEY)) || []
+    const updated = currentUploads.filter((item) => !urlSet.has(item.url))
+    await idbSet(IDB_UPLOADS_KEY, updated)
   } catch (err) {
-    console.error('Error removing from uploads history', err)
+    console.warn('Error removing from IDB uploads history', err)
   }
 
   // 2. Add to deleted URLs list
   try {
     const deletedSet = getDeletedImageUrls()
     urls.forEach((u) => deletedSet.add(u))
-    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)))
+    safeLocalStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)))
   } catch (err) {
-    console.error('Error saving deleted image urls', err)
+    console.warn('Error saving deleted image urls', err)
   }
 
   // 3. Clean up metadata
   try {
     const meta = getAllMediaMetadata()
     urls.forEach((u) => {
-      delete meta[u]
+      const key = getSafeMetaKey(u)
+      delete meta[key]
     })
-    localStorage.setItem(METADATA_STORAGE_KEY, JSON.stringify(meta))
+    safeLocalStorage.setItem(METADATA_STORAGE_KEY, JSON.stringify(meta))
   } catch {}
 }
 
@@ -175,7 +186,8 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
     if (seenUrls.has(cleanUrl) || deletedUrls.has(cleanUrl)) return
     seenUrls.add(cleanUrl)
 
-    const savedMeta = metadata[cleanUrl] || {}
+    const metaKey = getSafeMetaKey(cleanUrl)
+    const savedMeta = metadata[metaKey] || metadata[cleanUrl] || {}
     const finalAlt = savedMeta.alt || img.alt || `${img.title} - Pizza Expert Prayagraj`
     const finalTitle = savedMeta.title || img.title
 
@@ -187,105 +199,102 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
     })
   }
 
-  // 1. Previously uploaded images from LocalStorage
+  // 1. User Uploads from IndexedDB (High capacity storage)
   if (typeof window !== 'undefined') {
     try {
-      const storedUploadsRaw = localStorage.getItem(UPLOADS_STORAGE_KEY)
-      if (storedUploadsRaw) {
-        const storedUploads: Array<{ id: string; url: string; title: string; alt?: string; addedAt?: string }> = JSON.parse(storedUploadsRaw)
-        if (Array.isArray(storedUploads)) {
-          storedUploads.forEach((item, index) => {
-            addImage({
-              id: item.id || `upload-${index}`,
-              url: item.url,
-              title: item.title || `Uploaded Image ${index + 1}`,
-              alt: item.alt || item.title || `Uploaded photo ${index + 1}`,
-              category: 'uploads',
-              source: 'uploaded',
-              addedAt: item.addedAt,
-            })
-          })
+      let idbUploads = await idbGet<Array<{ id: string; url: string; title: string; alt?: string; addedAt?: string }>>(IDB_UPLOADS_KEY)
+      
+      // Fallback migration from legacy localStorage if IDB is empty
+      if (!idbUploads || idbUploads.length === 0) {
+        const legacyRaw = localStorage.getItem('pizza_uploaded_images_history')
+        if (legacyRaw) {
+          try {
+            const legacyList = JSON.parse(legacyRaw)
+            if (Array.isArray(legacyList) && legacyList.length > 0) {
+              idbUploads = legacyList
+              await idbSet(IDB_UPLOADS_KEY, legacyList)
+              // Reclaim localStorage quota
+              localStorage.removeItem('pizza_uploaded_images_history')
+            }
+          } catch {}
         }
       }
+
+      if (Array.isArray(idbUploads)) {
+        idbUploads.forEach((item, index) => {
+          addImage({
+            id: item.id || `upload-${index}`,
+            url: item.url,
+            title: item.title || `Uploaded Image ${index + 1}`,
+            alt: item.alt || item.title || `Uploaded photo ${index + 1}`,
+            category: 'uploads',
+            source: 'uploaded',
+            addedAt: item.addedAt,
+          })
+        })
+      }
     } catch (err) {
-      console.warn('Failed to parse uploaded images from localStorage', err)
+      console.warn('Failed to read uploaded images from IndexedDB', err)
     }
   }
 
-  // 2. Fetch from Supabase tables (products, categories, offers)
+  // 2. Fetch from Supabase tables (categories, product_images) with graceful fallbacks
   try {
     const supabase = createClient()
 
-    // Remote products
-    const { data: remoteProducts } = await supabase
-      .from('products')
-      .select('id, name, slug, image_url')
-      .limit(100)
-
-    if (remoteProducts && Array.isArray(remoteProducts)) {
-      remoteProducts.forEach((prod) => {
-        if (prod.image_url) {
-          addImage({
-            id: `db-prod-${prod.id}`,
-            url: prod.image_url,
-            title: prod.name || formatSlugTitle(prod.slug || 'Product'),
-            alt: `${prod.name || prod.slug} freshly prepared at Pizza Expert Prayagraj`,
-            category: categorizeImage(prod.name || prod.slug || ''),
-            source: 'database',
-          })
-        }
-      })
-    }
-
     // Remote categories
-    const { data: remoteCategories } = await supabase
-      .from('categories')
-      .select('id, name, slug, image_url')
-      .limit(50)
+    try {
+      const { data: remoteCategories } = await supabase
+        .from('categories')
+        .select('id, name, slug, image_url')
+        .limit(50)
 
-    if (remoteCategories && Array.isArray(remoteCategories)) {
-      remoteCategories.forEach((cat) => {
-        if (cat.image_url) {
-          addImage({
-            id: `db-cat-${cat.id}`,
-            url: cat.image_url,
-            title: `${cat.name} (Category)`,
-            alt: `${cat.name} category menu banner`,
-            category: categorizeImage(cat.name || cat.slug || ''),
-            source: 'database',
-          })
-        }
-      })
-    }
+      if (remoteCategories && Array.isArray(remoteCategories)) {
+        remoteCategories.forEach((cat) => {
+          if (cat.image_url) {
+            addImage({
+              id: `db-cat-${cat.id}`,
+              url: cat.image_url,
+              title: `${cat.name} (Category)`,
+              alt: `${cat.name} category menu banner`,
+              category: categorizeImage(cat.name || cat.slug || ''),
+              source: 'database',
+            })
+          }
+        })
+      }
+    } catch {}
 
-    // Remote offers
-    const { data: remoteOffers } = await supabase
-      .from('offers')
-      .select('id, title, image_url')
-      .limit(50)
+    // Remote product images
+    try {
+      const { data: remoteProductImages } = await supabase
+        .from('product_images')
+        .select('id, image_url, product_id')
+        .limit(100)
 
-    if (remoteOffers && Array.isArray(remoteOffers)) {
-      remoteOffers.forEach((offer) => {
-        if (offer.image_url) {
-          addImage({
-            id: `db-offer-${offer.id}`,
-            url: offer.image_url,
-            title: `${offer.title} (Offer)`,
-            alt: `${offer.title} special promotional offer`,
-            category: 'general',
-            source: 'database',
-          })
-        }
-      })
-    }
+      if (remoteProductImages && Array.isArray(remoteProductImages)) {
+        remoteProductImages.forEach((img) => {
+          if (img.image_url) {
+            addImage({
+              id: `db-pimg-${img.id}`,
+              url: img.image_url,
+              title: 'Menu Product Photo',
+              alt: 'Freshly prepared item at Pizza Expert Prayagraj',
+              category: 'pizzas',
+              source: 'database',
+            })
+          }
+        })
+      }
+    } catch {}
   } catch (err) {
-    console.warn('Could not fetch remote media images from Supabase tables', err)
+    console.warn('Could not query Supabase tables in media library', err)
   }
 
   // 3. Fallback Local Storage Items (Offline / Local Mode)
   if (typeof window !== 'undefined') {
     try {
-      const storedCategoriesRaw = localStorage.getItem('pizza_categories')
+      const storedCategoriesRaw = safeLocalStorage.getItem('pizza_categories')
       if (storedCategoriesRaw) {
         const storedCategories = JSON.parse(storedCategoriesRaw)
         if (Array.isArray(storedCategories)) {
@@ -305,7 +314,7 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
         }
       }
 
-      const storedProductsRaw = localStorage.getItem('pizza_products')
+      const storedProductsRaw = safeLocalStorage.getItem('pizza_products')
       if (storedProductsRaw) {
         const storedProducts = JSON.parse(storedProductsRaw)
         if (Array.isArray(storedProducts)) {
@@ -318,26 +327,6 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
                 title: prod.name || prod.slug || 'Menu Item',
                 alt: `${prod.name || prod.slug} delicious menu dish`,
                 category: categorizeImage(prod.name || prod.slug || ''),
-                source: imgUrl.startsWith('data:') ? 'uploaded' : 'database',
-              })
-            }
-          })
-        }
-      }
-
-      const storedOffersRaw = localStorage.getItem('pizza_offers')
-      if (storedOffersRaw) {
-        const storedOffers = JSON.parse(storedOffersRaw)
-        if (Array.isArray(storedOffers)) {
-          storedOffers.forEach((offer) => {
-            const imgUrl = offer.imageUrl || offer.image_url
-            if (imgUrl) {
-              addImage({
-                id: `local-offer-${offer.id || offer.code}`,
-                url: imgUrl,
-                title: `${offer.title || offer.code} (Offer)`,
-                alt: `${offer.title || offer.code} offer banner`,
-                category: 'general',
                 source: imgUrl.startsWith('data:') ? 'uploaded' : 'database',
               })
             }
@@ -364,22 +353,14 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
   return results
 }
 
-export function saveUploadedImageToHistory(url: string, title?: string, alt?: string): void {
+export async function saveUploadedImageToHistory(url: string, title?: string, alt?: string): Promise<void> {
   if (typeof window === 'undefined' || !url) return
 
   try {
-    const raw = localStorage.getItem(UPLOADS_STORAGE_KEY)
-    let list: Array<{ id: string; url: string; title: string; alt?: string; addedAt?: string }> = []
-    if (raw) {
-      try {
-        list = JSON.parse(raw)
-        if (!Array.isArray(list)) list = []
-      } catch {
-        list = []
-      }
-    }
+    let list = (await idbGet<Array<{ id: string; url: string; title: string; alt?: string; addedAt?: string }>>(IDB_UPLOADS_KEY)) || []
+    if (!Array.isArray(list)) list = []
 
-    // Filter out if duplicate URL exists already
+    // Filter out duplicate URL
     list = list.filter((item) => item.url !== url)
 
     const finalTitle = title || `Upload ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -399,26 +380,18 @@ export function saveUploadedImageToHistory(url: string, title?: string, alt?: st
     if (deletedSet.has(url)) {
       deletedSet.delete(url)
       try {
-        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)))
+        safeLocalStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)))
       } catch {}
     }
 
-    // Save to localStorage with progressive eviction if quota is exceeded
-    let saved = false
-    while (!saved && list.length > 0) {
-      try {
-        localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(list))
-        saved = true
-      } catch (quotaErr) {
-        if (list.length > 1) {
-          list.pop() // Evict oldest upload to make room
-        } else {
-          break
-        }
-      }
+    // Keep up to 100 uploads in IndexedDB
+    if (list.length > 100) {
+      list = list.slice(0, 100)
     }
 
-    // Also update metadata store
+    await idbSet(IDB_UPLOADS_KEY, list)
+
+    // Update metadata store using safe key
     updateImageMetadata(url, { alt: finalAlt, title: finalTitle })
   } catch (err) {
     console.error('Failed to save uploaded image to history', err)

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { safeLocalStorage } from '@/lib/utils/safeStorage'
 import type { EmailTemplate } from '@/types/emailTemplate'
 import { DEFAULT_EMAIL_TEMPLATES } from '@/lib/constants/defaultEmailTemplates'
 
@@ -376,6 +377,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'pizza-expert-settings',
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 )
