@@ -665,8 +665,8 @@ export default function POSScreen() {
         holdCurrentOrder()
       } else if (e.key === 'F8') {
         e.preventDefault()
-        if (cart.length > 0 && paymentStep === 'idle') {
-          sendToKitchen()
+        if (cart.length > 0 && paymentStep !== 'success') {
+          processPayment()
         }
       }
     }
@@ -861,63 +861,45 @@ export default function POSScreen() {
     localStorage.removeItem('pos_active_cart_draft')
   }
 
-  // ── Send to Kitchen (KOT) ─────────────────────────────────────────────────
-  const sendToKitchen = async () => {
+  // ── Helper: Build Canonical POS Order Payload ────────────────────────────
+  const getOrderPayload = (): CreatePOSOrderPayload => ({
+    orderType,
+    items: cart.map((l) => ({
+      productId: l.productId,
+      productName: `${l.productName}${l.variantSize ? ` (${l.variantSize})` : ''}${l.crust ? ` [${l.crust}]` : ''}`,
+      unitPrice: l.unitPrice,
+      quantity: l.quantity,
+      modifiers: l.modifiers,
+      notes: `${l.course ? `[${l.course}] ` : ''}${l.isHeld ? '⛔ [HOLD ON KOT] ' : ''}${l.notes || ''}`.trim(),
+    })),
+    tableId: tableId || undefined,
+    guestCount,
+    waiterId: selectedWaiterId || undefined,
+    customerName: customerName || (orderType === 'dine_in' ? `Table ${tables.find((t) => t.id === tableId)?.table_number || ''}` : 'Walk-in Customer'),
+    customerPhone: customerPhone || undefined,
+    discountValue: discountValue || undefined,
+    discountType: discountType || undefined,
+    notes: `${prepTimeEstimate ? `⏱ Est. Prep: ${prepTimeEstimate}m | ` : ''}${deliveryAddress ? `📍 Address: ${deliveryAddress} (${deliveryLandmark}) | ` : ''}${orderNotes || ''}`.trim(),
+    shiftId,
+    terminalId,
+    cashierId,
+  })
+
+  // ── Trigger Razorpay Checkout Modal directly on POS Screen ─────────────────
+  const launchRazorpayModal = async () => {
     if (cart.length === 0) return toast.error('Cart is empty')
     if (!shiftOpen) return toast.error('Please open a cashier shift first')
     if (orderType === 'dine_in' && !tableId) {
       return toast.error('Please select a Table for Dine-In orders')
     }
 
-    setPlacing(true)
-    try {
-      const orderPayload: CreatePOSOrderPayload = {
-        orderType,
-        items: cart.map((l) => ({
-          productId: l.productId,
-          productName: `${l.productName}${l.variantSize ? ` (${l.variantSize})` : ''}${l.crust ? ` [${l.crust}]` : ''}`,
-          unitPrice: l.unitPrice,
-          quantity: l.quantity,
-          modifiers: l.modifiers,
-          notes: `${l.course ? `[${l.course}] ` : ''}${l.isHeld ? '⛔ [HOLD ON KOT] ' : ''}${l.notes || ''}`.trim(),
-        })),
-        tableId: tableId || undefined,
-        guestCount,
-        waiterId: selectedWaiterId || undefined,
-        customerName: customerName || (orderType === 'dine_in' ? `Table ${tables.find(t => t.id === tableId)?.table_number || ''}` : 'Walk-in Customer'),
-        customerPhone: customerPhone || undefined,
-        discountValue: discountValue || undefined,
-        discountType: discountType || undefined,
-        notes: `${prepTimeEstimate ? `⏱ Est. Prep: ${prepTimeEstimate}m | ` : ''}${deliveryAddress ? `📍 Address: ${deliveryAddress} (${deliveryLandmark}) | ` : ''}${orderNotes || ''}`.trim(),
-        shiftId,
-        terminalId,
-        cashierId,
-      }
-
-      const result = await createPOSOrder(orderPayload)
-      if (!result.success) throw new Error(result.error)
-
-      setLastOrderId(result.orderId!)
-      setLastKotNumber(result.kotNumber!)
-      toast.success(`🚀 KOT Fired Successfully! #${result.kotNumber}`)
-      setPaymentStep('payment')
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to fire KOT')
-    } finally {
-      setPlacing(false)
-    }
-  }
-
-  // ── Trigger Razorpay Checkout Modal directly on POS Screen ─────────────────
-  const launchRazorpayModal = async () => {
-    if (!lastOrderId) return
-
     setGatewayStatus('loading')
     try {
       const storeSettings = useSettingsStore.getState()
+      const tempRef = `POS_${Date.now().toString().slice(-6)}`
       const rzpRes = await createRazorpayOrder({
         amount: totals.total,
-        orderId: lastOrderId,
+        orderId: tempRef,
         customKeyId: storeSettings.enableRazorpay ? storeSettings.razorpayKeyId : undefined,
         customKeySecret: storeSettings.enableRazorpay ? storeSettings.razorpayKeySecret : undefined,
       })
@@ -942,7 +924,7 @@ export default function POSScreen() {
         amount: rzpRes.amount,
         currency: rzpRes.currency || 'INR',
         name: settings.businessName || 'Pizza Expert Prayagraj',
-        description: `POS Counter Order #${lastOrderId.slice(-6)}`,
+        description: `POS Counter Order (₹${totals.total.toFixed(2)})`,
         image: '/favicon.ico',
         order_id: rzpRes.razorpayOrderId,
         prefill: {
@@ -955,7 +937,7 @@ export default function POSScreen() {
         handler: async function (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) {
           toast.info('Verifying payment gateway capture...')
           const verifyRes = await verifyRazorpayPayment({
-            orderId: lastOrderId,
+            orderId: tempRef,
             razorpayPaymentId: response.razorpay_payment_id || `pay_pos_${Date.now()}`,
             razorpayOrderId: response.razorpay_order_id || rzpRes.razorpayOrderId!,
             razorpaySignature: response.razorpay_signature || 'mock_sig',
@@ -963,27 +945,38 @@ export default function POSScreen() {
           })
 
           if (verifyRes.success) {
+            // Place Order in DB & fire KOT ONLY after payment capture is verified
+            const orderPayload = getOrderPayload()
+            const orderRes = await createPOSOrder(orderPayload)
+            if (!orderRes.success || !orderRes.orderId) {
+              toast.error(orderRes.error || 'Payment succeeded but order creation failed.')
+              setGatewayStatus('failed')
+              return
+            }
+
             // Record POS payment tender in DB
             await processPOSPayment({
-              orderId: lastOrderId,
+              orderId: orderRes.orderId,
               shiftId,
               tenders: [{ tenderType: 'razorpay', amount: totals.total, reference: response.razorpay_payment_id }],
               orderTotal: totals.total,
             })
 
-            toast.success('🎉 Razorpay Payment Verified & Settled!')
+            setLastOrderId(orderRes.orderId)
+            setLastKotNumber(orderRes.kotNumber!)
+            toast.success(`🎉 Online Payment Verified & Order Placed! #${orderRes.kotNumber}`)
             setPaymentStep('success')
             setGatewayStatus('success')
             loadTables()
           } else {
-            toast.error(verifyRes.error || 'Payment signature verification failed')
+            toast.error(verifyRes.error || 'Payment signature verification failed. No order was placed.')
             setGatewayStatus('failed')
           }
         },
         modal: {
           ondismiss: function () {
             setGatewayStatus('idle')
-            toast.info('Payment window closed')
+            toast.info('Payment window closed. Order was not placed.')
           },
         },
       }
@@ -996,14 +989,25 @@ export default function POSScreen() {
     }
   }
 
-  // ── Settle Manual Payment or Gateway QR ────────────────────────────────────
+  // ── Receive Payment & Place Order (Atomic: No Order Without Payment) ────────
   const processPayment = async () => {
-    if (!lastOrderId) return
+    if (cart.length === 0) return toast.error('Cart is empty')
+    if (!shiftOpen) return toast.error('Please open a cashier shift first')
+    if (orderType === 'dine_in' && !tableId) {
+      return toast.error('Please select a Table for Dine-In orders')
+    }
+
+    if (paymentMode === 'cash') {
+      const tendered = parseFloat(cashTendered) || totals.total
+      if (tendered < totals.total - 0.01) {
+        return toast.error(`Insufficient cash tendered. Total is ₹${totals.total.toFixed(2)}`)
+      }
+    }
 
     setPlacing(true)
     try {
+      // 1. Prepare Payment Tender
       let tenders: POSPaymentTender[] = []
-
       if (paymentMode === 'cash') {
         const tendered = parseFloat(cashTendered) || totals.total
         const change = Math.max(0, tendered - totals.total)
@@ -1012,36 +1016,49 @@ export default function POSScreen() {
         tenders = [{
           tenderType: 'card',
           amount: totals.total,
-          reference: cardReference ? `EDC_${cardReference}` : `CARD_${lastOrderId.slice(-6)}`
+          reference: cardReference ? `EDC_${cardReference}` : `CARD_${Date.now().toString().slice(-6)}`
         }]
       } else if (paymentMode === 'gateway_qr') {
         tenders = [{
           tenderType: 'upi',
           amount: totals.total,
-          reference: upiReference ? `UPI_${upiReference}` : `UPI_QR_${lastOrderId.slice(-6)}`
+          reference: upiReference ? `UPI_${upiReference}` : `UPI_QR_${Date.now().toString().slice(-6)}`
         }]
       } else {
         tenders = [{ tenderType: paymentMode as any, amount: totals.total }]
       }
 
-      const result = await processPOSPayment({
-        orderId: lastOrderId,
+      // 2. Create the Order in Supabase & fire KOT
+      const orderPayload = getOrderPayload()
+      const orderRes = await createPOSOrder(orderPayload)
+      if (!orderRes.success || !orderRes.orderId) {
+        throw new Error(orderRes.error || 'Failed to place order')
+      }
+
+      // 3. Atomically Record & Settle Payment
+      const payRes = await processPOSPayment({
+        orderId: orderRes.orderId,
         shiftId,
         tenders,
         orderTotal: totals.total,
       })
 
-      if (!result.success) throw new Error(result.error)
+      if (!payRes.success) {
+        throw new Error(payRes.error || 'Order created but payment settlement failed')
+      }
 
-      toast.success(
-        paymentMode === 'cash'
-          ? `✅ Bill Settled! Change: ₹${result.changeAmount?.toFixed(2)}`
-          : '✅ Payment recorded & Bill closed!'
-      )
+      setLastOrderId(orderRes.orderId)
+      setLastKotNumber(orderRes.kotNumber!)
       setPaymentStep('success')
       loadTables()
+
+      toast.success(
+        paymentMode === 'cash' && (parseFloat(cashTendered) || 0) > totals.total
+          ? `✅ Paid & Order Placed! Return Change: ₹${payRes.changeAmount?.toFixed(2)}`
+          : `✅ Payment Received & Order Placed! #${orderRes.kotNumber}`
+      )
     } catch (err: any) {
-      toast.error(err.message || 'Payment processing failed')
+      toast.error(err.message || 'Payment & order placement failed')
     } finally {
       setPlacing(false)
     }
@@ -1939,15 +1956,15 @@ export default function POSScreen() {
           </div>
         )}
 
-        {/* ── Payment Settlement Panel (When Fired / Settling) ── */}
-        {paymentStep === 'payment' && (
+        {/* ── Payment Settlement Panel (Always require payment before placing order) ── */}
+        {cart.length > 0 && paymentStep !== 'success' && (
           <div className="px-4 py-3 border-t border-white/10 bg-[#161616] space-y-3 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <p className="text-xs font-black uppercase text-white/70 tracking-wider">
                 Select Customer Payment Method
               </p>
-              <span className="text-xs font-bold text-red-400">
-                {lastKotNumber}
+              <span className="text-[11px] font-bold text-amber-300 font-mono">
+                ₹{totals.total.toFixed(2)}
               </span>
             </div>
 
@@ -2124,7 +2141,7 @@ export default function POSScreen() {
                         toast.error('Please enter customer phone number first')
                         return
                       }
-                      const paymentLink = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Hi ${customerName || 'Customer'}, please complete your payment of ₹${totals.total.toFixed(2)} for Wood-Fired Pizza order #${lastOrderId.slice(-6)} at Pizza Expert Prayagraj: ${window.location.origin}/checkout`)}`
+                      const paymentLink = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Hi ${customerName || 'Customer'}, please complete your payment of ₹${totals.total.toFixed(2)} for Wood-Fired Pizza order at Pizza Expert Prayagraj: ${window.location.origin}/checkout`)}`
                       window.open(paymentLink, '_blank')
                       toast.success('WhatsApp payment message initiated!')
                     }}
@@ -2137,8 +2154,8 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* Settle Action Button */}
-            {paymentMode !== 'razorpay' && (
+            {/* Settle Action Button (Only places order upon verified payment) */}
+            {paymentMode !== 'razorpay' ? (
               <button
                 onClick={processPayment}
                 disabled={
@@ -2148,9 +2165,39 @@ export default function POSScreen() {
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
               >
                 {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                Confirm & Close Bill (₹{totals.total.toFixed(2)})
+                {paymentMode === 'cash'
+                  ? `💵 Receive Cash (₹${totals.total.toFixed(2)}) & Place Order`
+                  : paymentMode === 'card'
+                  ? `💳 Confirm Card & Place Order (₹${totals.total.toFixed(2)})`
+                  : `📱 Confirm UPI & Place Order (₹${totals.total.toFixed(2)})`}
+              </button>
+            ) : (
+              <button
+                onClick={launchRazorpayModal}
+                disabled={placing || gatewayStatus === 'loading'}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/40 active:scale-98"
+              >
+                {gatewayStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
+                Pay via Online Gateway & Place Order (₹{totals.total.toFixed(2)})
               </button>
             )}
+
+            {/* Secondary Controls (Hold order / Clear cart) */}
+            <div className="flex gap-2 pt-1 border-t border-white/10">
+              <button
+                onClick={holdCurrentOrder}
+                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                title="Hold draft order without losing items (F4)"
+              >
+                <Pause size={13} /> Hold Order (F4)
+              </button>
+              <button
+                onClick={clearCart}
+                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-red-950/40 text-white/60 hover:text-red-400 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+              >
+                <Trash2 size={13} /> Clear Cart
+              </button>
+            </div>
           </div>
         )}
 
@@ -2161,7 +2208,7 @@ export default function POSScreen() {
               <Check size={28} />
             </div>
             <div>
-              <h3 className="text-base font-black text-white">Bill Settled & Table Freed!</h3>
+              <h3 className="text-base font-black text-white">Payment Received & Order Placed!</h3>
               <p className="text-xs text-white/50 mt-0.5">Order #{lastOrderId ? lastOrderId.slice(-6).toUpperCase() : 'COUNTER'} • {lastKotNumber || 'Receipt Ready'}</p>
             </div>
 
@@ -2193,36 +2240,6 @@ export default function POSScreen() {
                 className="flex-1 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-600/40 text-emerald-300 text-xs font-black flex items-center justify-center gap-1.5 transition shadow"
               >
                 <Plus size={13} /> Next Order
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Primary Action Buttons (When Idle) ── */}
-        {cart.length > 0 && paymentStep === 'idle' && (
-          <div className="px-4 py-3 border-t border-white/10 bg-[#0F0F0F] space-y-2">
-            <button
-              onClick={sendToKitchen}
-              disabled={placing || !shiftOpen}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#B91C1C] to-[#DC2626] hover:from-[#991B1B] hover:to-[#B91C1C] disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-lg shadow-red-950/40"
-            >
-              {placing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              {placing ? 'Firing KOT to Kitchen…' : `Fire KOT & Settle — ₹${totals.total.toFixed(2)} (F8)`}
-            </button>
-
-            <div className="flex gap-2">
-              <button
-                onClick={holdCurrentOrder}
-                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                title="Hold draft order without losing items (F4)"
-              >
-                <Pause size={13} /> Hold Order (F4)
-              </button>
-              <button
-                onClick={clearCart}
-                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-red-950/40 text-white/60 hover:text-red-400 text-xs font-bold flex items-center justify-center gap-1.5 transition"
-              >
-                <Trash2 size={13} /> Clear Cart
               </button>
             </div>
           </div>
