@@ -46,22 +46,22 @@ export default function ZomatoBrowseMenuModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl border border-[#E7E0D8] overflow-hidden animate-in slide-in-from-bottom duration-200"
+        className="bg-[var(--bg-surface)] rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden animate-in slide-in-from-bottom duration-200"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[#E7E0D8] flex items-center justify-between bg-[#FBF9F5]">
+        <div className="p-4 sm:p-5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-subtle)]">
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[#B91C1C] text-white flex items-center justify-center font-bold text-sm">
+            <span className="w-8 h-8 rounded-full bg-[#FF3B00] text-white flex items-center justify-center font-bold text-sm">
               <UtensilsCrossed size={16} />
             </span>
             <div>
-              <h3 className="font-serif font-bold text-base text-[#1C1917]">Browse Menu</h3>
-              <p className="text-[11px] text-[#78716C]">{categories.length} Categories · {totalCount} Dishes</p>
+              <h3 className="font-heading font-bold text-base text-[var(--text-primary)]">Categories</h3>
+              <p className="text-[11px] text-[var(--text-muted)]">{categories.length} Categories • {totalCount} Dishes</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-[#E7E0D8] text-[#78716C] hover:text-[#1C1917] transition-colors"
+            className="p-2 rounded-full hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <X size={18} />
           </button>
@@ -77,8 +77,8 @@ export default function ZomatoBrowseMenuModal({
             }}
             className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all text-left cursor-pointer ${
               activeCategory === 'all'
-                ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
-                : 'hover:bg-[#F5F2EC] text-[#1C1917]'
+                ? 'bg-[#FF3B00] text-white font-bold shadow-xs'
+                : 'hover:bg-[var(--bg-subtle)] text-[var(--text-primary)]'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -87,7 +87,7 @@ export default function ZomatoBrowseMenuModal({
             </div>
             <span
               className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                activeCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[#E7E0D8] text-[#57534E]'
+                activeCategory === 'all' ? 'bg-white/20 text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border)]'
               }`}
             >
               {totalCount}
@@ -109,8 +109,8 @@ export default function ZomatoBrowseMenuModal({
                 }}
                 className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all text-left cursor-pointer ${
                   isActive
-                    ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
-                    : 'hover:bg-[#F5F2EC] text-[#1C1917]'
+                    ? 'bg-[#FF3B00] text-white font-bold shadow-xs'
+                    : 'hover:bg-[var(--bg-subtle)] text-[var(--text-primary)]'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -119,7 +119,7 @@ export default function ZomatoBrowseMenuModal({
                 </div>
                 <span
                   className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#E7E0D8] text-[#57534E]'
+                    isActive ? 'bg-white/20 text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border)]'
                   }`}
                 >
                   {count}

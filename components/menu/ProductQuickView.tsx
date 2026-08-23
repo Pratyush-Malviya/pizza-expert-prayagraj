@@ -89,7 +89,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 bg-white/90 backdrop-blur-xs text-[#1C1917] rounded-full flex items-center justify-center border border-[#E7E0D8] hover:bg-[#F5F2EC] transition-colors cursor-pointer shadow-xs"
+            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 bg-[var(--bg-surface)]/90 backdrop-blur-xs text-[var(--text-primary)] rounded-full flex items-center justify-center border border-[var(--border)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer shadow-xs"
             aria-label="Close dialog"
           >
             <X size={18} />
@@ -97,7 +97,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
 
           <div className="grid sm:grid-cols-2">
             {/* Image */}
-            <div className="relative h-52 sm:h-auto min-h-[200px] bg-[#F4EFEA]">
+            <div className="relative h-52 sm:h-auto min-h-[200px] bg-[var(--bg-subtle)]">
               <img
                 src={imageUrl}
                 alt={product.name}
@@ -106,7 +106,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
             </div>
 
             {/* Product info & Options */}
-            <div className="p-5 sm:p-6 flex flex-col justify-between space-y-4">
+            <div className="p-5 sm:p-6 flex flex-col justify-between space-y-4 bg-[var(--bg-surface)]">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`badge ${product.is_veg ? 'badge-veg' : 'badge-nonveg'}`}>
@@ -115,24 +115,24 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
                   {product.is_spicy && <span className="badge badge-spicy">Spicy</span>}
                 </div>
 
-                <h3 className="font-serif font-bold text-xl text-[#1C1917] leading-snug">
+                <h3 className="font-heading font-bold text-xl text-[var(--text-primary)] leading-snug">
                   {product.name}
                 </h3>
-                <p className="text-[#57534E] text-xs sm:text-sm mt-1.5 leading-relaxed font-normal break-words">
+                <p className="text-[var(--text-secondary)] text-xs sm:text-sm mt-1.5 leading-relaxed font-normal break-words">
                   {product.description}
                 </p>
 
-                <div className="mt-3 text-xl font-black font-mono text-[#B91C1C]">
+                <div className="mt-3 text-xl font-black font-mono text-[#FF3B00]">
                   {formatPrice(unitPrice)}
                 </div>
               </div>
 
               {/* Dynamic Options Picker */}
               {product.options && product.options.length > 0 && (
-                <div className="space-y-3 pt-3 border-t border-[#E7E0D8]">
+                <div className="space-y-3 pt-3 border-t border-[var(--border)]">
                   {product.options.map((opt) => (
                     <div key={opt.name}>
-                      <label className="block text-[11px] font-bold text-[#1C1917] uppercase tracking-wider mb-1.5">
+                      <label className="block text-[11px] font-bold text-[var(--text-primary)] uppercase tracking-wider mb-1.5">
                         Select {opt.name}
                       </label>
                       <div className="flex flex-wrap gap-1.5">
@@ -150,8 +150,8 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
                               }
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                 isSelected
-                                  ? 'bg-[#B91C1C] text-white border-[#B91C1C] shadow-xs'
-                                  : 'bg-[#FBF9F5] text-[#57534E] border-[#E7E0D8] hover:border-[#B91C1C]'
+                                  ? 'bg-[#FF3B00] text-white border-[#FF3B00] shadow-xs'
+                                  : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[#FF3B00]'
                               }`}
                             >
                               {choice.label} {choice.price_delta > 0 && `(+₹${choice.price_delta})`}
@@ -165,19 +165,19 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
               )}
 
               {/* Quantity & Add button */}
-              <div className="pt-3 border-t border-[#E7E0D8] flex items-center justify-between gap-3">
-                <div className="flex items-center border border-[#E7E0D8] rounded-xl bg-[#FBF9F5] p-0.5">
+              <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between gap-3">
+                <div className="flex items-center border border-[var(--border)] rounded-xl bg-[var(--bg-subtle)] p-0.5">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-7 h-7 flex items-center justify-center text-[#57534E] hover:text-[#1C1917] hover:bg-white rounded-lg transition-colors cursor-pointer"
+                    className="w-7 h-7 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] rounded-lg transition-colors cursor-pointer"
                     aria-label="Decrease quantity"
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="px-2 text-xs font-mono font-bold text-[#1C1917] select-none">{quantity}</span>
+                  <span className="px-2 text-xs font-mono font-bold text-[var(--text-primary)] select-none">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-7 h-7 flex items-center justify-center text-[#57534E] hover:text-[#1C1917] hover:bg-white rounded-lg transition-colors cursor-pointer"
+                    className="w-7 h-7 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] rounded-lg transition-colors cursor-pointer"
                     aria-label="Increase quantity"
                   >
                     <Plus size={14} />

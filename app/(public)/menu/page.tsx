@@ -2,17 +2,16 @@
 
 import { useState, useMemo, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import ZomatoProductCard from '@/components/menu/ZomatoProductCard'
-import ZomatoBrowseMenuModal from '@/components/menu/ZomatoBrowseMenuModal'
+import ProductCard from '@/components/menu/ProductCard'
 import ProductQuickView from '@/components/menu/ProductQuickView'
+import ZomatoBrowseMenuModal from '@/components/menu/ZomatoBrowseMenuModal'
 import {
-  Search, Star, Flame, Sparkles,
-  ShoppingBag, ArrowRight, UtensilsCrossed, X, Mic
+  Search, Sparkles, Flame,
+  X, Mic, UtensilsCrossed, SlidersHorizontal
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
-import { useCartStore } from '@/store/cartStore'
-import { formatPrice } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import type { Category, Product } from '@/types'
 
 const SEED_CATEGORIES: Category[] = [
@@ -39,7 +38,7 @@ const SEED_PRODUCTS: Product[] = [
     id: 'p1',
     name: 'Margherita Pizza',
     slug: 'margherita-pizza',
-    description: 'Classic margherita with rich tomato sauce, fresh mozzarella, and aromatic basil leaves on a wood-fired crust.',
+    description: 'Classic Italian Margherita with fresh mozzarella, organic tomato passata, and fresh basil leaves on a 48h slow-fermented crust.',
     price: 249,
     is_veg: true,
     is_spicy: false,
@@ -59,7 +58,7 @@ const SEED_PRODUCTS: Product[] = [
     id: 'p2',
     name: 'Paneer Tikka Pizza',
     slug: 'paneer-tikka-pizza',
-    description: 'Tandoori-spiced paneer cubes, crunchy capsicum, red onion, and creamy tikka sauce on mozzarella.',
+    description: 'Tandoori-spiced paneer cubes, crisp bell peppers, red onions, and mozzarella on a smoky sauce base.',
     price: 349,
     is_veg: true,
     is_spicy: true,
@@ -71,56 +70,57 @@ const SEED_PRODUCTS: Product[] = [
     sort_order: 2,
     created_at: new Date().toISOString(),
     options: [
-      { id: 'o1', product_id: 'p2', name: 'Size', choices: [{ label: 'Regular (8")', price_delta: 0 }, { label: 'Medium (10")', price_delta: 90 }, { label: 'Large (12")', price_delta: 160 }] },
+      { id: 'o3', product_id: 'p2', name: 'Size', choices: [{ label: 'Regular (8")', price_delta: 0 }, { label: 'Medium (10")', price_delta: 80 }, { label: 'Large (12")', price_delta: 150 }] },
+      { id: 'o4', product_id: 'p2', name: 'Crust', choices: [{ label: 'Classic Hand Tossed', price_delta: 0 }, { label: 'Cheese Burst', price_delta: 60 }] },
     ],
   },
   {
     id: 'p3',
+    name: 'Farmhouse Veggie Pizza',
+    slug: 'farmhouse-pizza',
+    description: 'Loaded with crunchy capsicum, sweet corn, mushrooms, red onions, and 100% real mozzarella cheese.',
+    price: 329,
+    is_veg: true,
+    is_spicy: false,
+    is_available: true,
+    category_id: '1',
+    category: SEED_CATEGORIES[0],
+    images: [{ id: 'img3', product_id: 'p3', image_url: FOOD_IMAGES['farmhouse-pizza'], sort_order: 1, is_primary: true }],
+    nutrition: null,
+    sort_order: 3,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'p4',
     name: 'Chicken Supreme Pizza',
     slug: 'chicken-supreme-pizza',
-    description: 'Loaded with smoky BBQ chicken breast, sliced mushrooms, black olives, capsicum, and house secret sauce.',
+    description: 'Loaded with juicy grilled chicken breast, button mushrooms, black olives, capsicum, and house garlic sauce.',
     price: 399,
     is_veg: false,
     is_spicy: false,
     is_available: true,
     category_id: '1',
     category: SEED_CATEGORIES[0],
-    images: [{ id: 'img3', product_id: 'p3', image_url: FOOD_IMAGES['chicken-supreme-pizza'], sort_order: 1, is_primary: true }],
-    nutrition: null,
-    sort_order: 3,
-    created_at: new Date().toISOString(),
-    options: [
-      { id: 'o1', product_id: 'p3', name: 'Size', choices: [{ label: 'Regular (8")', price_delta: 0 }, { label: 'Medium (10")', price_delta: 100 }, { label: 'Large (12")', price_delta: 180 }] },
-    ],
-  },
-  {
-    id: 'p4',
-    name: 'Farm House Pizza',
-    slug: 'farm-house-pizza',
-    description: 'Fresh farm bell peppers, red onions, diced tomatoes, and golden sweet corn smothered in melted cheese.',
-    price: 299,
-    is_veg: true,
-    is_spicy: false,
-    is_available: true,
-    category_id: '1',
-    category: SEED_CATEGORIES[0],
-    images: [{ id: 'img4', product_id: 'p4', image_url: FOOD_IMAGES['farm-house-pizza'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img4', product_id: 'p4', image_url: FOOD_IMAGES['chicken-supreme-pizza'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 4,
     created_at: new Date().toISOString(),
+    options: [
+      { id: 'o5', product_id: 'p4', name: 'Size', choices: [{ label: 'Regular (8")', price_delta: 0 }, { label: 'Medium (10")', price_delta: 90 }, { label: 'Large (12")', price_delta: 170 }] },
+    ],
   },
   {
-    id: 'p10',
-    name: 'Peri Peri Chicken Pizza',
-    slug: 'peri-peri-chicken-pizza',
-    description: 'Fiery grilled chicken tossed in African peri-peri sauce, jalapeños, and extra melted mozzarella.',
-    price: 389,
+    id: 'p5',
+    name: 'Pepperoni Classic Pizza',
+    slug: 'pepperoni-pizza',
+    description: 'Generous layers of premium cured pepperoni slices, spicy marinara, and double melted mozzarella cheese.',
+    price: 449,
     is_veg: false,
     is_spicy: true,
     is_available: true,
     category_id: '1',
     category: SEED_CATEGORIES[0],
-    images: [{ id: 'img10', product_id: 'p10', image_url: FOOD_IMAGES['peri-peri-chicken-pizza'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img5', product_id: 'p5', image_url: FOOD_IMAGES['pepperoni-pizza'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 5,
     created_at: new Date().toISOString(),
@@ -128,49 +128,49 @@ const SEED_PRODUCTS: Product[] = [
 
   // Burgers
   {
-    id: 'p5',
+    id: 'p6',
     name: 'Veg Crispy Burger',
     slug: 'veg-crispy-burger',
-    description: 'Golden crispy vegetable patty with fresh lettuce, sliced tomatoes, melted cheddar, and spiced mayo.',
+    description: 'Crisp golden veggie patty topped with fresh iceberg lettuce, tomato slice, creamy house mayo, and cheese.',
     price: 149,
     is_veg: true,
     is_spicy: false,
     is_available: true,
     category_id: '2',
     category: SEED_CATEGORIES[1],
-    images: [{ id: 'img5', product_id: 'p5', image_url: FOOD_IMAGES['veg-crispy-burger'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img6', product_id: 'p6', image_url: FOOD_IMAGES['veg-crispy-burger'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 1,
     created_at: new Date().toISOString(),
   },
   {
-    id: 'p6',
-    name: 'Chicken Zinger Burger',
+    id: 'p7',
+    name: 'Crispy Chicken Zinger Burger',
     slug: 'chicken-zinger-burger',
-    description: 'Crispy fried chicken breast fillet with crunchy slaw, dill pickles, and chipotle mayo in a toasted brioche bun.',
+    description: 'Ultra-crispy fried chicken thigh fillet, spicy chipotle mayo, melted cheese slice, and fresh shredded lettuce.',
     price: 199,
     is_veg: false,
     is_spicy: true,
     is_available: true,
     category_id: '2',
     category: SEED_CATEGORIES[1],
-    images: [{ id: 'img6', product_id: 'p6', image_url: FOOD_IMAGES['chicken-zinger-burger'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img7', product_id: 'p7', image_url: FOOD_IMAGES['chicken-zinger-burger'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 2,
     created_at: new Date().toISOString(),
   },
   {
-    id: 'p11',
-    name: 'Double Chicken Patty Burger',
-    slug: 'double-chicken-patty-burger',
-    description: 'Twin grilled chicken patties layered with double cheese, caramelised onions, and tangy BBQ sauce.',
-    price: 249,
-    is_veg: false,
+    id: 'p8',
+    name: 'Double Cheese Paneer Burger',
+    slug: 'paneer-burger',
+    description: 'Thick marinated cottage cheese patty pan-seared with herb seasonings, double cheddar, and garlic mayo.',
+    price: 189,
+    is_veg: true,
     is_spicy: false,
     is_available: true,
     category_id: '2',
     category: SEED_CATEGORIES[1],
-    images: [{ id: 'img11', product_id: 'p11', image_url: FOOD_IMAGES['double-chicken-patty-burger'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img8', product_id: 'p8', image_url: FOOD_IMAGES['paneer-burger'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 3,
     created_at: new Date().toISOString(),
@@ -178,33 +178,33 @@ const SEED_PRODUCTS: Product[] = [
 
   // Pasta
   {
-    id: 'p7',
-    name: 'Penne Arrabiata',
-    slug: 'penne-arrabiata',
-    description: 'Authentic Italian penne pasta tossed in spicy garlic tomato marinara, fresh basil, and shaved parmesan.',
-    price: 199,
+    id: 'p10',
+    name: 'Creamy White Sauce Alfredo Pasta',
+    slug: 'white-sauce-pasta',
+    description: 'Penne pasta tossed in rich parmesan cream sauce with sauteed garlic, bell peppers, and fresh herbs.',
+    price: 229,
     is_veg: true,
-    is_spicy: true,
+    is_spicy: false,
     is_available: true,
     category_id: '3',
     category: SEED_CATEGORIES[2],
-    images: [{ id: 'img7', product_id: 'p7', image_url: FOOD_IMAGES['penne-arrabiata'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img10', product_id: 'p10', image_url: FOOD_IMAGES['white-sauce-pasta'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 1,
     created_at: new Date().toISOString(),
   },
   {
-    id: 'p12',
-    name: 'Chicken Alfredo Pasta',
-    slug: 'chicken-alfredo-pasta',
-    description: 'Rich and creamy parmesan Alfredo sauce with grilled herb chicken strips and fettuccine pasta.',
-    price: 249,
-    is_veg: false,
-    is_spicy: false,
+    id: 'p11',
+    name: 'Spicy Red Sauce Arrabbiata Pasta',
+    slug: 'red-sauce-pasta',
+    description: 'Classic penne in a fiery Italian tomato sauce with crushed chili flakes, garlic, black olives, and fresh basil.',
+    price: 219,
+    is_veg: true,
+    is_spicy: true,
     is_available: true,
     category_id: '3',
     category: SEED_CATEGORIES[2],
-    images: [{ id: 'img12', product_id: 'p12', image_url: FOOD_IMAGES['chicken-alfredo-pasta'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img11', product_id: 'p11', image_url: FOOD_IMAGES['red-sauce-pasta'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 2,
     created_at: new Date().toISOString(),
@@ -212,40 +212,40 @@ const SEED_PRODUCTS: Product[] = [
 
   // Sides
   {
-    id: 'p8',
-    name: 'Peri Peri Fries',
-    slug: 'peri-peri-fries',
-    description: 'Crispy golden potato fries generously dusted with our secret zesty peri peri seasoning blend.',
-    price: 119,
+    id: 'p12',
+    name: 'Stuffed Garlic Breadsticks',
+    slug: 'stuffed-garlic-bread',
+    description: 'Freshly baked buttery breadsticks filled with molten mozzarella, sweet corn, and jalapeno slices.',
+    price: 159,
     is_veg: true,
-    is_spicy: true,
+    is_spicy: false,
     is_available: true,
     category_id: '4',
     category: SEED_CATEGORIES[3],
-    images: [{ id: 'img8', product_id: 'p8', image_url: FOOD_IMAGES['peri-peri-fries'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img12', product_id: 'p12', image_url: FOOD_IMAGES['stuffed-garlic-bread'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 1,
     created_at: new Date().toISOString(),
   },
   {
     id: 'p13',
-    name: 'Cheesy Garlic Bread',
-    slug: 'garlic-bread',
-    description: 'Freshly baked artisan baguette infused with roasted garlic butter and loaded with mozzarella.',
-    price: 139,
+    name: 'Peri Peri Seasoned Fries',
+    slug: 'peri-peri-fries',
+    description: 'Golden crispy potato fries tossed in zesty African peri peri spice blend with house garlic mayonnaise dip.',
+    price: 119,
     is_veg: true,
-    is_spicy: false,
+    is_spicy: true,
     is_available: true,
     category_id: '4',
     category: SEED_CATEGORIES[3],
-    images: [{ id: 'img13', product_id: 'p13', image_url: FOOD_IMAGES['garlic-bread'], sort_order: 1, is_primary: true }],
+    images: [{ id: 'img13', product_id: 'p13', image_url: FOOD_IMAGES['peri-peri-fries'], sort_order: 1, is_primary: true }],
     nutrition: null,
     sort_order: 2,
     created_at: new Date().toISOString(),
   },
   {
     id: 'p14',
-    name: 'Classic French Fries',
+    name: 'Crispy Salted Fries',
     slug: 'french-fries',
     description: 'Crispy salted golden french fries served with spicy ketchup and garlic dip.',
     price: 99,
@@ -334,64 +334,40 @@ function MenuContent() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [vegOnly, setVegOnly] = useState<boolean>(false)
-  const [nonVegOnly, setNonVegOnly] = useState<boolean>(false)
-  const [spicyOnly, setSpicyOnly] = useState<boolean>(false)
-  const [bestsellerOnly, setBestsellerOnly] = useState<boolean>(false)
-  const [under299Only, setUnder299Only] = useState<boolean>(false)
+  const [dietFilter, setDietFilter] = useState<'all' | 'veg' | 'non-veg' | 'spicy' | 'bestseller'>('all')
   const [sortBy, setSortBy] = useState<string>('popularity')
   const [isBrowseMenuOpen, setIsBrowseMenuOpen] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
-
-  // Cart store for floating bottom summary
-  const cartItems = useCartStore((s) => s.items)
-  const totalCartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0)
-  const cartSubtotal = cartItems.reduce((sum, i) => sum + (i.totalPrice || i.price * i.quantity), 0)
-  const openCart = useCartStore((s) => s.openCart)
-
-  const categoryScrollRef = useRef<HTMLDivElement>(null)
+  const [isListening, setIsListening] = useState(false)
 
   // Read initial query params
   useEffect(() => {
     const cat = searchParams.get('category')
     if (cat) setSelectedCategory(cat)
-    if (searchParams.get('filter') === 'veg') setVegOnly(true)
-    if (searchParams.get('filter') === 'non-veg') setNonVegOnly(true)
-    if (searchParams.get('filter') === 'spicy') setSpicyOnly(true)
+    if (searchParams.get('filter') === 'veg') setDietFilter('veg')
+    if (searchParams.get('filter') === 'non-veg') setDietFilter('non-veg')
+    if (searchParams.get('filter') === 'spicy') setDietFilter('spicy')
   }, [searchParams])
 
   const handleSelectCategory = (catSlug: string) => {
     setSelectedCategory(catSlug)
     if (catSlug === 'all') {
-      window.scrollTo({ top: 120, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       const el = document.getElementById(`cat-section-${catSlug}`)
       if (el) {
-        const yOffset = -140
+        const yOffset = -130
         const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset
         window.scrollTo({ top: y, behavior: 'smooth' })
       }
     }
   }
 
-  const resetAllFilters = () => {
-    setSelectedCategory('all')
-    setVegOnly(false)
-    setNonVegOnly(false)
-    setSpicyOnly(false)
-    setBestsellerOnly(false)
-    setUnder299Only(false)
-    setSortBy('popularity')
-    setSearchQuery('')
-  }
-
-  const [isListening, setIsListening] = useState(false)
-
   const handleVoiceSearch = () => {
     if (typeof window === 'undefined') return
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRec) {
-      toast.error('Voice search is not supported in this browser. Try Chrome or Edge.')
+      toast.error('Voice search is not supported in this browser.')
       return
     }
 
@@ -413,7 +389,7 @@ function MenuContent() {
 
       recognition.onerror = () => {
         setIsListening(false)
-        toast.error('Could not catch voice input. Please try again.')
+        toast.error('Could not catch voice input.')
       }
 
       recognition.onend = () => {
@@ -421,21 +397,11 @@ function MenuContent() {
       }
 
       recognition.start()
-    } catch (err) {
+    } catch {
       setIsListening(false)
       toast.error('Could not start microphone')
     }
   }
-
-  const hasActiveFilters =
-    selectedCategory !== 'all' ||
-    vegOnly ||
-    nonVegOnly ||
-    spicyOnly ||
-    bestsellerOnly ||
-    under299Only ||
-    sortBy !== 'popularity' ||
-    searchQuery.trim() !== ''
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
@@ -453,20 +419,11 @@ function MenuContent() {
         return false
       }
 
-      // Veg filter
-      if (vegOnly && !prod.is_veg) return false
-
-      // Non-Veg filter
-      if (nonVegOnly && prod.is_veg) return false
-
-      // Spicy filter
-      if (spicyOnly && !prod.is_spicy) return false
-
-      // Bestseller filter
-      if (bestsellerOnly && prod.sort_order !== 1) return false
-
-      // Under 299 filter
-      if (under299Only && prod.price > 299) return false
+      // Dietary Filters
+      if (dietFilter === 'veg' && !prod.is_veg) return false
+      if (dietFilter === 'non-veg' && prod.is_veg) return false
+      if (dietFilter === 'spicy' && !prod.is_spicy) return false
+      if (dietFilter === 'bestseller' && prod.sort_order !== 1) return false
 
       return true
     }).sort((a, b) => {
@@ -475,7 +432,7 @@ function MenuContent() {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
       return a.sort_order - b.sort_order
     })
-  }, [searchQuery, selectedCategory, vegOnly, nonVegOnly, spicyOnly, bestsellerOnly, under299Only, sortBy])
+  }, [searchQuery, selectedCategory, dietFilter, sortBy])
 
   // Group filtered products by Category
   const groupedCategories = useMemo(() => {
@@ -489,202 +446,161 @@ function MenuContent() {
   }, [filteredProducts])
 
   return (
-    <div className="bg-[#FBF9F5] min-h-screen pb-28 text-[#1C1917]">
-      {/* ─── 1. Zomato Top Restaurant & Delivery Header ─── */}
-      <div className="bg-white border-b border-[#E7E0D8] pt-6 pb-4">
+    <div className="bg-[var(--bg-primary)] min-h-screen pb-24 text-[var(--text-primary)] transition-colors duration-200">
+      
+      {/* ─── 1. Minimal Header & Search Area ─── */}
+      <section className="pt-8 pb-6 border-b border-[var(--border)] bg-[var(--bg-surface)]">
         <div className="container-custom max-w-5xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-[#FEF2F2] text-[#B91C1C] text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border border-[#FECACA] tracking-wider">
-                  🔥 Best Pizzeria in Prayagraj
-                </span>
-                <span className="text-xs text-[#78716C] font-semibold flex items-center gap-1">
-                  ⚡ 30-35 mins delivery
-                </span>
+              <div className="inline-flex items-center gap-2 text-xs font-bold text-[#FF3B00] uppercase tracking-wider mb-2">
+                <Sparkles size={13} />
+                <span>ALLAPUR • PRAYAGRAJ</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#1C1917]">
-                Pizza Expert Menu
+              <h1 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-[var(--text-primary)]">
+                Our Handcrafted Menu
               </h1>
-              <p className="text-xs sm:text-sm text-[#57534E] mt-0.5">
-                Wood-fired pizzas, gourmet burgers, pasta, crispy sides & drinks
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
+                Authentic wood-fired pizzas, gourmet burgers, pasta & combos.
               </p>
             </div>
 
-            {/* Rating badge */}
-            <div className="flex items-center gap-3">
-              <div className="bg-[#15803D] text-white px-3 py-2 rounded-xl text-center shadow-xs flex items-center gap-1.5">
-                <Star size={16} className="fill-white" />
-                <span className="font-bold text-base">4.8</span>
-                <span className="text-[10px] opacity-80 block border-l border-white/30 pl-1.5">
-                  500+ reviews
-                </span>
+            {/* Search Input */}
+            <div className="relative w-full md:w-80 flex items-center">
+              <Search size={16} className="absolute left-3.5 text-[var(--text-muted)] pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search dishes..."
+                className="w-full pl-9 pr-16 py-2.5 rounded-full border border-[var(--border)] text-xs sm:text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/20 transition-all shadow-xs"
+              />
+              <div className="absolute right-2.5 flex items-center gap-1">
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-full"
+                    aria-label="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleVoiceSearch}
+                  className={`p-1.5 rounded-full text-[var(--text-muted)] hover:text-[#FF3B00] transition-colors ${isListening ? 'text-[#FF3B00] animate-pulse' : ''}`}
+                  title="Search with Voice"
+                  aria-label="Search with Voice"
+                >
+                  <Mic size={15} />
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ─── 2. Search & Zomato Quick Filter Chips Ribbon ─── */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E7E0D8] shadow-2xs py-3">
-        <div className="container-custom max-w-5xl space-y-2.5">
-          {/* Search Input */}
-          <div className="relative flex items-center">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#B91C1C]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search dishes, burgers, pizzas, or tap mic..."
-              className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-[#E7E0D8] text-xs sm:text-sm bg-[#FBF9F5] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/20 focus:border-[#B91C1C] transition-all"
-            />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="p-1 text-[#78716C] hover:text-[#1C1917] rounded-full"
-                >
-                  <X size={15} />
-                </button>
-              )}
+          {/* ── Dietary Filter Pills (Streamlined Single Row) ── */}
+          <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar pt-1">
+            <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={handleVoiceSearch}
-                className={`p-1.5 rounded-lg transition-all ${
-                  isListening
-                    ? 'bg-red-500 text-white animate-pulse shadow-xs'
-                    : 'text-[#78716C] hover:text-[#B91C1C] hover:bg-[#F4EFEA]'
-                }`}
-                title="Search by Voice"
+                onClick={() => setDietFilter('all')}
+                className={cn(
+                  'pill-toggle text-xs px-4 py-1.5 rounded-full font-bold transition-all cursor-pointer',
+                  dietFilter === 'all'
+                    ? 'pill-toggle-active'
+                    : 'pill-toggle-default'
+                )}
               >
-                <Mic size={16} className={isListening ? 'animate-bounce' : ''} />
+                All
+              </button>
+
+              <button
+                onClick={() => setDietFilter(dietFilter === 'veg' ? 'all' : 'veg')}
+                className={cn(
+                  'pill-toggle text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                  dietFilter === 'veg'
+                    ? 'bg-[#00C875] text-white shadow-xs'
+                    : 'pill-toggle-default'
+                )}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#00C875] border border-white/40" />
+                <span>Veg</span>
+              </button>
+
+              <button
+                onClick={() => setDietFilter(dietFilter === 'non-veg' ? 'all' : 'non-veg')}
+                className={cn(
+                  'pill-toggle text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                  dietFilter === 'non-veg'
+                    ? 'bg-[#E2445C] text-white shadow-xs'
+                    : 'pill-toggle-default'
+                )}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#E2445C] border border-white/40" />
+                <span>Non-Veg</span>
+              </button>
+
+              <button
+                onClick={() => setDietFilter(dietFilter === 'spicy' ? 'all' : 'spicy')}
+                className={cn(
+                  'pill-toggle text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                  dietFilter === 'spicy'
+                    ? 'bg-[#FF3B00] text-white shadow-xs'
+                    : 'pill-toggle-default'
+                )}
+              >
+                <Flame size={13} className="text-[#FFC01D]" />
+                <span>Spicy</span>
+              </button>
+
+              <button
+                onClick={() => setDietFilter(dietFilter === 'bestseller' ? 'all' : 'bestseller')}
+                className={cn(
+                  'pill-toggle text-xs px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                  dietFilter === 'bestseller'
+                    ? 'bg-[#FFCB00] text-black shadow-xs'
+                    : 'pill-toggle-default'
+                )}
+              >
+                <Sparkles size={13} />
+                <span>Bestseller</span>
               </button>
             </div>
-          </div>
 
-          {/* Quick Filter Chips (Zomato Style) */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-            {/* Pure Veg Toggle */}
-            <button
-              onClick={() => {
-                setVegOnly(!vegOnly)
-                if (!vegOnly) setNonVegOnly(false)
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
-                vegOnly
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-              }`}
-            >
-              <span className={`w-3 h-3 border rounded-xs flex items-center justify-center ${vegOnly ? 'border-white bg-emerald-600' : 'border-emerald-600 bg-white'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${vegOnly ? 'bg-white' : 'bg-emerald-600'}`} />
-              </span>
-              <span>Pure Veg</span>
-            </button>
-
-            {/* Non-Veg Toggle */}
-            <button
-              onClick={() => {
-                setNonVegOnly(!nonVegOnly)
-                if (!nonVegOnly) setVegOnly(false)
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
-                nonVegOnly
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-              }`}
-            >
-              <span className={`w-3 h-3 border rounded-xs flex items-center justify-center ${nonVegOnly ? 'border-white bg-rose-600' : 'border-rose-600 bg-white'}`}>
-                <span className={`w-0 h-0 border-l-[2.5px] border-l-transparent border-r-[2.5px] border-r-transparent border-b-[4px] ${nonVegOnly ? 'border-b-white' : 'border-b-rose-600'}`} />
-              </span>
-              <span>Non-Veg</span>
-            </button>
-
-            {/* Bestseller Filter */}
-            <button
-              onClick={() => setBestsellerOnly(!bestsellerOnly)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
-                bestsellerOnly
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                  : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-              }`}
-            >
-              <Sparkles size={13} className={bestsellerOnly ? 'text-white' : 'text-amber-500'} />
-              <span>Bestseller</span>
-            </button>
-
-            {/* Spicy Filter */}
-            <button
-              onClick={() => setSpicyOnly(!spicyOnly)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
-                spicyOnly
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                  : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-              }`}
-            >
-              <Flame size={13} className={spicyOnly ? 'text-white' : 'text-rose-600'} />
-              <span>Spicy</span>
-            </button>
-
-            {/* Under ₹299 */}
-            <button
-              onClick={() => setUnder299Only(!under299Only)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
-                under299Only
-                  ? 'bg-[#1C1917] text-white border-[#1C1917] shadow-xs'
-                  : 'bg-white text-[#1C1917] border-[#E7E0D8] hover:bg-[#F5F2EC]'
-              }`}
-            >
-              <span>Under ₹299</span>
-            </button>
-
-            {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-1.5 rounded-full text-xs font-bold bg-white text-[#1C1917] border border-[#E7E0D8] cursor-pointer hover:bg-[#F5F2EC] focus:outline-none"
-            >
-              <option value="popularity">Sort: Popularity</option>
-              <option value="price-asc">Sort: Price (Low → High)</option>
-              <option value="price-desc">Sort: Price (High → Low)</option>
-              <option value="name">Sort: Name (A-Z)</option>
-            </select>
-
-            {/* Reset All Filters Chip */}
-            {hasActiveFilters && (
-              <button
-                onClick={resetAllFilters}
-                className="px-3 py-1.5 rounded-full text-xs font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] hover:bg-rose-100 transition-colors whitespace-nowrap cursor-pointer"
+            {/* Clean Sort Dropdown */}
+            <div className="flex items-center gap-2 shrink-0">
+              <SlidersHorizontal size={14} className="text-[var(--text-muted)] hidden sm:block" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-[var(--bg-surface)] text-[var(--text-secondary)] text-xs font-bold py-1.5 px-3 rounded-full border border-[var(--border)] focus:outline-none cursor-pointer hover:border-[#FF3B00]/40"
               >
-                Clear All ✕
-              </button>
-            )}
+                <option value="popularity">Sort: Popular</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="name">Name (A-Z)</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ─── 3. Horizontal Category Carousel (Sticky Tab Scroll) ─── */}
-      <div className="bg-white border-b border-[#E7E0D8] sticky top-[104px] z-20 shadow-2xs">
+      {/* ─── 2. Single Clean Sticky Category Bar ─── */}
+      <div className="sticky top-[68px] z-20 bg-[var(--bg-primary)]/90 backdrop-blur-xl border-b border-[var(--border)] py-3 shadow-xs">
         <div className="container-custom max-w-5xl">
-          <div ref={categoryScrollRef} className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2.5">
-            {/* All Menu Items */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => handleSelectCategory('all')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+              className={cn(
+                'px-4 py-2 rounded-full text-xs font-bold tracking-tight whitespace-nowrap transition-all cursor-pointer',
                 selectedCategory === 'all'
-                  ? 'bg-[#B91C1C] text-white shadow-xs'
-                  : 'bg-[#F5F2EC] text-[#57534E] hover:bg-[#E7E0D8] hover:text-[#1C1917]'
-              }`}
+                  ? 'bg-[#FF3B00] text-white shadow-sm'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+              )}
             >
-              <span>✨</span>
-              <span>All Items</span>
-              <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/20' : 'bg-white/60'}`}>
-                {filteredProducts.length}
-              </span>
+              All Items ({filteredProducts.length})
             </button>
 
-            {/* Individual Categories */}
             {SEED_CATEGORIES.map((cat) => {
               const icon = CATEGORY_ICONS[cat.slug] || '🍽️'
               const count = filteredProducts.filter((p) => p.category?.slug === cat.slug || p.category_id === cat.id).length
@@ -694,19 +610,16 @@ function MenuContent() {
                 <button
                   key={cat.id}
                   onClick={() => handleSelectCategory(cat.slug)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={cn(
+                    'px-4 py-2 rounded-full text-xs font-bold tracking-tight whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5',
                     isSelected
-                      ? 'bg-[#B91C1C] text-white shadow-xs'
-                      : 'bg-[#F5F2EC] text-[#57534E] hover:bg-[#E7E0D8] hover:text-[#1C1917]'
-                  }`}
+                      ? 'bg-[#FF3B00] text-white shadow-sm'
+                      : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+                  )}
                 >
                   <span>{icon}</span>
                   <span>{cat.name}</span>
-                  {count > 0 && (
-                    <span className={`text-[11px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20' : 'bg-white/60'}`}>
-                      {count}
-                    </span>
-                  )}
+                  {count > 0 && <span className="opacity-70 text-[11px]">({count})</span>}
                 </button>
               )
             })}
@@ -714,10 +627,10 @@ function MenuContent() {
         </div>
       </div>
 
-      {/* ─── 4. Main Dishes Feed (Categorized Sections) ─── */}
-      <div className="container-custom max-w-5xl pt-6">
+      {/* ─── 3. Menu Grid (Minimalist & Clean) ─── */}
+      <main className="container-custom max-w-5xl pt-8">
         {groupedCategories.length > 0 ? (
-          <div className="space-y-10">
+          <div className="space-y-12">
             {groupedCategories.map((cat) => {
               const icon = CATEGORY_ICONS[cat.slug] || '🍽️'
 
@@ -725,25 +638,25 @@ function MenuContent() {
                 <section
                   key={cat.id}
                   id={`cat-section-${cat.slug}`}
-                  className="space-y-4 scroll-mt-36"
+                  className="space-y-6 scroll-mt-36"
                 >
-                  {/* Category Title Banner */}
-                  <div className="flex items-center justify-between pb-2 border-b border-[#E7E0D8]">
-                    <div className="flex items-center gap-2">
+                  {/* Category Title Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-2.5">
                       <span className="text-2xl">{icon}</span>
-                      <h2 className="text-xl sm:text-2xl font-serif font-black text-[#1C1917]">
+                      <h2 className="text-xl sm:text-2xl font-heading font-black tracking-tight text-[var(--text-primary)]">
                         {cat.name}
                       </h2>
-                      <span className="bg-[#E7E0D8] text-[#57534E] text-xs font-bold px-2 py-0.5 rounded-full">
+                      <span className="bg-[var(--bg-subtle)] text-[var(--text-muted)] text-xs font-bold px-2 py-0.5 rounded-full border border-[var(--border)]">
                         {cat.items.length}
                       </span>
                     </div>
                   </div>
 
                   {/* Dishes Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {cat.items.map((product) => (
-                      <ZomatoProductCard
+                      <ProductCard
                         key={product.id}
                         product={product}
                         onQuickView={(p) => setQuickViewProduct(p)}
@@ -756,64 +669,40 @@ function MenuContent() {
           </div>
         ) : (
           /* Empty Search State */
-          <div className="bg-white rounded-3xl p-12 text-center border border-[#E7E0D8] shadow-xs max-w-md mx-auto my-12 space-y-4">
-            <span className="text-6xl select-none block">🔍</span>
-            <h3 className="font-serif font-bold text-xl text-[#1C1917]">
-              No dishes found
+          <div className="bg-[var(--bg-surface)] rounded-3xl p-12 text-center border border-[var(--border)] shadow-xs max-w-md mx-auto my-12 space-y-4">
+            <span className="text-5xl select-none block mb-2">🍕</span>
+            <h3 className="font-heading font-bold text-xl text-[var(--text-primary)]">
+              No matching dishes found
             </h3>
-            <p className="text-[#57534E] text-xs sm:text-sm">
-              We couldn’t find anything matching your filters or search term.
+            <p className="text-[var(--text-secondary)] text-xs sm:text-sm">
+              We couldn't find anything matching your search or filters.
             </p>
             <button
-              onClick={resetAllFilters}
-              className="px-5 py-2.5 rounded-xl bg-[#B91C1C] text-white text-xs font-bold shadow-md hover:bg-[#991B1B] transition-colors cursor-pointer"
+              onClick={() => {
+                setSearchQuery('')
+                setSelectedCategory('all')
+                setDietFilter('all')
+              }}
+              className="btn btn-primary px-6 py-2.5 rounded-full text-xs font-bold shadow-md cursor-pointer"
             >
-              Reset All Filters
+              Reset Filters
             </button>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* ─── 5. Floating "🍴 Menu" FAB (Zomato Category Selector) ─── */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      {/* ─── 4. Quick Category Modal Drawer (Mobile Friendly) ─── */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 md:hidden">
         <button
           onClick={() => setIsBrowseMenuOpen(true)}
-          className="bg-[#1C1917] hover:bg-black text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2.5 text-xs sm:text-sm font-bold border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+          className="bg-[#181B2E] text-white px-5 py-2.5 rounded-full shadow-xl flex items-center gap-2 text-xs font-bold border border-white/20 active:scale-95 transition-transform"
           aria-label="Browse Menu Categories"
         >
-          <UtensilsCrossed size={16} className="text-[#B91C1C]" />
-          <span>MENU</span>
-          <span className="bg-white/20 text-white text-[11px] px-2 py-0.5 rounded-full font-mono">
-            {SEED_CATEGORIES.length}
-          </span>
+          <UtensilsCrossed size={14} className="text-[#FF3B00]" />
+          <span>Categories</span>
         </button>
       </div>
 
-      {/* ─── 6. Zomato Floating Bottom Cart Summary Bar ─── */}
-      {totalCartCount > 0 && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-8 z-40 animate-in slide-in-from-bottom duration-300">
-          <button
-            onClick={openCart}
-            className="bg-[#15803D] hover:bg-[#166534] text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-4 text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer border border-emerald-400/40"
-          >
-            <div className="flex items-center gap-2 text-left">
-              <ShoppingBag size={18} />
-              <div>
-                <p className="leading-tight font-extrabold">{totalCartCount} item{totalCartCount > 1 ? 's' : ''}</p>
-                <p className="text-[11px] text-emerald-100 font-mono font-normal">
-                  Total: {formatPrice(cartSubtotal)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider">
-              <span>View Cart</span>
-              <ArrowRight size={14} />
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* ─── 7. Modals (Browse Menu Drawer & Quick View) ─── */}
       <ZomatoBrowseMenuModal
         isOpen={isBrowseMenuOpen}
         onClose={() => setIsBrowseMenuOpen(false)}
@@ -835,7 +724,7 @@ export default function MenuPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FBF9F5] flex items-center justify-center p-12 text-sm text-[#78716C]">
+        <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-12 text-sm text-[var(--text-secondary)]">
           Loading Pizza Expert Menu...
         </div>
       }
