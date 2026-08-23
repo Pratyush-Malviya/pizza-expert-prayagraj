@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useStoreStore } from '@/lib/store/useStoreStore'
 import { Store, ChevronDown } from 'lucide-react'
 
 export default function StoreSwitcher() {
-  const supabase = createClient()
   const { activeStoreId, availableStores, setActiveStore, setAvailableStores } = useStoreStore()
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -14,21 +12,19 @@ export default function StoreSwitcher() {
   useEffect(() => {
     async function fetchStores() {
       try {
-        const { data: stores, error } = await supabase
-          .from('stores')
-          .select('id, name')
-          .eq('active', true)
-
-        if (stores && !error && stores.length > 0) {
-          setAvailableStores(stores)
-          
-          // Auto-select first store if none selected
-          if (!activeStoreId) {
-            setActiveStore(stores[0].id)
+        const res = await fetch('/api/stores')
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.stores && Array.isArray(data.stores) && data.stores.length > 0) {
+            setAvailableStores(data.stores)
+            if (!activeStoreId) {
+              setActiveStore(data.stores[0].id)
+            }
           }
         }
-      } catch (err) {
-        // Table may not yet exist in Supabase; silently handle
+      } catch {
+        // Fallback default
+        setAvailableStores([{ id: 'main-prayagraj', name: 'Prayagraj (Main Outlet)' }])
       } finally {
         setLoading(false)
       }
