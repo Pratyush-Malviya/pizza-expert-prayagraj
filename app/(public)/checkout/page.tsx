@@ -535,16 +535,23 @@ export default function CheckoutPage() {
 
         <form onSubmit={handlePlaceOrder} className="grid lg:grid-cols-3 gap-8">
           {/* Left Form Column */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-8">
             
-            {/* Contact Info Card */}
-            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
-              <h2 className="font-serif font-bold text-lg text-[#1C1917] flex items-center justify-between border-b border-[#E7E0D8] pb-3">
-                <span>1. Contact Details</span>
-                <span className="text-xs font-sans font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  Logged in as {user.email || 'User'}
-                </span>
+            {/* SUPER-CHUNK 1: Delivery Information */}
+            <div className="space-y-6 bg-white/40 p-4 sm:p-6 rounded-2xl border border-[#E7E0D8]/50">
+              <h2 className="font-serif font-bold text-xl text-[#1C1917] flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#B91C1C] text-white flex items-center justify-center text-xs">1</span>
+                Delivery Information
               </h2>
+
+              {/* Contact Info Card */}
+              <div className="bg-white rounded-xl p-5 border border-[#E7E0D8] shadow-xs space-y-4">
+                <h3 className="font-serif font-bold text-base text-[#1C1917] flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+                  <span>Contact Details</span>
+                  <span className="text-xs font-sans font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                    Logged in as {user.email || 'User'}
+                  </span>
+                </h3>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -590,16 +597,16 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* ─── Delivery Address Card ─────────────────────────────── */}
-            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-5">
-              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
-                <span>2. Delivery Address</span>
-                {savedAddresses.length > 0 && (
+              {/* ─── Delivery Address Card ─────────────────────────────── */}
+              <div className="bg-white rounded-xl p-5 border border-[#E7E0D8] shadow-xs space-y-5">
+                <h3 className="font-serif font-bold text-base text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
+                  <span>Delivery Address</span>
+                  {savedAddresses.length > 0 && (
                   <span className="text-xs font-sans font-semibold text-[#57534E] bg-[#F5F5F4] border border-[#E7E0D8] px-2.5 py-1 rounded-full">
                     {savedAddresses.length} saved
                   </span>
                 )}
-              </h2>
+              </h3>
 
               {loadingAddresses ? (
                 <div className="flex items-center gap-2 text-sm text-[#A8A29E] py-4">
@@ -797,14 +804,23 @@ export default function CheckoutPage() {
               />
             )}
 
-            {/* Delivery Timing Card */}
-            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
-              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
-                <span>3. Delivery Timing</span>
+            </div>
+
+            {/* SUPER-CHUNK 2: Order Preferences & Payment */}
+            <div className="space-y-6 bg-white/40 p-4 sm:p-6 rounded-2xl border border-[#E7E0D8]/50">
+              <h2 className="font-serif font-bold text-xl text-[#1C1917] flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#B91C1C] text-white flex items-center justify-center text-xs">2</span>
+                Order Preferences & Payment
+              </h2>
+
+              {/* Delivery Timing Card */}
+              <div className="bg-white rounded-xl p-5 border border-[#E7E0D8] shadow-xs space-y-4">
+                <h3 className="font-serif font-bold text-base text-[#1C1917] border-b border-[#E7E0D8] pb-3 flex items-center justify-between">
+                  <span>Delivery Timing</span>
                 <span className="text-xs font-mono text-[#D97706] bg-[#FEF3C7] px-2.5 py-1 rounded-full font-bold">
                   {deliveryTimingMode === 'asap' ? '⚡ Express ASAP' : '📅 Pre-scheduled'}
                 </span>
-              </h2>
+                </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
@@ -871,11 +887,11 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Payment Method Card */}
-            <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
-              <h2 className="font-serif font-bold text-lg text-[#1C1917] border-b border-[#E7E0D8] pb-3">
-                4. Select Payment Gateway
-              </h2>
+              {/* Payment Method Card */}
+              <div className="bg-white rounded-xl p-5 border border-[#E7E0D8] shadow-xs space-y-4">
+                <h3 className="font-serif font-bold text-base text-[#1C1917] border-b border-[#E7E0D8] pb-3">
+                  Select Payment Gateway
+                </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
@@ -920,7 +936,8 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-          </div>
+              </div>
+            </div>
 
           {/* Right Summary Column */}
           <div className="lg:col-span-1 space-y-6">

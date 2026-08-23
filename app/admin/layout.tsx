@@ -164,10 +164,10 @@ export default function AdminLayout({
         {/* Top Header Bar */}
         <header className="bg-white border-b border-[#E7E0D8] h-14 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
-            {/* Hamburger Button for Mobile */}
+            {/* Hamburger Button for Mobile (Fitts's Law Optimized 40x40 Touch Target) */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="lg:hidden p-2 rounded-md text-[#1C1917] hover:bg-[#F4EFEA] transition-colors"
+              className="lg:hidden min-w-[40px] min-h-[40px] p-2.5 rounded-xl text-[#1C1917] hover:bg-[#F4EFEA] active:bg-[#E7E0D8] transition-colors flex items-center justify-center border border-[#E7E0D8]"
               aria-label="Toggle Navigation Menu"
             >
               <Menu size={20} />
@@ -194,7 +194,7 @@ export default function AdminLayout({
             <AdminNotificationDropdown />
 
             <div
-              className="relative flex items-center gap-2.5 pl-3 border-l border-[#E7E0D8] cursor-pointer select-none"
+              className="relative flex items-center gap-2.5 pl-3 py-1 pr-1.5 rounded-xl hover:bg-[#F4EFEA] border-l border-[#E7E0D8] cursor-pointer select-none transition-colors"
               onMouseEnter={() => setUserMenuOpen(true)}
               onMouseLeave={() => setUserMenuOpen(false)}
             >

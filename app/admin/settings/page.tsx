@@ -31,6 +31,8 @@ function AdminSettingsContent() {
   const [settingsTab, setSettingsTab] = useState<'general' | 'emails'>(
     tabParam === 'emails' ? 'emails' : 'general'
   )
+  const [activeSection, setActiveSection] = useState<'profile' | 'contact' | 'promos' | 'operations'>('profile')
+
 
   const storeSettings = useSettingsStore()
   const { logoDataUrl, setLogoDataUrl, updateSettings } = storeSettings
@@ -247,9 +249,59 @@ function AdminSettingsContent() {
       {settingsTab === 'emails' ? (
         <EmailTemplateManager />
       ) : (
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Admin Profile & Account */}
-          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row gap-6 items-start">
+          
+          {/* Side Navigation for Chunks (Miller's Law) */}
+          <div className="w-full md:w-64 flex-shrink-0 bg-white rounded-xl border border-[#E7E0D8] shadow-xs overflow-hidden sticky top-24">
+            <div className="p-3 bg-[#FBF9F5] border-b border-[#E7E0D8]">
+              <span className="text-xs font-bold text-[#1C1917] uppercase tracking-wider">Settings Menu</span>
+            </div>
+            <div className="flex flex-col p-1.5 gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveSection('profile')}
+                className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeSection === 'profile' ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'text-[#57534E] hover:bg-[#F3EFEA]'
+                }`}
+              >
+                <Building size={16} /> 1. Store Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection('contact')}
+                className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeSection === 'contact' ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'text-[#57534E] hover:bg-[#F3EFEA]'
+                }`}
+              >
+                <LinkIcon size={16} /> 2. Contact & Socials
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection('operations')}
+                className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeSection === 'operations' ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'text-[#57534E] hover:bg-[#F3EFEA]'
+                }`}
+              >
+                <MapPin size={16} /> 3. Operations & Payment
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection('promos')}
+                className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeSection === 'promos' ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'text-[#57534E] hover:bg-[#F3EFEA]'
+                }`}
+              >
+                <Flame size={16} /> 4. Reviews & Promos
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSave} className="flex-1 space-y-6 w-full">
+            
+            {/* ── PROFILE CHUNK ── */}
+            <div className={activeSection === 'profile' ? 'block space-y-6' : 'hidden'}>
+              {/* Admin Profile & Account */}
+              <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
             <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
               <Camera size={18} className="text-[#B91C1C]" /> Admin Profile & App Avatar
             </h2>
@@ -477,10 +529,14 @@ function AdminSettingsContent() {
                 </p>
               </div>
             </div>
+            </div>
           </div>
+            {/* ── END PROFILE CHUNK ── */}
 
-          {/* Flash Offers Banner */}
-          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+            {/* ── PROMOS CHUNK ── */}
+            <div className={activeSection === 'promos' ? 'block space-y-6' : 'hidden'}>
+              {/* Flash Offers Banner */}
+              <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
               <h2 className="font-serif font-bold text-[#1C1917] text-lg flex items-center gap-2">
                 <Flame size={18} className="text-[#FF3B00]" /> Top Flash Offer Banner
@@ -531,10 +587,14 @@ function AdminSettingsContent() {
                 </div>
               </div>
             )}
-          </div>
+              </div>
+            </div>
+            {/* ── END PROMOS CHUNK ── */}
 
-          {/* Social Links & Review Integrations */}
-          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+            {/* ── CONTACT CHUNK ── */}
+            <div className={activeSection === 'contact' ? 'block space-y-6' : 'hidden'}>
+              {/* Social Links & Review Integrations */}
+              <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
             <h2 className="font-serif font-bold text-[#1C1917] text-lg border-b border-[#E7E0D8] pb-3 flex items-center gap-2">
               <LinkIcon size={18} className="text-[#B91C1C]" /> Social Media & Google Integrations
             </h2>
@@ -610,10 +670,14 @@ function AdminSettingsContent() {
                 />
               </div>
             </div>
-          </div>
+              </div>
+            </div>
+            {/* ── END CONTACT CHUNK ── */}
 
-          {/* Payment Gateway (Razorpay) */}
-          <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
+            {/* ── OPERATIONS CHUNK ── */}
+            <div className={activeSection === 'operations' ? 'block space-y-6' : 'hidden'}>
+              {/* Payment Gateway (Razorpay) */}
+              <div className="bg-white rounded-xl p-6 border border-[#E7E0D8] shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
               <h2 className="font-serif font-bold text-[#1C1917] text-lg flex items-center gap-2">
                 <CreditCard size={18} className="text-[#B91C1C]" /> Razorpay Payment Gateway
@@ -710,13 +774,19 @@ function AdminSettingsContent() {
                   placeholder="12723999000123"
                 />
               </div>
+              </div>
             </div>
           </div>
+            {/* ── END OPERATIONS CHUNK ── */}
 
-          <button type="submit" className="btn btn-primary btn-lg flex items-center gap-2 shadow-md">
-            <Save size={17} /> Save All Settings
-          </button>
-        </form>
+            <div className="sticky bottom-4 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-[#E7E0D8] shadow-lg flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#57534E]">Save changes across all sections</span>
+              <button type="submit" className="btn btn-primary btn-lg flex items-center gap-2 shadow-md">
+                <Save size={17} /> Save All Settings
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {/* Media Library Modal */}

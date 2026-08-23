@@ -68,14 +68,22 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'supply_chain',
-    label: 'Menu & Inventory',
-    icon: Boxes,
-    keywords: ['products', 'pizzas', 'ingredients', 'stock', 'supplies', 'recipes'],
+    id: 'menu_management',
+    label: 'Menu Management',
+    icon: Pizza,
+    keywords: ['products', 'pizzas', 'categories', 'recipes', 'menu items'],
     items: [
       { label: 'Products', href: '/admin/products', icon: Pizza, keywords: ['pizza', 'menu items', 'dishes', 'food catalog', 'beverages', 'sides'] },
       { label: 'Categories', href: '/admin/categories', icon: Layers, keywords: ['category', 'categories', 'menu categories', 'taxonomies', 'sections'] },
       { label: 'Recipe BOM & Costing', href: '/admin/recipes', icon: ChefHat, keywords: ['bom', 'bill of materials', 'cost per slice', 'margins', 'food cost'] },
+    ],
+  },
+  {
+    id: 'inventory_supply',
+    label: 'Inventory & Supply',
+    icon: Boxes,
+    keywords: ['ingredients', 'stock', 'supplies', 'wastage', 'purchases'],
+    items: [
       { label: 'Inventory & Stock', href: '/admin/inventory', icon: Boxes, keywords: ['raw materials', 'cheese', 'flour', 'sauce', 'stock level', 'reorder'] },
       { label: 'Wastage Tracker', href: '/admin/inventory/wastage', icon: Trash2, keywords: ['spoilage', 'expired', 'damaged dough', 'waste logging'] },
       { label: 'Stock Adjustments', href: '/admin/inventory/adjustments', icon: SlidersHorizontal, keywords: ['stock count', 'reconciliation', 'audit count', 'variance'] },
@@ -97,18 +105,26 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'bi_finance',
-    label: 'Business Intelligence',
-    icon: TrendingUp,
-    keywords: ['analytics', 'finance', 'pnl', 'reports', 'payments', 'gst'],
+    id: 'sales_finance',
+    label: 'Sales & Finance',
+    icon: CreditCard,
+    keywords: ['finance', 'payments', 'pnl', 'reports', 'cashier'],
     items: [
       { label: 'Payments', href: '/admin/payments', icon: CreditCard, keywords: ['razorpay', 'upi', 'cod', 'transactions', 'settlement'] },
-      { label: 'Analytics Hub', href: '/admin/analytics?tab=users', icon: Layers, keywords: ['charts', 'revenue trends', 'user stats', 'performance'] },
       { label: 'Sales by Channel', href: '/admin/reports/sales', icon: TrendingUp, keywords: ['online vs pos', 'dine in vs takeaway', 'channel breakdown'] },
-      { label: 'Menu Engineering', href: '/admin/reports/menu-engineering', icon: BarChart3, keywords: ['bestsellers', 'dogs', 'plowhorses', 'puzzles', 'profitability'] },
       { label: 'Profit & Loss (P&L)', href: '/admin/reports/pnl', icon: TrendingUp, keywords: ['pnl', 'income', 'expenses', 'ebitda', 'profit margin'] },
       { label: 'Day-End Z-Report', href: '/admin/reports/z-report', icon: FileText, keywords: ['z report', 'closing balance', 'day end register', 'eod'] },
       { label: 'Cashier & Cash', href: '/admin/reports/cashier', icon: Banknote, keywords: ['cash tally', 'shortage', 'drawer count', 'shift summary'] },
+    ],
+  },
+  {
+    id: 'data_analytics',
+    label: 'Data & Analytics',
+    icon: TrendingUp,
+    keywords: ['analytics', 'charts', 'performance', 'gst', 'compliance'],
+    items: [
+      { label: 'Analytics Hub', href: '/admin/analytics?tab=users', icon: Layers, keywords: ['charts', 'revenue trends', 'user stats', 'performance'] },
+      { label: 'Menu Engineering', href: '/admin/reports/menu-engineering', icon: BarChart3, keywords: ['bestsellers', 'dogs', 'plowhorses', 'puzzles', 'profitability'] },
       { label: 'GST Compliance', href: '/admin/compliance', icon: FileText, keywords: ['gstr1', 'gstr3b', 'tax return', 'hsn summary', 'gst summary'] },
     ],
   },
@@ -475,7 +491,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                     href={group.href}
                     onClick={() => setMobileOpen?.(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all',
+                      'flex items-center gap-3 px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold transition-all',
                       isActive
                         ? 'bg-[#B91C1C] text-white shadow-xs'
                         : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white'
@@ -496,11 +512,11 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
 
               return (
                 <div key={group.id} className="space-y-1 pt-1">
-                  {/* Group Header Button */}
+                  {/* Group Header Button (Fitts's Law 40px min-h touch target) */}
                   <button
                     onClick={() => toggleGroup(group.id)}
                     className={cn(
-                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                      'w-full flex items-center justify-between px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer',
                       isChildActive
                         ? 'text-white bg-[#292524]'
                         : 'text-[#A8A29E] hover:bg-[#292524]/60 hover:text-white'
@@ -515,7 +531,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
 
                   {/* Collapsible Submenu */}
                   {isOpen && (
-                    <div className="pl-4 space-y-1 border-l border-[#292524] ml-4 my-1">
+                    <div className="pl-3.5 space-y-1 border-l-2 border-[#292524] ml-4 my-1">
                       {visibleItems.map((item) => {
                         const ItemIcon = item.icon
                         const isActive = checkIsActive(item.href)
@@ -535,7 +551,7 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
                               setMobileOpen?.(false)
                             }}
                             className={cn(
-                              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all',
+                              'flex items-center gap-2.5 px-3 py-2 min-h-[38px] rounded-xl text-xs transition-all',
                               isActive
                                 ? 'bg-[#B91C1C] text-white font-bold shadow-xs'
                                 : 'text-[#A8A29E] hover:bg-[#292524] hover:text-white font-medium'

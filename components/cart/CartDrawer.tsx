@@ -167,20 +167,24 @@ export default function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <Link
-                    href="/cart"
-                    onClick={closeCart}
-                    className="btn btn-outline w-full text-center"
-                  >
-                    View Cart
-                  </Link>
+                <div className="flex flex-col gap-2.5 pt-2">
+                  {/* Primary Fitts's Law Target: Dominant Full-Width Checkout */}
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="btn btn-primary w-full flex items-center justify-center gap-1.5"
+                    className="btn btn-primary w-full min-h-[50px] flex items-center justify-center gap-2 text-sm sm:text-base font-extrabold uppercase tracking-wider rounded-2xl shadow-xl shadow-[#FF3B00]/30 active:scale-[0.99] transition-transform"
                   >
-                    Checkout <ArrowRight size={16} />
+                    <span>Proceed to Checkout</span>
+                    <ArrowRight size={18} />
+                  </Link>
+
+                  {/* Secondary Option: De-emphasized to prevent choice paralysis */}
+                  <Link
+                    href="/cart"
+                    onClick={closeCart}
+                    className="text-center text-xs font-bold text-[#57534E] hover:text-[#1C1917] hover:underline py-1.5 transition-colors"
+                  >
+                    Review full cart breakdown & coupons →
                   </Link>
                 </div>
               </div>

@@ -141,11 +141,11 @@ export default function Header() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {sessionInfo?.loggedIn ? (
               <Link
                 href={isAdminRole ? '/admin' : '/account'}
-                className="p-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
+                className="min-h-[44px] px-3.5 py-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
                 aria-label="Account"
               >
                 <User size={16} className="text-[#FF3B00]" />
@@ -154,7 +154,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="p-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
+                className="min-h-[44px] px-3.5 py-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
                 aria-label="Account"
               >
                 <User size={16} className="text-[#FF3B00]" />
@@ -162,26 +162,27 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Cart Button */}
+            {/* Cart Button (Primary High-Priority Action Target) */}
             <button
               onClick={toggleCart}
-              className="btn btn-primary rounded-full flex items-center gap-2 px-4 sm:px-5 py-2.5 font-extrabold text-xs tracking-wider shadow-lg shadow-[#FF3B00]/30"
-              aria-label="Cart"
+              className="btn btn-primary rounded-full flex items-center gap-2.5 px-4 sm:px-6 min-h-[44px] sm:min-h-[48px] font-extrabold text-xs sm:text-sm tracking-wider shadow-lg shadow-[#FF3B00]/35 active:scale-95 transition-transform"
+              aria-label={`Cart with ${mounted ? itemCount : 0} items`}
             >
-              <ShoppingBag size={17} />
-              <span className="hidden sm:inline uppercase">CART</span>
+              <ShoppingBag size={18} />
+              <span className="hidden sm:inline uppercase font-black">CART</span>
               {mounted && itemCount > 0 && (
-                <span className="bg-[#FFC01D] text-black font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-xs">
+                <span className="bg-[#FFC01D] text-black font-black text-xs min-w-[22px] h-[22px] px-1 rounded-full flex items-center justify-center shadow-xs">
                   {itemCount}
                 </span>
               )}
             </button>
 
-            {/* Mobile Menu Hamburger */}
+            {/* Mobile Menu Hamburger (Generous 44x44 Touch Target for Thumb reachability) */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="p-2.5 text-white md:hidden hover:bg-white/10 rounded-full border border-white/10"
-              aria-label="Menu"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-white md:hidden hover:bg-white/10 active:bg-white/20 rounded-full border border-white/15 transition-all"
+              aria-label={isMobileOpen ? 'Close Menu' : 'Open Menu'}
+              aria-expanded={isMobileOpen}
             >
               {isMobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>

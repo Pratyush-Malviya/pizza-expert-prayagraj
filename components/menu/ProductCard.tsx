@@ -100,45 +100,45 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           {product.description}
         </p>
 
-        {/* Price & Action Row */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/10">
+        {/* Price & Action Row (Fitts's Law Optimized Target) */}
+        <div className="flex items-center justify-between mt-auto pt-3.5 border-t border-white/10 gap-3">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">PRICE</span>
-            <span className="font-mono font-black text-white text-lg sm:text-2xl">
+            <span className="text-[10px] uppercase font-extrabold text-zinc-500 tracking-wider">PRICE</span>
+            <span className="font-mono font-black text-white text-xl sm:text-2xl tracking-tight">
               {formatPrice(product.price)}
             </span>
           </div>
 
           <motion.button
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.94 }}
             onClick={handleAddToCart}
-            className={`btn rounded-full font-extrabold px-4 sm:px-5 py-2 text-xs uppercase tracking-wider transition-all shadow-md ${
+            className={`btn rounded-full font-black min-h-[44px] px-6 sm:px-7 py-2.5 text-xs sm:text-sm uppercase tracking-wider transition-all shadow-lg active:scale-95 flex items-center justify-center shrink-0 ${
               added
-                ? 'bg-[#10B981] text-black border-[#10B981]'
-                : 'btn-primary'
+                ? 'bg-[#10B981] text-black border-[#10B981] shadow-[#10B981]/25'
+                : 'btn-primary shadow-[#FF3B00]/30 hover:shadow-[#FF3B00]/50'
             }`}
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={`Add ${product.name} to cart for ${formatPrice(product.price)}`}
           >
             <AnimatePresence mode="wait">
               {added ? (
                 <motion.span
                   key="added"
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.7, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
+                  exit={{ scale: 0.7, opacity: 0 }}
                   className="flex items-center gap-1.5"
                 >
-                  <Check size={15} /> Added
+                  <Check size={16} className="stroke-[3]" /> Added
                 </motion.span>
               ) : (
                 <motion.span
                   key="add"
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.7, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
+                  exit={{ scale: 0.7, opacity: 0 }}
                   className="flex items-center gap-1.5"
                 >
-                  <Plus size={15} /> ADD
+                  <Plus size={16} className="stroke-[3]" /> ADD
                 </motion.span>
               )}
             </AnimatePresence>
