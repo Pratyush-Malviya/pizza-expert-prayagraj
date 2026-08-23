@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import HeaderLocationPicker from '@/components/layout/HeaderLocationPicker'
+import ThemeToggle from '@/components/shared/ThemeToggle'
 
 const NAV_LINKS = [
   { label: 'HOME',    href: '/' },
@@ -141,7 +142,10 @@ export default function Header() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Theme Toggle Button */}
+            <ThemeToggle className="hidden xs:flex" />
+
             {sessionInfo?.loggedIn ? (
               <Link
                 href={isAdminRole ? '/admin' : '/account'}
@@ -203,6 +207,12 @@ export default function Header() {
               {/* Mobile Location Quick Bar */}
               <div className="pb-2">
                 <HeaderLocationPicker className="flex w-full max-w-none justify-between p-3 rounded-2xl bg-white/10" />
+              </div>
+
+              {/* Theme Switcher for Mobile Drawer */}
+              <div className="flex items-center justify-between py-2 border-b border-white/10">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Theme</span>
+                <ThemeToggle variant="pill" />
               </div>
 
               {NAV_LINKS.map((link) => (

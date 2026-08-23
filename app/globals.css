@@ -19,7 +19,7 @@
 
 @layer base {
   /* ─── Apple HIG x Monday Vibe Unified Design System ─────────────── */
-  :root {
+  :root, [data-theme='dark'], .theme-dark {
     /* ─── Monday Vibe Palette (Primary & Semantic) ─── */
     --vibe-primary:        #0073EA; /* Classic Monday Blue */
     --vibe-primary-hover:  #0060C0;

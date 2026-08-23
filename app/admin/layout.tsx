@@ -6,6 +6,7 @@ import Link from 'next/link'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminNotificationDropdown from '@/components/layout/AdminNotificationDropdown'
 import StoreSwitcher from '@/components/layout/StoreSwitcher'
+import ThemeToggle from '@/components/shared/ThemeToggle'
 import { Menu, ExternalLink, LogOut, Loader2, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useNotificationStore } from '@/lib/store/useNotificationStore'
@@ -196,7 +197,8 @@ export default function AdminLayout({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <ThemeToggle className="w-8 h-8 min-w-[32px] min-h-[32px] sm:w-9 sm:h-9" />
             <StoreSwitcher />
 
             <Link

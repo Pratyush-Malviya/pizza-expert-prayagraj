@@ -8,6 +8,7 @@ import CustomerRealtimeNotifier from '@/components/notifications/CustomerRealtim
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import DynamicStoreMeta from '@/components/layout/DynamicStoreMeta'
 import { PostHogProvider } from '@/components/providers/PostHogProvider'
+import { ThemeProvider } from '@/components/providers/ThemeProviderWrapper'
 
 export const metadata: Metadata = {
   title: {
@@ -52,27 +53,29 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <PostHogProvider>
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-[#B91C1C] focus:text-white focus:rounded-md focus:shadow-lg text-xs font-bold font-sans"
-          >
-            Skip to main content
-          </a>
-          <DynamicStoreMeta />
-          {children}
-          <CustomerRealtimeNotifier />
-          <FloatingCartButton />
-          <MobileBottomNav />
-          <CartDrawer />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: { fontFamily: 'Inter, sans-serif' },
-              classNames: { toast: 'rounded-xl shadow-lg' },
-            }}
-          />
-        </PostHogProvider>
+        <ThemeProvider>
+          <PostHogProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-[#B91C1C] focus:text-white focus:rounded-md focus:shadow-lg text-xs font-bold font-sans"
+            >
+              Skip to main content
+            </a>
+            <DynamicStoreMeta />
+            {children}
+            <CustomerRealtimeNotifier />
+            <FloatingCartButton />
+            <MobileBottomNav />
+            <CartDrawer />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: { fontFamily: 'Inter, sans-serif' },
+                classNames: { toast: 'rounded-xl shadow-lg' },
+              }}
+            />
+          </PostHogProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
