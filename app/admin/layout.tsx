@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import AdminSidebar from '@/components/layout/AdminSidebar'
@@ -21,6 +21,7 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   
   // Render login page full-bleed without sidebar or header
@@ -47,7 +48,23 @@ export default function AdminLayout({
   // Auto-close mobile sidebar when navigating
   useEffect(() => {
     setMobileOpen(false)
+    setUserMenuOpen(false)
   }, [pathname])
+
+  // Click-outside listener for user profile dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [userMenuOpen])
 
   // Real-time Supabase, Broadcast, Storage, and Polling Order Notifier for Admin
   useEffect(() => {
@@ -193,31 +210,35 @@ export default function AdminLayout({
 
             <AdminNotificationDropdown />
 
-            <div
-              className="relative flex items-center gap-2.5 pl-3 py-1 pr-1.5 rounded-xl hover:bg-[#F4EFEA] border-l border-[#E7E0D8] cursor-pointer select-none transition-colors"
-              onMouseEnter={() => setUserMenuOpen(true)}
-              onMouseLeave={() => setUserMenuOpen(false)}
-            >
-              {adminAvatarUrl ? (
-                <img
-                  src={adminAvatarUrl}
-                  alt={adminName || 'Admin Avatar'}
-                  className="w-8 h-8 rounded-full object-cover border border-[#E7E0D8]"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-md bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs font-serif uppercase">
-                  {(adminName || 'PM').slice(0, 2)}
+            <div ref={userMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+                className="flex items-center gap-2.5 pl-3 py-1 pr-1.5 rounded-xl hover:bg-[#F4EFEA] border-l border-[#E7E0D8] cursor-pointer select-none transition-colors text-left"
+                aria-expanded={userMenuOpen}
+                aria-label="User account menu"
+              >
+                {adminAvatarUrl ? (
+                  <img
+                    src={adminAvatarUrl}
+                    alt={adminName || 'Admin Avatar'}
+                    className="w-8 h-8 rounded-full object-cover border border-[#E7E0D8]"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-md bg-[#B91C1C] text-white flex items-center justify-center font-bold text-xs font-serif uppercase">
+                    {(adminName || 'PM').slice(0, 2)}
+                  </div>
+                )}
+                <div className="hidden sm:block text-left">
+                  <span className="block text-xs font-bold text-[#1C1917] leading-tight">
+                    {adminName || 'Pratyush Malviya'}
+                  </span>
+                  <span className="block text-[10px] text-[#A8A29E] truncate max-w-[150px]">
+                    {adminEmail || 'malviya.pratyush26@gmail.com'}
+                  </span>
                 </div>
-              )}
-              <div className="hidden sm:block text-left">
-                <span className="block text-xs font-bold text-[#1C1917] leading-tight">
-                  {adminName || 'Pratyush Malviya'}
-                </span>
-                <span className="block text-[10px] text-[#A8A29E] truncate max-w-[150px]">
-                  {adminEmail || 'malviya.pratyush26@gmail.com'}
-                </span>
-              </div>
-              <ChevronDown size={14} className={`text-[#A8A29E] transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-[#A8A29E] transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
 
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-[#E7E0D8] shadow-xl overflow-hidden z-50">
