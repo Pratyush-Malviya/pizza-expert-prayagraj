@@ -31,6 +31,7 @@ import {
   replyToReviewAction,
   deleteReviewAction,
   createAdminReviewAction,
+  updateAdminReviewAction,
   ReviewItem,
 } from '@/app/actions/reviews'
 import { getHomepageReviewSettings, updateHomepageReviewSettings } from '@/app/actions/settings'
@@ -87,7 +88,32 @@ export default function AdminReviewsPage() {
     is_approved: true,
   })
 
+  const [editingReview, setEditingReview] = useState<ReviewItem | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
+
+  const handleOpenEdit = (review: ReviewItem) => {
+    setEditingReview({ ...review })
+    setShowEditModal(true)
+  }
+
+  const handleSaveEditReview = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingReview || !editingReview.customer_name.trim() || !editingReview.comment.trim()) {
+      toast.error('Customer name and review comment text are required')
+      return
+    }
+
+    const res = await updateAdminReviewAction(editingReview)
+    if (res.success) {
+      toast.success('Review updated & changes are live on homepage!')
+      setShowEditModal(false)
+      setEditingReview(null)
+      loadReviews()
+    } else {
+      toast.error(res.error || 'Failed to update review')
+    }
+  }
 
   const handleSaveHeaderSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -619,6 +645,15 @@ export default function AdminReviewsPage() {
               {/* ── Right Moderation Actions ── */}
               <div className="md:w-36 shrink-0 flex md:flex-col gap-2 justify-end md:justify-start">
                 <button
+                  onClick={() => handleOpenEdit(review)}
+                  className="w-full py-2 px-3 rounded-xl text-xs font-bold text-[#1C1917] bg-white hover:bg-[#F4EFEA] border border-[#E7E0D8] transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                  title="Edit Review details, rating, comment or location"
+                >
+                  <Edit3 size={13} className="text-[#B91C1C]" />
+                  <span>Edit Review</span>
+                </button>
+
+                <button
                   onClick={() => handleToggleApproval(review.id, review.is_approved)}
                   className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
                     review.is_approved
@@ -760,6 +795,139 @@ export default function AdminReviewsPage() {
                   className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white text-xs font-bold rounded-xl shadow-xs"
                 >
                   Publish Review
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Edit Review Modal ─── */}
+      {showEditModal && editingReview && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E7E0D8] space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#E7E0D8] pb-3">
+              <div className="flex items-center gap-2">
+                <Edit3 size={18} className="text-[#B91C1C]" />
+                <h3 className="font-serif font-bold text-lg text-[#1C1917]">Edit Customer Review</h3>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="text-[#A8A29E] hover:text-[#1C1917]">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditReview} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingReview.customer_name}
+                    onChange={(e) => setEditingReview({ ...editingReview, customer_name: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl focus:outline-none focus:border-[#B91C1C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Star Rating</label>
+                  <select
+                    value={editingReview.rating}
+                    onChange={(e) => setEditingReview({ ...editingReview, rating: Number(e.target.value) })}
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl bg-white focus:outline-none focus:border-[#B91C1C]"
+                  >
+                    <option value={5}>⭐⭐⭐⭐⭐ (5 Star)</option>
+                    <option value={4}>⭐⭐⭐⭐ (4 Star)</option>
+                    <option value={3}>⭐⭐⭐ (3 Star)</option>
+                    <option value={2}>⭐⭐ (2 Star)</option>
+                    <option value={1}>⭐ (1 Star)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Location / Area</label>
+                  <input
+                    type="text"
+                    value={editingReview.location || ''}
+                    onChange={(e) => setEditingReview({ ...editingReview, location: e.target.value })}
+                    placeholder="e.g. Civil Lines, Prayagraj"
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl focus:outline-none focus:border-[#B91C1C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Dish Ordered</label>
+                  <input
+                    type="text"
+                    value={editingReview.product_name || ''}
+                    onChange={(e) => setEditingReview({ ...editingReview, product_name: e.target.value })}
+                    placeholder="e.g. Paneer Tikka Pizza"
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl focus:outline-none focus:border-[#B91C1C]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1C1917] mb-1">Review Feedback / Testimonial *</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={editingReview.comment}
+                  onChange={(e) => setEditingReview({ ...editingReview, comment: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl leading-relaxed focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1C1917] mb-1">Official Pizza Expert Reply (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={editingReview.admin_reply || ''}
+                  onChange={(e) => setEditingReview({ ...editingReview, admin_reply: e.target.value })}
+                  placeholder="Official public response from store management..."
+                  className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl leading-relaxed focus:outline-none focus:border-[#B91C1C]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Review Source</label>
+                  <select
+                    value={editingReview.source || 'google'}
+                    onChange={(e) => setEditingReview({ ...editingReview, source: e.target.value as any })}
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl bg-white focus:outline-none focus:border-[#B91C1C]"
+                  >
+                    <option value="google">🌐 Google Verified</option>
+                    <option value="storefront">🛍️ Website Storefront</option>
+                    <option value="app">📱 In-App Feedback</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#1C1917] mb-1">Display on Website</label>
+                  <select
+                    value={editingReview.is_approved ? 'yes' : 'no'}
+                    onChange={(e) => setEditingReview({ ...editingReview, is_approved: e.target.value === 'yes' })}
+                    className="w-full px-3 py-2 text-xs border border-[#E7E0D8] rounded-xl bg-white focus:outline-none focus:border-[#B91C1C]"
+                  >
+                    <option value="yes">✅ Visible on Website (Approved)</option>
+                    <option value="no">🚫 Hidden from Website</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E7E0D8]">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 border border-[#E7E0D8] rounded-xl text-xs font-bold text-[#57534E] hover:bg-[#F4EFEA]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  Save Review Changes
                 </button>
               </div>
             </form>

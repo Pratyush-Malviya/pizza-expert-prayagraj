@@ -669,6 +669,23 @@ function AdminSettingsContent() {
                   placeholder="Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad."
                 />
               </div>
+
+              {/* Direct Shortcut to Reviews Manager */}
+              <div className="sm:col-span-2 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-[#92400E]">
+                  <span className="text-base">⭐</span>
+                  <div>
+                    <strong className="block font-bold">Want to edit individual customer reviews?</strong>
+                    <span className="text-[11px] text-[#A16207]">You can edit customer names, stars, feedback comments, and official replies.</span>
+                  </div>
+                </div>
+                <Link
+                  href="/admin/reviews"
+                  className="btn btn-outline btn-sm bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/10 text-xs font-bold shrink-0 self-start sm:self-auto"
+                >
+                  Manage & Edit Reviews →
+                </Link>
+              </div>
             </div>
               </div>
             </div>

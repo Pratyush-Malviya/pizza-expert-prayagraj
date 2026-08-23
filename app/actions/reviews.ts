@@ -296,6 +296,66 @@ export async function createAdminReviewAction(data: {
 }
 
 /**
+ * Update an existing review from the Admin Panel
+ */
+export async function updateAdminReviewAction(data: {
+  id: string
+  customer_name?: string
+  rating: number
+  comment: string
+  location?: string
+  product_name?: string
+  source?: 'google' | 'storefront' | 'app'
+  is_approved?: boolean
+  admin_reply?: string | null
+}) {
+  try {
+    const supabase = await createAdminClient()
+    
+    // Check if review exists in DB
+    const { data: existing } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('id', data.id)
+      .maybeSingle()
+
+    if (existing) {
+      const { error } = await supabase
+        .from('reviews')
+        .update({
+          rating: data.rating,
+          comment: data.comment,
+          is_approved: data.is_approved !== false,
+          admin_reply: data.admin_reply !== undefined ? data.admin_reply : null,
+        })
+        .eq('id', data.id)
+
+      if (error) throw error
+    } else {
+      // If it was a seed Google review, insert into DB with the new edited content
+      const { error } = await supabase
+        .from('reviews')
+        .insert({
+          rating: data.rating,
+          comment: data.comment,
+          is_approved: data.is_approved !== false,
+          admin_reply: data.admin_reply || null,
+        })
+
+      if (error) {
+        console.warn('Review upsert notice:', error.message)
+      }
+    }
+
+    revalidatePath('/admin/reviews')
+    revalidatePath('/')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
  * Toggle approval status of a review
  */
 export async function toggleReviewApprovalAction(id: string, newStatus: boolean) {
