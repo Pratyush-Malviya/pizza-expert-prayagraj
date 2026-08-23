@@ -13,14 +13,17 @@ import {
   type CreatePOSOrderPayload
 } from '@/app/actions/posOrders'
 import { processPOSPayment, type POSPaymentTender } from '@/app/actions/posPayments'
+import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorpay'
 import { getActiveShift } from '@/app/actions/cashierSessions'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import {
   Search, Plus, Minus, Trash2, Send, CreditCard, Banknote, Smartphone,
   Users, ChevronRight, Hash, FileText, Pause, RotateCcw, X, Check,
   ShoppingBag, Clock, AlertTriangle, Loader2, UtensilsCrossed, Layers,
   Tag, LogOut, Printer, Sparkles, SlidersHorizontal, ArrowRight,
   HelpCircle, Eye, RefreshCw, ChefHat, Bike, Receipt, CheckCircle2,
-  Percent, ShieldAlert, Coffee
+  Percent, ShieldAlert, Coffee, QrCode, Globe, MessageSquare, Copy,
+  ExternalLink, Share2, Flame, Gift
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -66,6 +69,7 @@ interface CartLine {
 
 type OrderType = 'dine_in' | 'takeaway' | 'pickup' | 'delivery'
 type PaymentStep = 'idle' | 'payment' | 'success'
+type MenuCatalogView = 'all' | 'combos' | 'bestsellers' | 'beverages' | 'dine_in_special'
 
 const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   dine_in: 'Dine-In',
@@ -80,6 +84,14 @@ const ORDER_TYPE_ICONS: Record<OrderType, any> = {
   pickup: Hash,
   delivery: Bike,
 }
+
+const MENU_VIEW_OPTIONS: Array<{ id: MenuCatalogView; label: string; icon: any }> = [
+  { id: 'all', label: 'All Day Menu', icon: UtensilsCrossed },
+  { id: 'bestsellers', label: 'Bestsellers & Specials', icon: Flame },
+  { id: 'combos', label: 'Combos & Meal Deals', icon: Gift },
+  { id: 'beverages', label: 'Beverages & Sides', icon: Coffee },
+  { id: 'dine_in_special', label: 'Dine-In Exclusives', icon: Sparkles },
+]
 
 // Preset customizer data for gourmet pizza and appetizers
 const SIZES = [
@@ -121,10 +133,14 @@ const CASH_PRESETS = [100, 200, 500, 1000, 2000]
 // ─── Main POS Screen Component ────────────────────────────────────────────────
 
 export default function POSScreen() {
-  // ── State: Catalog ──
+  // ── Settings Store ──
+  const settings = useSettingsStore()
+
+  // ── State: Catalog & Menu Views ──
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [activeCategory, setActiveCategory] = useState<string>('all')
+  const [activeMenuView, setActiveMenuView] = useState<MenuCatalogView>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [vegOnlyFilter, setVegOnlyFilter] = useState(false)
   const [loadingCatalog, setLoadingCatalog] = useState(true)
@@ -157,11 +173,12 @@ export default function POSScreen() {
   // ── State: Payment ──
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle')
   const [cashTendered, setCashTendered] = useState('')
-  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'split'>('cash')
+  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'split' | 'gateway_qr'>('cash')
   const [splitCash, setSplitCash] = useState('')
   const [splitUpi, setSplitUpi] = useState('')
   const [splitCard, setSplitCard] = useState('')
-  const [equalSplitCount, setEqualSplitCount] = useState(2)
+  const [gatewayStatus, setGatewayStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
+  const [gatewayOrderId, setGatewayOrderId] = useState<string>('')
   const [placing, setPlacing] = useState(false)
   const [lastOrderId, setLastOrderId] = useState<string>('')
   const [lastKotNumber, setLastKotNumber] = useState<string>('')
@@ -174,12 +191,24 @@ export default function POSScreen() {
   const [customCourse, setCustomCourse] = useState<'Starters' | 'Mains' | 'Beverages' | 'Dessert'>('Mains')
   const [customNotes, setCustomNotes] = useState('')
   const [showHotkeysModal, setShowHotkeysModal] = useState(false)
+  const [showCustomerMenuModal, setShowCustomerMenuModal] = useState(false)
   const [activeTableRunningOrder, setActiveTableRunningOrder] = useState<any | null>(null)
 
   // ── State: Tables & Staff ──
   const [tables, setTables] = useState<any[]>([])
   const [staffList, setStaffList] = useState<any[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // ── Load Razorpay Checkout Script on Mount ────────────────────────────────
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !document.getElementById('razorpay-checkout-js')) {
+      const script = document.createElement('script')
+      script.id = 'razorpay-checkout-js'
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.async = true
+      document.body.appendChild(script)
+    }
+  }, [])
 
   // ── Load Catalog ──────────────────────────────────────────────────────────
   const loadCatalog = useCallback(async () => {
@@ -197,7 +226,7 @@ export default function POSScreen() {
     loadCatalog()
   }, [loadCatalog])
 
-  // ── Load Tables & Waiters ─────────────────────────────────────────────────
+  // ── Load Tables & Staff ───────────────────────────────────────────────────
   const loadTables = useCallback(async () => {
     const supabase = createClient()
     const [{ data: tData }, { data: sData }] = await Promise.all([
@@ -337,7 +366,6 @@ export default function POSScreen() {
   // ── Keyboard Shortcuts (Section 4.1 of Guide) ─────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in an input
       const target = e.target as HTMLElement
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
 
@@ -347,6 +375,7 @@ export default function POSScreen() {
       } else if (e.key === 'Escape') {
         if (customizingProduct) setCustomizingProduct(null)
         if (showHotkeysModal) setShowHotkeysModal(false)
+        if (showCustomerMenuModal) setShowCustomerMenuModal(false)
         if (searchQuery) setSearchQuery('')
       } else if (e.key === 'F1') {
         e.preventDefault()
@@ -369,14 +398,30 @@ export default function POSScreen() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [customizingProduct, showHotkeysModal, searchQuery, cart, paymentStep])
+  }, [customizingProduct, showHotkeysModal, showCustomerMenuModal, searchQuery, cart, paymentStep])
 
-  // ── Filtered Products ─────────────────────────────────────────────────────
+  // ── Filtered Products based on Menu View, Category, and Search ───────────
   const filteredProducts = products.filter((p) => {
+    // 1. Menu view filter
+    let matchesMenuView = true
+    if (activeMenuView === 'combos') {
+      matchesMenuView = p.name.toLowerCase().includes('combo') || p.name.toLowerCase().includes('meal') || p.name.toLowerCase().includes('deal')
+    } else if (activeMenuView === 'bestsellers') {
+      matchesMenuView = p.price >= 250 || p.name.toLowerCase().includes('margherita') || p.name.toLowerCase().includes('farmhouse') || p.name.toLowerCase().includes('peppy')
+    } else if (activeMenuView === 'beverages') {
+      matchesMenuView = p.name.toLowerCase().includes('coke') || p.name.toLowerCase().includes('pepsi') || p.name.toLowerCase().includes('mojito') || p.name.toLowerCase().includes('garlic') || p.name.toLowerCase().includes('dessert') || p.name.toLowerCase().includes('lava')
+    } else if (activeMenuView === 'dine_in_special') {
+      matchesMenuView = p.price >= 300 || p.name.toLowerCase().includes('gourmet') || p.name.toLowerCase().includes('special')
+    }
+
+    // 2. Category tab
     const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory
+
+    // 3. Search & Veg filter
     const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesVeg = !vegOnlyFilter || p.is_veg
-    return matchesCategory && matchesSearch && matchesVeg
+
+    return matchesMenuView && matchesCategory && matchesSearch && matchesVeg
   })
 
   // ── Fast Add to Cart ──────────────────────────────────────────────────────
@@ -494,6 +539,8 @@ export default function POSScreen() {
     setGuestCount(1)
     setPaymentStep('idle')
     setActiveTableRunningOrder(null)
+    setGatewayStatus('idle')
+    setGatewayOrderId('')
     localStorage.removeItem('pos_active_cart_draft')
   }
 
@@ -544,7 +591,95 @@ export default function POSScreen() {
     }
   }
 
-  // ── Process Payment ───────────────────────────────────────────────────────
+  // ── Trigger Razorpay Checkout Modal directly on POS Screen ─────────────────
+  const launchRazorpayModal = async () => {
+    if (!lastOrderId) return
+
+    setGatewayStatus('loading')
+    try {
+      const storeSettings = useSettingsStore.getState()
+      const rzpRes = await createRazorpayOrder({
+        amount: totals.total,
+        orderId: lastOrderId,
+        customKeyId: storeSettings.enableRazorpay ? storeSettings.razorpayKeyId : undefined,
+        customKeySecret: storeSettings.enableRazorpay ? storeSettings.razorpayKeySecret : undefined,
+      })
+
+      if (!rzpRes.success || !rzpRes.razorpayOrderId) {
+        toast.error(rzpRes.error || 'Razorpay initialization failed. You can use Dynamic UPI QR or Manual Cash.')
+        setGatewayStatus('failed')
+        return
+      }
+
+      setGatewayOrderId(rzpRes.razorpayOrderId)
+
+      const windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void; open: () => void } }
+      if (!windowWithRzp.Razorpay) {
+        toast.error('Razorpay SDK is loading. Please click again.')
+        setGatewayStatus('idle')
+        return
+      }
+
+      const options = {
+        key: rzpRes.keyId,
+        amount: rzpRes.amount,
+        currency: rzpRes.currency || 'INR',
+        name: settings.businessName || 'Pizza Expert Prayagraj',
+        description: `POS Counter Order #${lastOrderId.slice(-6)}`,
+        image: '/favicon.ico',
+        order_id: rzpRes.razorpayOrderId,
+        prefill: {
+          name: customerName || 'Counter Customer',
+          contact: customerPhone || '',
+        },
+        theme: {
+          color: '#B91C1C',
+        },
+        handler: async function (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) {
+          toast.info('Verifying payment gateway capture...')
+          const verifyRes = await verifyRazorpayPayment({
+            orderId: lastOrderId,
+            razorpayPaymentId: response.razorpay_payment_id || `pay_pos_${Date.now()}`,
+            razorpayOrderId: response.razorpay_order_id || rzpRes.razorpayOrderId!,
+            razorpaySignature: response.razorpay_signature || 'mock_sig',
+            isTestMode: rzpRes.isTestMode,
+          })
+
+          if (verifyRes.success) {
+            // Record POS payment tender in DB
+            await processPOSPayment({
+              orderId: lastOrderId,
+              shiftId,
+              tenders: [{ tenderType: 'razorpay', amount: totals.total, reference: response.razorpay_payment_id }],
+              orderTotal: totals.total,
+            })
+
+            toast.success('🎉 Razorpay Payment Verified & Settled!')
+            setPaymentStep('success')
+            setGatewayStatus('success')
+            loadTables()
+          } else {
+            toast.error(verifyRes.error || 'Payment signature verification failed')
+            setGatewayStatus('failed')
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setGatewayStatus('idle')
+            toast.info('Payment window closed')
+          },
+        },
+      }
+
+      const rzpInstance = new windowWithRzp.Razorpay(options)
+      rzpInstance.open()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to open Razorpay gateway')
+      setGatewayStatus('failed')
+    }
+  }
+
+  // ── Settle Manual Payment or Gateway QR ────────────────────────────────────
   const processPayment = async () => {
     if (!lastOrderId) return
 
@@ -566,8 +701,10 @@ export default function POSScreen() {
         if (c > 0) tenders.push({ tenderType: 'cash', amount: c, changeGiven: Math.max(0, c + u + card - totals.total) })
         if (u > 0) tenders.push({ tenderType: 'upi', amount: u })
         if (card > 0) tenders.push({ tenderType: 'card', amount: card })
+      } else if (paymentMode === 'gateway_qr') {
+        tenders = [{ tenderType: 'upi', amount: totals.total, reference: `UPI_QR_${lastOrderId.slice(-6)}` }]
       } else {
-        tenders = [{ tenderType: paymentMode, amount: totals.total }]
+        tenders = [{ tenderType: paymentMode as any, amount: totals.total }]
       }
 
       const result = await processPOSPayment({
@@ -585,8 +722,6 @@ export default function POSScreen() {
           : '✅ Payment recorded & Bill closed!'
       )
       setPaymentStep('success')
-
-      // Refresh table floor layout
       loadTables()
     } catch (err: any) {
       toast.error(err.message || 'Payment processing failed')
@@ -611,16 +746,23 @@ export default function POSScreen() {
     }
   }
 
+  // ── Generate Dynamic UPI Payment URI ──────────────────────────────────────
+  const activeUpiId = settings.upiId || 'pizzaexpert@upi'
+  const dynamicUpiUri = `upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(settings.businessName || 'Pizza Expert')}&am=${totals.total.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${lastOrderId ? lastOrderId.slice(-6) : 'POS'}`)}`
+  const dynamicQrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(dynamicUpiUri)}`
+  const customerMenuUrl = typeof window !== 'undefined' ? `${window.location.origin}/menu` : 'https://pizza-expert.in/menu'
+  const menuQrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(customerMenuUrl)}`
+
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden bg-[#0A0A0A] text-white font-sans">
 
       {/* ─── LEFT PANEL: Menu & Catalog (58% width) ────────────────────── */}
       <div className="flex flex-col w-[58%] border-r border-white/10 overflow-hidden bg-[#111111]">
 
-        {/* Top Control Bar: Order Types & Quick Filters */}
+        {/* Top Control Bar: Order Types, Menu Selector & Quick Filters */}
         <div className="p-3 border-b border-white/10 space-y-2.5 bg-[#161616]">
           
-          {/* Order Type Toggle (F1, F2, F3) */}
+          {/* Row 1: Order Type Switcher & Customer Menu Trigger */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex gap-1.5 flex-1">
               {(Object.keys(ORDER_TYPE_LABELS) as OrderType[]).map((type, idx) => {
@@ -645,6 +787,16 @@ export default function POSScreen() {
               })}
             </div>
 
+            {/* Customer Menu QR Button for Counter Staff */}
+            <button
+              onClick={() => setShowCustomerMenuModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition shadow-sm"
+              title="Show Digital QR Menu to Customer at Counter"
+            >
+              <QrCode size={14} />
+              <span>Customer Menu</span>
+            </button>
+
             <button
               onClick={() => setShowHotkeysModal(true)}
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition"
@@ -652,6 +804,32 @@ export default function POSScreen() {
             >
               <HelpCircle size={15} />
             </button>
+          </div>
+
+          {/* Row 2: Menu Type Selector for Customer (Combos / Bestsellers / All Day) */}
+          <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10 overflow-x-auto scrollbar-none">
+            <span className="text-[10px] uppercase font-black text-white/40 px-2 shrink-0">
+              Menu Type:
+            </span>
+            {MENU_VIEW_OPTIONS.map((opt) => {
+              const Icon = opt.icon
+              const isSelected = activeMenuView === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setActiveMenuView(opt.id)}
+                  className={cn(
+                    'flex-none px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap',
+                    isSelected
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  <Icon size={12} className={isSelected ? 'text-white' : 'text-red-400'} />
+                  <span>{opt.label}</span>
+                </button>
+              )
+            })}
           </div>
 
           {/* Dine-In Live Table Quick Selector Bar (Shown when Dine-In active) */}
@@ -752,7 +930,7 @@ export default function POSScreen() {
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               )}
             >
-              All Items ({products.length})
+              All Items ({filteredProducts.length})
             </button>
             {categories.map((c) => {
               const count = products.filter((p) => p.category_id === c.id).length
@@ -784,9 +962,17 @@ export default function POSScreen() {
           ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-white/30">
               <Search size={36} className="mb-2 text-white/20" />
-              <p className="text-sm font-semibold">No items matched your search</p>
-              <button onClick={() => { setSearchQuery(''); setActiveCategory('all'); setVegOnlyFilter(false) }} className="mt-2 text-xs text-red-400 hover:underline">
-                Clear all filters
+              <p className="text-sm font-semibold">No items found in selected menu</p>
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setActiveCategory('all')
+                  setActiveMenuView('all')
+                  setVegOnlyFilter(false)
+                }}
+                className="mt-2 text-xs text-red-400 hover:underline font-bold"
+              >
+                Reset to Full Menu
               </button>
             </div>
           ) : (
@@ -1055,7 +1241,7 @@ export default function POSScreen() {
             <div className="flex flex-col items-center justify-center h-48 text-white/30">
               <ShoppingBag size={36} className="mb-2 text-white/15" />
               <p className="text-sm font-semibold">Cart is currently empty</p>
-              <p className="text-xs text-white/20 mt-0.5">Tap menu items to start building ticket</p>
+              <p className="text-xs text-white/20 mt-0.5">Select menu items to build ticket</p>
             </div>
           ) : (
             cart.map((line) => (
@@ -1252,38 +1438,39 @@ export default function POSScreen() {
           <div className="px-4 py-3 border-t border-white/10 bg-[#161616] space-y-3 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <p className="text-xs font-black uppercase text-white/70 tracking-wider">
-                Select Tender Mode
+                Select Customer Payment Method
               </p>
               <span className="text-xs font-bold text-red-400">
                 {lastKotNumber}
               </span>
             </div>
 
-            {/* Tender mode tabs */}
-            <div className="grid grid-cols-4 gap-1.5">
+            {/* Tender Mode Tabs (Cash, UPI QR, Online Gateway / Razorpay, Card, Split) */}
+            <div className="grid grid-cols-5 gap-1">
               {([
                 { type: 'cash', icon: Banknote, label: 'Cash' },
-                { type: 'upi', icon: Smartphone, label: 'UPI / QR' },
+                { type: 'gateway_qr', icon: QrCode, label: 'UPI QR' },
+                { type: 'razorpay', icon: CreditCard, label: 'Gateway' },
                 { type: 'card', icon: CreditCard, label: 'Card' },
                 { type: 'split', icon: Layers, label: 'Split' },
               ] as const).map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
-                  onClick={() => setPaymentMode(type)}
+                  onClick={() => setPaymentMode(type as any)}
                   className={cn(
-                    'flex flex-col items-center gap-1 py-2 rounded-xl border text-[11px] font-bold transition-all',
+                    'flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all text-center',
                     paymentMode === type
                       ? 'border-red-500 bg-red-600/20 text-white ring-1 ring-red-500/40 shadow-sm'
                       : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <Icon size={16} />
-                  {label}
+                  <Icon size={14} />
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Cash Tender Presets */}
+            {/* 1. Cash Tender Presets */}
             {paymentMode === 'cash' && (
               <div className="space-y-2">
                 <div className="flex gap-1.5 overflow-x-auto pb-0.5">
@@ -1321,7 +1508,80 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* Split Tender Inputs */}
+            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code */}
+            {paymentMode === 'gateway_qr' && (
+              <div className="p-3 rounded-2xl bg-black/50 border border-white/15 text-center space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-white/70 border-b border-white/10 pb-1.5 font-bold">
+                  <span>Customer Scan-to-Pay QR</span>
+                  <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
+                </div>
+
+                <div className="flex items-center justify-center gap-4">
+                  <div className="p-2 rounded-xl bg-white shadow-lg inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={dynamicQrImgUrl}
+                      alt="UPI Payment QR"
+                      className="w-28 h-28 object-contain"
+                    />
+                  </div>
+                  <div className="text-left space-y-1 text-xs">
+                    <p className="text-white/80 font-bold">GPay • PhonePe • Paytm</p>
+                    <p className="text-[11px] text-white/40">VPA: <span className="font-mono text-white/70">{activeUpiId}</span></p>
+                    <p className="text-[11px] text-emerald-400 font-semibold">✓ Exact Amount Embedded</p>
+                    <p className="text-[10px] text-white/30">Ask customer to scan with any UPI app</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Razorpay Payment Gateway Modal / Link Trigger */}
+            {paymentMode === 'razorpay' && (
+              <div className="p-3 rounded-2xl bg-gradient-to-b from-red-950/30 to-black/40 border border-red-500/30 space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-white">
+                    <CreditCard size={14} className="text-red-400" />
+                    <span>Online Payment Gateway</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-900/50 text-red-300 font-bold">
+                    Cards / Netbanking / Wallets
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-white/60">
+                  Accept customer payment via Credit/Debit Cards, Net Banking, or send a payment link directly to customer.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={launchRazorpayModal}
+                    disabled={gatewayStatus === 'loading'}
+                    className="py-2.5 px-3 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
+                  >
+                    {gatewayStatus === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
+                    Launch Gateway on POS
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (!customerPhone) {
+                        toast.error('Please enter customer phone number first')
+                        return
+                      }
+                      const paymentLink = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Hi ${customerName || 'Customer'}, please complete your payment of ₹${totals.total.toFixed(2)} for Wood-Fired Pizza order #${lastOrderId.slice(-6)} at Pizza Expert Prayagraj: ${window.location.origin}/checkout`)}`
+                      window.open(paymentLink, '_blank')
+                      toast.success('WhatsApp payment message initiated!')
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                  >
+                    <MessageSquare size={13} />
+                    Send WhatsApp Link
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Split Tender Inputs */}
             {paymentMode === 'split' && (
               <div className="space-y-2 p-3 rounded-2xl bg-black/40 border border-white/10 text-xs">
                 <div className="grid grid-cols-3 gap-2">
@@ -1374,19 +1634,22 @@ export default function POSScreen() {
               </div>
             )}
 
-            <button
-              onClick={processPayment}
-              disabled={
-                placing ||
-                (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
-                (paymentMode === 'split' &&
-                  (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0) < totals.total)
-              }
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
-            >
-              {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-              Confirm Settlement (₹{totals.total.toFixed(2)})
-            </button>
+            {/* Settle Action Button */}
+            {paymentMode !== 'razorpay' && (
+              <button
+                onClick={processPayment}
+                disabled={
+                  placing ||
+                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
+                  (paymentMode === 'split' &&
+                    (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0) < totals.total)
+                }
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
+              >
+                {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Confirm & Close Bill (₹{totals.total.toFixed(2)})
+              </button>
+            )}
           </div>
         )}
 
@@ -1639,6 +1902,75 @@ export default function POSScreen() {
                 className="px-6 py-2.5 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white font-bold text-xs flex items-center gap-1.5 transition shadow"
               >
                 <Plus size={14} /> Add to Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: Customer-Facing QR Menu (For Counter Staff to Display) ─── */}
+      {showCustomerMenuModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-[#181818] border border-amber-500/30 shadow-2xl p-6 space-y-4 text-center">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="text-left">
+                <h3 className="font-extrabold text-base text-white flex items-center gap-1.5">
+                  <QrCode size={18} className="text-amber-400" />
+                  Customer Digital Menu
+                </h3>
+                <p className="text-xs text-white/50">Point phone camera to browse interactive menu & photos</p>
+              </div>
+              <button
+                onClick={() => setShowCustomerMenuModal(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* QR Code Graphic */}
+            <div className="p-4 bg-white rounded-2xl shadow-xl inline-block mx-auto border-4 border-amber-400">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={menuQrImgUrl}
+                alt="Customer Digital Menu QR"
+                className="w-48 h-48 object-contain"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-sm font-bold text-white">
+                {settings.businessName || 'Pizza Expert Prayagraj'}
+              </p>
+              <p className="text-xs text-white/60 font-mono bg-black/40 px-3 py-1.5 rounded-xl border border-white/10 truncate">
+                {customerMenuUrl}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(customerMenuUrl)
+                  toast.success('Menu link copied to clipboard!')
+                }}
+                className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition"
+              >
+                <Copy size={13} /> Copy Menu Link
+              </button>
+
+              <button
+                onClick={() => {
+                  if (!customerPhone) {
+                    toast.error('Enter customer phone number in ticket panel first')
+                    return
+                  }
+                  const link = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Welcome to ${settings.businessName || 'Pizza Expert'}! Browse our full digital menu & live specials here: ${customerMenuUrl}`)}`
+                  window.open(link, '_blank')
+                  toast.success('WhatsApp menu link dispatched!')
+                }}
+                className="py-2.5 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+              >
+                <MessageSquare size={13} /> Send via WhatsApp
               </button>
             </div>
           </div>
