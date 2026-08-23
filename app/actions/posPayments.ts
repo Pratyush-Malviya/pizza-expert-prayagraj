@@ -41,7 +41,7 @@ export async function processPOSPayment(payload: ProcessPOSPaymentPayload) {
     // Insert each tender row
     const tenderRows = tenders.map((t) => ({
       order_id: orderId,
-      shift_id: shiftId,
+      shift_id: shiftId ? shiftId : null,
       tender_type: t.tenderType,
       amount: t.amount,
       change_given: t.changeGiven || 0,
@@ -59,16 +59,18 @@ export async function processPOSPayment(payload: ProcessPOSPaymentPayload) {
       .eq('id', orderId)
     if (orderErr) throw new Error(orderErr.message)
 
-    // Record cash movement in shift
-    for (const t of tenders) {
-      if (t.tenderType === 'cash') {
-        await supabase.from('cash_movements').insert({
-          shift_id: shiftId,
-          type: 'sale',
-          amount: t.amount - (t.changeGiven || 0),
-          reference_id: orderId,
-          note: `Cash sale — Order ${orderId.slice(0, 8).toUpperCase()}`,
-        })
+    // Record cash movement in shift if shiftId is present
+    if (shiftId) {
+      for (const t of tenders) {
+        if (t.tenderType === 'cash') {
+          await supabase.from('cash_movements').insert({
+            shift_id: shiftId,
+            type: 'sale',
+            amount: t.amount - (t.changeGiven || 0),
+            reference_id: orderId,
+            note: `Cash sale — Order ${orderId.slice(0, 8).toUpperCase()}`,
+          })
+        }
       }
     }
 
