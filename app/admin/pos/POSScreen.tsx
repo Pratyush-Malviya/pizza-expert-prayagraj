@@ -30,6 +30,7 @@ import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { triggerPrintPOSReceipt, triggerPrintKOT } from '@/lib/utils/posReceipt'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -940,6 +941,97 @@ export default function POSScreen() {
     }
   }
 
+  // ── Print Thermal Receipt & KOT Directly ─────────────────────────────────
+  const printCurrentPOSReceipt = () => {
+    if (!lastOrderId && cart.length === 0) {
+      toast.error('No order available to print receipt')
+      return
+    }
+
+    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
+
+    triggerPrintPOSReceipt({
+      orderId: lastOrderId || `POS-${Date.now().toString().slice(-6)}`,
+      kotNumber: lastKotNumber || undefined,
+      orderType,
+      tableNumber: targetTableNum,
+      cashierName: 'Counter Staff',
+      customerName: customerName || 'Counter Customer',
+      customerPhone,
+      items: cart.map((item) => {
+        const optionList: string[] = []
+        if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+        if (item.crust) optionList.push(`Crust: ${item.crust}`)
+        if (item.modifiers && item.modifiers.length > 0) {
+          item.modifiers.forEach((m) => optionList.push(m.name))
+        }
+        return {
+          name: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.unitPrice * item.quantity,
+          selectedOptions: optionList,
+          notes: item.notes,
+        }
+      }),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      deliveryFee: 0,
+      tax: totals.tax,
+      total: totals.total,
+      payments: [
+        {
+          tenderType: paymentMode === 'split' ? 'split payment' : paymentMode,
+          amount: totals.total,
+          changeGiven:
+            paymentMode === 'cash' ? Math.max(0, (parseFloat(cashTendered) || 0) - totals.total) : 0,
+        },
+      ],
+      businessInfo: {
+        name: settings.businessName || 'PIZZA EXPERT',
+        address: settings.address || 'Civil Lines, Prayagraj, UP 211001',
+        phone: settings.phone || '+91 91234 56789',
+        gstin: '09ABCDE1234F1Z5',
+        fssai: '12724052000123',
+      },
+    })
+    toast.success('🖨️ Thermal Receipt Sent to Printer!')
+  }
+
+  const printCurrentKOT = () => {
+    if (cart.length === 0 && !lastOrderId) {
+      toast.error('Cart is empty')
+      return
+    }
+
+    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
+
+    triggerPrintKOT({
+      kotNumber: lastKotNumber || `KOT-${Date.now().toString().slice(-4)}`,
+      orderId: lastOrderId || `ORD-${Date.now().toString().slice(-6)}`,
+      orderType,
+      tableNumber: targetTableNum,
+      createdAt: new Date(),
+      specialNotes: orderNotes,
+      items: cart.map((item) => {
+        const optionList: string[] = []
+        if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+        if (item.crust) optionList.push(`Crust: ${item.crust}`)
+        if (item.modifiers && item.modifiers.length > 0) {
+          item.modifiers.forEach((m) => optionList.push(m.name))
+        }
+        return {
+          name: item.productName,
+          quantity: item.quantity,
+          course: item.course,
+          selectedOptions: optionList,
+          notes: item.notes,
+        }
+      }),
+    })
+    toast.success('👨‍🍳 Kitchen Ticket (KOT) Sent to Printer!')
+  }
+
   // ── Generate Dynamic UPI Payment URI ──────────────────────────────────────
   const activeUpiId = settings.upiId || 'pizzaexpert@upi'
   const dynamicUpiUri = `upi://pay?pa=${encodeURIComponent(activeUpiId)}&pn=${encodeURIComponent(settings.businessName || 'Pizza Expert')}&am=${totals.total.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${lastOrderId ? lastOrderId.slice(-6) : 'POS'}`)}`
@@ -1387,6 +1479,15 @@ export default function POSScreen() {
             >
               <Receipt size={15} />
             </Link>
+
+            <button
+              onClick={printCurrentPOSReceipt}
+              disabled={cart.length === 0 && !lastOrderId}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 text-white/60 hover:text-white transition"
+              title="Print Current Bill / Estimate Receipt"
+            >
+              <Printer size={15} />
+            </button>
           </div>
         </div>
 
@@ -1408,31 +1509,35 @@ export default function POSScreen() {
           
           {/* Dine-In Extra Fields: Waiter & Guests */}
           {orderType === 'dine_in' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5">
                 <Users size={12} className="text-white/40" />
-                <span className="text-[11px] text-white/60 flex-1">Guests:</span>
-                <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="p-1 hover:text-red-400">
-                  <Minus size={10} />
-                </button>
-                <span className="font-bold text-xs w-4 text-center">{guestCount}</span>
-                <button onClick={() => setGuestCount(guestCount + 1)} className="p-1 hover:text-green-400">
-                  <Plus size={10} />
-                </button>
+                <span className="text-white/60 text-[11px]">Server:</span>
+                <select
+                  value={selectedWaiterId}
+                  onChange={(e) => setSelectedWaiterId(e.target.value)}
+                  className="bg-transparent text-white font-medium text-[11px] focus:outline-none flex-1"
+                >
+                  <option value="" className="bg-[#1C1917]">Assign Staff…</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-[#1C1917]">
+                      {s.full_name || s.name} ({s.role})
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <select
-                value={selectedWaiterId}
-                onChange={(e) => setSelectedWaiterId(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
-              >
-                <option value="">Select Server / Waiter</option>
-                {staffList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.role})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl px-2 py-1">
+                <span className="text-white/40 text-[11px]">Guests:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={guestCount}
+                  onChange={(e) => setGuestCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-8 bg-transparent text-white font-black text-center text-xs focus:outline-none"
+                />
+              </div>
             </div>
           )}
 
@@ -1950,21 +2055,37 @@ export default function POSScreen() {
             </div>
             <div>
               <h3 className="text-base font-black text-white">Bill Settled & Table Freed!</h3>
-              <p className="text-xs text-white/50 mt-0.5">Order #{lastOrderId.slice(-6)} • {lastKotNumber}</p>
+              <p className="text-xs text-white/50 mt-0.5">Order #{lastOrderId ? lastOrderId.slice(-6).toUpperCase() : 'COUNTER'} • {lastKotNumber || 'Receipt Ready'}</p>
             </div>
 
-            <div className="flex gap-2 justify-center pt-2">
+            {/* Direct Instant Print Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={printCurrentPOSReceipt}
+                className="py-3 px-3 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white text-xs font-black flex items-center justify-center gap-1.5 transition shadow-lg shadow-red-950/40 active:scale-95"
+              >
+                <Printer size={15} /> Print Receipt (80mm)
+              </button>
+              <button
+                onClick={printCurrentKOT}
+                className="py-3 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <ChefHat size={15} className="text-amber-400" /> Print KOT
+              </button>
+            </div>
+
+            <div className="flex gap-2 justify-center pt-1">
               <Link
                 href={`/admin/pos/receipts?orderId=${lastOrderId}`}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition"
+                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition"
               >
-                <Printer size={13} /> Print Tax Invoice
+                <Receipt size={13} /> View / A4 Invoice
               </Link>
               <button
                 onClick={clearCart}
-                className="px-4 py-2 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white text-xs font-bold flex items-center gap-1.5 transition shadow"
+                className="flex-1 py-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-600/40 text-emerald-300 text-xs font-black flex items-center justify-center gap-1.5 transition shadow"
               >
-                <Plus size={13} /> Start Next Order
+                <Plus size={13} /> Next Order
               </button>
             </div>
           </div>
