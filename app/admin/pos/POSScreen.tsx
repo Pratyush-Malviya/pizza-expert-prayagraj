@@ -962,6 +962,40 @@ export default function POSScreen() {
               orderTotal: totals.total,
             })
 
+            const snapshotItems = cart.map((item) => {
+              const optionList: string[] = []
+              if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+              if (item.crust) optionList.push(`Crust: ${item.crust}`)
+              if (item.modifiers && item.modifiers.length > 0) {
+                item.modifiers.forEach((m) => optionList.push(m.name))
+              }
+              return {
+                name: item.productName || 'Pizza Expert Item',
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                totalPrice: item.unitPrice * item.quantity,
+                selectedOptions: optionList,
+                notes: item.notes,
+                course: item.course,
+              }
+            })
+
+            setLastOrderSnapshot({
+              orderId: orderRes.orderId,
+              kotNumber: orderRes.kotNumber,
+              orderType,
+              tableNumber: tables.find((t) => t.id === tableId)?.table_number,
+              customerName: customerName || 'Counter Customer',
+              customerPhone,
+              items: snapshotItems,
+              subtotal: totals.subtotal,
+              discount: totals.discount,
+              tax: totals.tax,
+              total: totals.total,
+              paymentMode: 'razorpay',
+              notes: orderNotes,
+            })
+
             setLastOrderId(orderRes.orderId)
             setLastKotNumber(orderRes.kotNumber!)
             toast.success(`🎉 Online Payment Verified & Order Placed! #${orderRes.kotNumber}`)
@@ -1047,6 +1081,41 @@ export default function POSScreen() {
         throw new Error(payRes.error || 'Order created but payment settlement failed')
       }
 
+      const snapshotItems = cart.map((item) => {
+        const optionList: string[] = []
+        if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+        if (item.crust) optionList.push(`Crust: ${item.crust}`)
+        if (item.modifiers && item.modifiers.length > 0) {
+          item.modifiers.forEach((m) => optionList.push(m.name))
+        }
+        return {
+          name: item.productName || 'Pizza Expert Item',
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.unitPrice * item.quantity,
+          selectedOptions: optionList,
+          notes: item.notes,
+          course: item.course,
+        }
+      })
+
+      setLastOrderSnapshot({
+        orderId: orderRes.orderId,
+        kotNumber: orderRes.kotNumber,
+        orderType,
+        tableNumber: tables.find((t) => t.id === tableId)?.table_number,
+        customerName: customerName || 'Counter Customer',
+        customerPhone,
+        items: snapshotItems,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        tax: totals.tax,
+        total: totals.total,
+        paymentMode,
+        cashTendered,
+        notes: orderNotes,
+      })
+
       setLastOrderId(orderRes.orderId)
       setLastKotNumber(orderRes.kotNumber!)
       setPaymentStep('success')
@@ -1080,50 +1149,83 @@ export default function POSScreen() {
     }
   }
 
+  // ── State: Last Order Snapshot for Printing ──
+  const [lastOrderSnapshot, setLastOrderSnapshot] = useState<{
+    orderId: string
+    kotNumber?: string
+    orderType: string
+    tableNumber?: string
+    customerName?: string
+    customerPhone?: string
+    items: Array<{
+      name: string
+      quantity: number
+      unitPrice: number
+      totalPrice: number
+      selectedOptions?: string[]
+      notes?: string
+      course?: string
+    }>
+    subtotal: number
+    discount: number
+    tax: number
+    total: number
+    paymentMode: string
+    cashTendered?: string
+    notes?: string
+  } | null>(null)
+
   // ── Print Thermal Receipt & KOT Directly ─────────────────────────────────
   const printCurrentPOSReceipt = () => {
-    if (!lastOrderId && cart.length === 0) {
-      toast.error('No order available to print receipt')
+    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
+
+    const itemsToPrint =
+      lastOrderSnapshot?.items && lastOrderSnapshot.items.length > 0
+        ? lastOrderSnapshot.items
+        : cart.map((item) => {
+            const optionList: string[] = []
+            if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+            if (item.crust) optionList.push(`Crust: ${item.crust}`)
+            if (item.modifiers && item.modifiers.length > 0) {
+              item.modifiers.forEach((m) => optionList.push(m.name))
+            }
+            return {
+              name: item.productName || 'Pizza Expert Item',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.unitPrice * item.quantity,
+              selectedOptions: optionList,
+              notes: item.notes,
+            }
+          })
+
+    if (itemsToPrint.length === 0) {
+      toast.error('No items available to print receipt')
       return
     }
 
-    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
-
     triggerPrintPOSReceipt({
-      orderId: lastOrderId || `POS-${Date.now().toString().slice(-6)}`,
-      kotNumber: lastKotNumber || undefined,
-      orderType,
-      tableNumber: targetTableNum,
+      orderId: lastOrderSnapshot?.orderId || lastOrderId || `POS-${Date.now().toString().slice(-6)}`,
+      kotNumber: lastOrderSnapshot?.kotNumber || lastKotNumber || undefined,
+      orderType: lastOrderSnapshot?.orderType || orderType,
+      tableNumber: lastOrderSnapshot?.tableNumber || targetTableNum,
       cashierName: 'Counter Staff',
-      customerName: customerName || 'Counter Customer',
-      customerPhone,
-      items: cart.map((item) => {
-        const optionList: string[] = []
-        if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
-        if (item.crust) optionList.push(`Crust: ${item.crust}`)
-        if (item.modifiers && item.modifiers.length > 0) {
-          item.modifiers.forEach((m) => optionList.push(m.name))
-        }
-        return {
-          name: item.productName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.unitPrice * item.quantity,
-          selectedOptions: optionList,
-          notes: item.notes,
-        }
-      }),
-      subtotal: totals.subtotal,
-      discount: totals.discount,
+      customerName: lastOrderSnapshot?.customerName || customerName || 'Counter Customer',
+      customerPhone: lastOrderSnapshot?.customerPhone || customerPhone,
+      items: itemsToPrint,
+      subtotal: lastOrderSnapshot?.subtotal ?? totals.subtotal,
+      discount: lastOrderSnapshot?.discount ?? totals.discount,
       deliveryFee: 0,
-      tax: totals.tax,
-      total: totals.total,
+      tax: lastOrderSnapshot?.tax ?? totals.tax,
+      total: lastOrderSnapshot?.total ?? totals.total,
       payments: [
         {
-          tenderType: paymentMode,
-          amount: totals.total,
+          tenderType: lastOrderSnapshot?.paymentMode || paymentMode,
+          amount: lastOrderSnapshot?.total ?? totals.total,
           changeGiven:
-            paymentMode === 'cash' ? Math.max(0, (parseFloat(cashTendered) || 0) - totals.total) : 0,
+            (lastOrderSnapshot?.paymentMode || paymentMode) === 'cash'
+              ? Math.max(0, (parseFloat(lastOrderSnapshot?.cashTendered || cashTendered || '0') || 0) - (lastOrderSnapshot?.total ?? totals.total))
+              : 0,
         },
       ],
       businessInfo: {
@@ -1138,35 +1240,40 @@ export default function POSScreen() {
   }
 
   const printCurrentKOT = () => {
-    if (cart.length === 0 && !lastOrderId) {
+    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
+
+    const itemsToPrint =
+      lastOrderSnapshot?.items && lastOrderSnapshot.items.length > 0
+        ? lastOrderSnapshot.items
+        : cart.map((item) => {
+            const optionList: string[] = []
+            if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
+            if (item.crust) optionList.push(`Crust: ${item.crust}`)
+            if (item.modifiers && item.modifiers.length > 0) {
+              item.modifiers.forEach((m) => optionList.push(m.name))
+            }
+            return {
+              name: item.productName || 'Kitchen Item',
+              quantity: item.quantity,
+              course: item.course,
+              selectedOptions: optionList,
+              notes: item.notes,
+            }
+          })
+
+    if (itemsToPrint.length === 0) {
       toast.error('Cart is empty')
       return
     }
 
-    const targetTableNum = tables.find((t) => t.id === tableId)?.table_number
-
     triggerPrintKOT({
-      kotNumber: lastKotNumber || `KOT-${Date.now().toString().slice(-4)}`,
-      orderId: lastOrderId || `ORD-${Date.now().toString().slice(-6)}`,
-      orderType,
-      tableNumber: targetTableNum,
+      kotNumber: lastOrderSnapshot?.kotNumber || lastKotNumber || `KOT-${Date.now().toString().slice(-4)}`,
+      orderId: lastOrderSnapshot?.orderId || lastOrderId || `ORD-${Date.now().toString().slice(-6)}`,
+      orderType: lastOrderSnapshot?.orderType || orderType,
+      tableNumber: lastOrderSnapshot?.tableNumber || targetTableNum,
       createdAt: new Date(),
-      specialNotes: orderNotes,
-      items: cart.map((item) => {
-        const optionList: string[] = []
-        if (item.variantSize) optionList.push(`Size: ${item.variantSize}`)
-        if (item.crust) optionList.push(`Crust: ${item.crust}`)
-        if (item.modifiers && item.modifiers.length > 0) {
-          item.modifiers.forEach((m) => optionList.push(m.name))
-        }
-        return {
-          name: item.productName,
-          quantity: item.quantity,
-          course: item.course,
-          selectedOptions: optionList,
-          notes: item.notes,
-        }
-      }),
+      specialNotes: lastOrderSnapshot?.notes || orderNotes,
+      items: itemsToPrint,
     })
     toast.success('👨‍🍳 Kitchen Ticket (KOT) Sent to Printer!')
   }

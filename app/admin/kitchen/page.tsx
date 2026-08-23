@@ -562,7 +562,13 @@ export default function KitchenDisplayPage() {
                         {/* Items List */}
                         <div className="space-y-1.5 pt-1 max-h-48 overflow-y-auto pr-1">
                           {itemsList.map((item: any, idx: number) => {
-                            const pName = item.product?.name || item.products?.name || item.name || 'Wood-Fired Item'
+                            const pName =
+                              item.selected_options?.productName ||
+                              item.product?.name ||
+                              item.products?.name ||
+                              item.product_name ||
+                              item.name ||
+                              'Wood-Fired Item'
                             return (
                               <div key={item.id || idx} className="text-xs">
                                 <div className="flex items-center justify-between font-bold text-[#1C1917]">
@@ -571,7 +577,9 @@ export default function KitchenDisplayPage() {
                                 {item.selected_options && (
                                   <div className="text-[11px] text-[#78716C] pl-2 font-mono">
                                     {typeof item.selected_options === 'object'
-                                      ? Object.entries(item.selected_options).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                      ? Array.isArray(item.selected_options?.modifiers) && item.selected_options.modifiers.length > 0
+                                        ? item.selected_options.modifiers.map((m: any) => typeof m === 'string' ? m : m.name).join(', ')
+                                        : Object.entries(item.selected_options).filter(([k]) => k !== 'productName' && k !== 'notes').map(([k, v]) => `${k}: ${v}`).join(', ')
                                       : String(item.selected_options)}
                                   </div>
                                 )}

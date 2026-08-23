@@ -163,6 +163,12 @@ export function generateThermalReceiptHtml(data: POSReceiptOrderData): string {
     : data.orderType.toUpperCase()
 
   const itemsHtml = data.items.map((item) => {
+    const itemName =
+      item.name ||
+      (item as any).productName ||
+      (item as any).product_name ||
+      'Menu Item'
+
     const optionsStr = item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0
       ? item.selectedOptions.map(o => typeof o === 'string' ? o : (o.choice || o.optionName)).filter(Boolean).join(', ')
       : ''
@@ -171,7 +177,7 @@ export function generateThermalReceiptHtml(data: POSReceiptOrderData): string {
       <tr>
         <td style="padding: 3px 0; vertical-align: top; width: 24px; font-weight: bold;">${item.quantity}x</td>
         <td style="padding: 3px 4px; vertical-align: top;">
-          <div style="font-weight: bold;">${item.name}</div>
+          <div style="font-weight: bold;">${itemName}</div>
           ${optionsStr ? `<div style="font-size: 9px; color: #555;">${optionsStr}</div>` : ''}
           ${item.notes ? `<div style="font-size: 9px; font-style: italic; color: #666;">Note: ${item.notes}</div>` : ''}
         </td>
@@ -381,6 +387,12 @@ export function generateKOTReceiptHtml(kot: POSKOTData): string {
   })
 
   const itemsHtml = kot.items.map((item, idx) => {
+    const itemName =
+      item.name ||
+      (item as any).productName ||
+      (item as any).product_name ||
+      'Kitchen Item'
+
     const opts = item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0
       ? item.selectedOptions.map(o => typeof o === 'string' ? o : (o.choice || o.optionName)).filter(Boolean).join(', ')
       : ''
@@ -391,7 +403,7 @@ export function generateKOTReceiptHtml(kot: POSKOTData): string {
           [${item.quantity}]
         </td>
         <td style="padding: 4px 0; vertical-align: top;">
-          <div style="font-size: 14px; font-weight: 900;">${item.name}</div>
+          <div style="font-size: 14px; font-weight: 900;">${itemName}</div>
           ${opts ? `<div style="font-size: 11px; font-weight: bold; color: #222; margin-top: 1px;">👉 ${opts}</div>` : ''}
           ${item.notes ? `<div style="font-size: 11px; font-weight: bold; background: #eee; padding: 1px 3px; margin-top: 2px; display: inline-block;">⚠️ ${item.notes}</div>` : ''}
         </td>

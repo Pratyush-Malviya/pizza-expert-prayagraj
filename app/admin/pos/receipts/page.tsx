@@ -102,13 +102,30 @@ function ReceiptsContent() {
       customerName: selectedOrder.address_json?.name,
       customerPhone: selectedOrder.address_json?.phone,
       createdAt: selectedOrder.created_at,
-      items: (selectedOrder.order_items || []).map((item) => ({
-        name: item.products?.name || 'Menu Item',
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        totalPrice: item.quantity * item.unit_price,
-        selectedOptions: Array.isArray(item.selected_options) ? item.selected_options : undefined,
-      })),
+      items: (selectedOrder.order_items || []).map((item) => {
+        const selOpts = item.selected_options as any
+        const resolvedName =
+          (typeof selOpts === 'object' && selOpts?.productName) ||
+          (typeof selOpts === 'object' && selOpts?.name) ||
+          item.products?.name ||
+          'Pizza Expert Item'
+
+        const optionList: string[] = []
+        if (typeof selOpts === 'object' && Array.isArray(selOpts?.modifiers)) {
+          selOpts.modifiers.forEach((m: any) => optionList.push(typeof m === 'string' ? m : m.name))
+        } else if (Array.isArray(selOpts)) {
+          selOpts.forEach((o: any) => optionList.push(typeof o === 'string' ? o : o.choice || o.optionName))
+        }
+
+        return {
+          name: resolvedName,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          totalPrice: item.quantity * item.unit_price,
+          selectedOptions: optionList.length > 0 ? optionList : undefined,
+          notes: typeof selOpts === 'object' ? selOpts?.notes : undefined,
+        }
+      }),
       subtotal: Number(selectedOrder.subtotal || 0),
       discount: Number(selectedOrder.discount || 0),
       tax: Number(selectedOrder.tax || 0),
@@ -134,11 +151,28 @@ function ReceiptsContent() {
       orderType: selectedOrder.order_type || 'takeaway',
       createdAt: selectedOrder.created_at,
       specialNotes: selectedOrder.notes,
-      items: (selectedOrder.order_items || []).map((item) => ({
-        name: item.products?.name || 'Menu Item',
-        quantity: item.quantity,
-        selectedOptions: Array.isArray(item.selected_options) ? item.selected_options : undefined,
-      })),
+      items: (selectedOrder.order_items || []).map((item) => {
+        const selOpts = item.selected_options as any
+        const resolvedName =
+          (typeof selOpts === 'object' && selOpts?.productName) ||
+          (typeof selOpts === 'object' && selOpts?.name) ||
+          item.products?.name ||
+          'Kitchen Item'
+
+        const optionList: string[] = []
+        if (typeof selOpts === 'object' && Array.isArray(selOpts?.modifiers)) {
+          selOpts.modifiers.forEach((m: any) => optionList.push(typeof m === 'string' ? m : m.name))
+        } else if (Array.isArray(selOpts)) {
+          selOpts.forEach((o: any) => optionList.push(typeof o === 'string' ? o : o.choice || o.optionName))
+        }
+
+        return {
+          name: resolvedName,
+          quantity: item.quantity,
+          selectedOptions: optionList.length > 0 ? optionList : undefined,
+          notes: typeof selOpts === 'object' ? selOpts?.notes : undefined,
+        }
+      }),
     })
   }
 
@@ -149,12 +183,20 @@ function ReceiptsContent() {
       customer: selectedOrder.address_json?.name || 'Walk-in Customer',
       phone: selectedOrder.address_json?.phone || 'N/A',
       address: selectedOrder.address_json?.address || 'Counter POS Order',
-      items_detail: (selectedOrder.order_items || []).map((i) => ({
-        product_name: i.products?.name || 'Item',
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        selected_options: i.selected_options,
-      })),
+      items_detail: (selectedOrder.order_items || []).map((i) => {
+        const selOpts = i.selected_options as any
+        const resolvedName =
+          (typeof selOpts === 'object' && selOpts?.productName) ||
+          (typeof selOpts === 'object' && selOpts?.name) ||
+          i.products?.name ||
+          'Item'
+        return {
+          product_name: resolvedName,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          selected_options: i.selected_options,
+        }
+      }),
       subtotal: Number(selectedOrder.subtotal || 0),
       tax: Number(selectedOrder.tax || 0),
       delivery_fee: Number(selectedOrder.delivery_fee || 0),
@@ -346,19 +388,40 @@ function ReceiptsContent() {
                     <span>ITEM</span>
                     <span>AMT (₹)</span>
                   </div>
-                  {(selectedOrder.order_items || []).map((item, i) => (
-                    <div key={i} className="flex justify-between items-start text-[11px]">
-                      <div className="flex-1 pr-2">
-                        <span className="font-bold">{item.quantity}x</span> {item.products?.name || 'Item'}
-                        {Array.isArray(item.selected_options) && item.selected_options.length > 0 && (
-                          <div className="text-[9px] text-[#78716C]">
-                            {item.selected_options.map((o: any) => typeof o === 'string' ? o : o.choice).join(', ')}
-                          </div>
-                        )}
+                  {(selectedOrder.order_items || []).map((item, i) => {
+                    const selOpts = item.selected_options as any
+                    const resolvedName =
+                      (typeof selOpts === 'object' && selOpts?.productName) ||
+                      (typeof selOpts === 'object' && selOpts?.name) ||
+                      item.products?.name ||
+                      'Pizza Item'
+
+                    const optionList: string[] = []
+                    if (typeof selOpts === 'object' && Array.isArray(selOpts?.modifiers)) {
+                      selOpts.modifiers.forEach((m: any) => optionList.push(typeof m === 'string' ? m : m.name))
+                    } else if (Array.isArray(selOpts)) {
+                      selOpts.forEach((o: any) => optionList.push(typeof o === 'string' ? o : o.choice || o.optionName))
+                    }
+
+                    return (
+                      <div key={i} className="flex justify-between items-start text-[11px]">
+                        <div className="flex-1 pr-2">
+                          <span className="font-bold">{item.quantity}x</span> {resolvedName}
+                          {optionList.length > 0 && (
+                            <div className="text-[9px] text-[#78716C]">
+                              {optionList.join(', ')}
+                            </div>
+                          )}
+                          {typeof selOpts === 'object' && selOpts?.notes && (
+                            <div className="text-[9px] text-[#78716C] italic">
+                              Note: {selOpts.notes}
+                            </div>
+                          )}
+                        </div>
+                        <span className="font-bold">₹{(item.quantity * item.unit_price).toFixed(2)}</span>
                       </div>
-                      <span className="font-bold">₹{(item.quantity * item.unit_price).toFixed(2)}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 <div className="border-t border-dashed border-[#1C1917] my-2" />

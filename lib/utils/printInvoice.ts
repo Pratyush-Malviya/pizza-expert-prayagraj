@@ -38,10 +38,12 @@ export function handlePrintInvoice(order: PrintableOrder) {
   }
 
   const itemsHtml = (order.items_detail && order.items_detail.length > 0)
-    ? order.items_detail.map((item) => `
+    ? order.items_detail.map((item) => {
+        const name = item.product_name || (item as any).name || (item as any).productName || 'Menu Item'
+        return `
         <tr>
           <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">
-            <strong style="font-size: 14px; color: #111827;">${item.quantity}x ${item.product_name}</strong>
+            <strong style="font-size: 14px; color: #111827;">${item.quantity}x ${name}</strong>
             ${item.selected_options && Array.isArray(item.selected_options) && item.selected_options.length > 0
               ? `<br><small style="color: #6b7280; font-size: 11px;">${item.selected_options.map((o: any) => `${o.optionName || 'Choice'}: ${o.choice || o}`).join(', ')}</small>`
               : ''}
@@ -49,7 +51,8 @@ export function handlePrintInvoice(order: PrintableOrder) {
           <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-size: 13px;">₹${item.unit_price}</td>
           <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-size: 13px; font-weight: bold; color: #111827;">₹${item.unit_price * item.quantity}</td>
         </tr>
-      `).join('')
+      `
+      }).join('')
     : `<tr><td colspan="3" style="padding: 12px 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${order.items_summary || '1x Pizza Order'}</td></tr>`
 
   const htmlContent = `
