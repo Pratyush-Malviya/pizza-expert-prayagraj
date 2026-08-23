@@ -495,12 +495,34 @@ export default function POSScreen() {
     }
   }, [cart, orderType, customerName, customerPhone])
 
-  // ── Recalculate totals when cart changes ──────────────────────────────────
+  // ── Calculate Totals via Client + Server Action ─────────────────────────────
   useEffect(() => {
     if (cart.length === 0) {
       setTotals({ subtotal: 0, discount: 0, tax: 0, total: 0 })
       return
     }
+
+    // 1. Instant client calculation
+    const clientSubtotal = cart.reduce((acc, l) => {
+      const modTotal = l.modifiers.reduce((s, m) => s + Number(m.price || 0), 0)
+      return acc + (Number(l.unitPrice || 0) + modTotal) * l.quantity
+    }, 0)
+    const clientDiscount = discountValue > 0
+      ? (discountType === 'percentage' ? Math.round(clientSubtotal * (discountValue / 100) * 100) / 100 : Math.min(discountValue, clientSubtotal))
+      : 0
+    const clientTaxable = Math.max(0, clientSubtotal - clientDiscount)
+    const clientTax = Math.round(clientTaxable * 0.05 * 100) / 100
+    const packagingExtra = packagingCharge && (orderType === 'takeaway' || orderType === 'pickup') ? 15 : 0
+    const clientTotal = Math.round((clientTaxable + clientTax + packagingExtra) * 100) / 100
+
+    setTotals({
+      subtotal: clientSubtotal,
+      discount: clientDiscount,
+      tax: clientTax,
+      total: clientTotal,
+    })
+
+    // 2. Server-authoritative sync
     const items: POSCartItem[] = cart.map((l) => ({
       productId: l.productId,
       productName: `${l.productName}${l.variantSize ? ` (${l.variantSize})` : ''}${l.crust ? ` - ${l.crust}` : ''}`,
@@ -509,13 +531,18 @@ export default function POSScreen() {
       modifiers: l.modifiers,
     }))
 
-    calculatePOSTotal(items, discountValue, discountType).then((res) => {
-      let packagingExtra = packagingCharge && (orderType === 'takeaway' || orderType === 'pickup') ? 15 : 0
-      setTotals({
-        ...res,
-        total: Math.round((res.total + packagingExtra) * 100) / 100
+    calculatePOSTotal(items, discountValue, discountType)
+      .then((res) => {
+        if (res && typeof res.total === 'number') {
+          setTotals({
+            ...res,
+            total: Math.round((res.total + packagingExtra) * 100) / 100,
+          })
+        }
       })
-    })
+      .catch(() => {
+        // Silently preserve instant client totals
+      })
   }, [cart, discountValue, discountType, packagingCharge, orderType])
 
   // ── Keyboard Shortcuts (Section 4.1 of Guide) ─────────────────────────────

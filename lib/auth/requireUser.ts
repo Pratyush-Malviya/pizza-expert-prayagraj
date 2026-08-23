@@ -50,8 +50,8 @@ export async function requireUser(allowedRoles?: string[]) {
       }
     }
 
-    if (role === 'super_admin') return user
-    if (role === 'admin' && (allowedRoles.includes('manager') || allowedRoles.includes('staff') || allowedRoles.includes('admin') || allowedRoles.includes('super_admin'))) {
+    if (role === 'super_admin' || role === 'admin') return user
+    if (role === 'manager' && (allowedRoles.includes('staff') || allowedRoles.includes('cashier') || allowedRoles.includes('waiter') || allowedRoles.includes('manager'))) {
       return user
     }
 

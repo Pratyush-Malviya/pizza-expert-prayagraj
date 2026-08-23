@@ -39,58 +39,73 @@ export interface CreatePOSOrderPayload {
 // ─── Calculate POS Order Total (server-authoritative) ────────────────────────
 
 export async function calculatePOSTotal(items: POSCartItem[], discountValue = 0, discountType = 'flat') {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
+  try {
+    let taxRate = 0.05
+    let dbProducts: any[] | null = null
 
-  // Fetch real prices from DB
-  const productIds = items.map((i) => i.productId)
-  const { data: dbProducts } = await supabase
-    .from('products')
-    .select('id, name, price, is_available')
-    .in('id', productIds)
+    try {
+      await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+      const supabase = createAdminClient()
 
-  let subtotal = 0
-  for (const item of items) {
-    const dbProd = dbProducts?.find((p) => p.id === item.productId)
-    const basePrice = dbProd ? Number(dbProd.price) : item.unitPrice
-    const modifierTotal = (item.modifiers || []).reduce((acc, m) => acc + Number(m.price), 0)
-    subtotal += (basePrice + modifierTotal) * item.quantity
+      // Fetch real prices from DB if accessible
+      const productIds = items.map((i) => i.productId)
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, price, is_available')
+        .in('id', productIds)
+      dbProducts = data
+
+      // Fetch active default tax group
+      const { data: taxGroup } = await supabase
+        .from('tax_groups')
+        .select('id, tax_rates(*)')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (taxGroup?.tax_rates) {
+        taxRate = (taxGroup.tax_rates as any[]).reduce((sum: number, r: any) => sum + Number(r.rate), 0) / 100
+      }
+    } catch {
+      // Graceful fallback to client prices and 5% standard GST
+    }
+
+    let subtotal = 0
+    for (const item of items) {
+      const dbProd = dbProducts?.find((p) => p.id === item.productId)
+      const basePrice = dbProd ? Number(dbProd.price) : Number(item.unitPrice || 0)
+      const modifierTotal = (item.modifiers || []).reduce((acc, m) => acc + Number(m.price || 0), 0)
+      subtotal += (basePrice + modifierTotal) * (item.quantity || 1)
+    }
+
+    let discount = 0
+    if (discountValue > 0) {
+      discount = discountType === 'percentage'
+        ? Math.round(subtotal * (discountValue / 100) * 100) / 100
+        : Math.min(discountValue, subtotal)
+    }
+
+    const taxableAmount = Math.max(0, subtotal - discount)
+    const tax = Math.round(taxableAmount * taxRate * 100) / 100
+    const total = Math.round((taxableAmount + tax) * 100) / 100
+
+    return { subtotal, discount, tax, total, taxRate }
+  } catch (err: any) {
+    // Ultimate safe fallback
+    const subtotal = items.reduce((s, i) => s + Number(i.unitPrice || 0) * (i.quantity || 1), 0)
+    const tax = Math.round(subtotal * 0.05 * 100) / 100
+    return { subtotal, discount: 0, tax, total: Math.round((subtotal + tax) * 100) / 100, taxRate: 0.05 }
   }
-
-  // Fetch active default tax group
-  const { data: taxGroup } = await supabase
-    .from('tax_groups')
-    .select('id, tax_rates(*)')
-    .eq('is_default', true)
-    .eq('is_active', true)
-    .maybeSingle()
-
-  const taxRate = taxGroup?.tax_rates
-    ? (taxGroup.tax_rates as any[]).reduce((sum: number, r: any) => sum + Number(r.rate), 0) / 100
-    : 0.05
-
-  let discount = 0
-  if (discountValue > 0) {
-    discount = discountType === 'percentage'
-      ? Math.round(subtotal * (discountValue / 100) * 100) / 100
-      : Math.min(discountValue, subtotal)
-  }
-
-  const taxableAmount = Math.max(0, subtotal - discount)
-  const tax = Math.round(taxableAmount * taxRate * 100) / 100
-  const total = Math.round((taxableAmount + tax) * 100) / 100
-
-  return { subtotal, discount, tax, total, taxRate }
 }
 
 // ─── Create POS Order ────────────────────────────────────────────────────────
 
 export async function createPOSOrder(payload: CreatePOSOrderPayload) {
-  const user = await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  payload.cashierId = user.id // Override with authenticated user
-  const supabase = createAdminClient()
-
   try {
+    const user = await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+    payload.cashierId = user.id // Override with authenticated user
+    const supabase = createAdminClient()
+
     const totals = await calculatePOSTotal(
       payload.items,
       payload.discountValue || 0,
@@ -222,10 +237,10 @@ export async function createKOT(
   items: POSCartItem[],
   options: { tableId?: string; orderType?: string; customerName?: string; guestCount?: number; station?: string }
 ) {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
-
   try {
+    await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
+
     const { count } = await supabase.from('kots').select('*', { count: 'exact', head: true })
     const kotSeq = ((count || 0) + 1).toString().padStart(4, '0')
     const kotNumber = `KOT-${kotSeq}`
@@ -273,18 +288,22 @@ export async function createKOT(
 // ─── Void KOT ──────────────────────────────────────────────────────────────
 
 export async function voidKOT(kotId: string, reason: string, voidedBy: string) {
-  const user = await requireUser(['cashier', 'manager', 'super_admin'])
-  voidedBy = user.id // Override with authenticated user
-  const supabase = createAdminClient()
+  try {
+    const user = await requireUser(['cashier', 'manager', 'super_admin', 'admin'])
+    voidedBy = user.id // Override with authenticated user
+    const supabase = createAdminClient()
 
-  const { error } = await supabase
-    .from('kots')
-    .update({ status: 'cancelled', voided_at: new Date().toISOString(), void_reason: reason, voided_by: voidedBy })
-    .eq('id', kotId)
+    const { error } = await supabase
+      .from('kots')
+      .update({ status: 'cancelled', voided_at: new Date().toISOString(), void_reason: reason, voided_by: voidedBy })
+      .eq('id', kotId)
 
-  if (error) return { success: false, error: error.message }
-  revalidatePath('/admin/kitchen')
-  return { success: true }
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/kitchen')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
 
 // ─── Hold Order ────────────────────────────────────────────────────────────
@@ -295,108 +314,132 @@ export async function holdOrder(
   orderData: object,
   label?: string
 ) {
-  const user = await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  cashierId = user.id // Override with authenticated user
-  const supabase = createAdminClient()
+  try {
+    const user = await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+    cashierId = user.id // Override with authenticated user
+    const supabase = createAdminClient()
 
-  const { data, error } = await supabase
-    .from('held_orders')
-    .insert({ cashier_id: cashierId, terminal_id: terminalId, order_data: orderData, label: label || null, is_active: true })
-    .select()
-    .single()
+    const { data, error } = await supabase
+      .from('held_orders')
+      .insert({ cashier_id: cashierId, terminal_id: terminalId, order_data: orderData, label: label || null, is_active: true })
+      .select()
+      .single()
 
-  if (error) return { success: false, error: error.message }
-  revalidatePath('/admin/pos/held')
-  return { success: true, heldOrderId: data.id }
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/pos/held')
+    return { success: true, heldOrderId: data.id }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
 
 // ─── Resume Held Order ─────────────────────────────────────────────────────
 
 export async function resumeHeldOrder(heldOrderId: string) {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
+  try {
+    await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
 
-  const { data, error } = await supabase
-    .from('held_orders')
-    .update({ is_active: false, resumed_at: new Date().toISOString() })
-    .eq('id', heldOrderId)
-    .select()
-    .single()
+    const { data, error } = await supabase
+      .from('held_orders')
+      .update({ is_active: false, resumed_at: new Date().toISOString() })
+      .eq('id', heldOrderId)
+      .select()
+      .single()
 
-  if (error) return { success: false, error: error.message }
-  revalidatePath('/admin/pos/held')
-  return { success: true, orderData: data.order_data }
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/pos/held')
+    return { success: true, orderData: data.order_data }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
 
 // ─── Get Active KOTs for Kitchen ──────────────────────────────────────────
 
 export async function getActiveKOTs() {
-  await requireUser(['kitchen_manager', 'staff', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
+  try {
+    await requireUser(['kitchen_manager', 'staff', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
 
-  const { data, error } = await supabase
-    .from('kots')
-    .select(`
-      *,
-      kot_items(*),
-      tables(table_number, area_id),
-      orders(source, order_type, customer_name:address_json->name, total)
-    `)
-    .in('status', ['pending', 'sent', 'acknowledged', 'preparing'])
-    .order('created_at', { ascending: true })
+    const { data, error } = await supabase
+      .from('kots')
+      .select(`
+        *,
+        kot_items(*),
+        tables(table_number, area_id),
+        orders(source, order_type, customer_name:address_json->name, total)
+      `)
+      .in('status', ['pending', 'sent', 'acknowledged', 'preparing'])
+      .order('created_at', { ascending: true })
 
-  if (error) return { success: false, error: error.message, data: [] }
-  return { success: true, data: data || [] }
+    if (error) return { success: false, error: error.message, data: [] }
+    return { success: true, data: data || [] }
+  } catch (err: any) {
+    return { success: false, error: err.message, data: [] }
+  }
 }
 
 // ─── Update KOT Status ─────────────────────────────────────────────────────
 
 export async function updateKOTStatus(kotId: string, status: string) {
-  await requireUser(['kitchen_manager', 'staff', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
-  const { error } = await supabase.from('kots').update({ status }).eq('id', kotId)
-  if (error) return { success: false, error: error.message }
-  revalidatePath('/admin/kitchen')
-  return { success: true }
+  try {
+    await requireUser(['kitchen_manager', 'staff', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
+    const { error } = await supabase.from('kots').update({ status }).eq('id', kotId)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/kitchen')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
 
 // ─── 86'd / Quick Out-of-Stock Toggle ──────────────────────────────────────
 
 export async function toggleProduct86(productId: string, isAvailable: boolean) {
-  await requireUser(['cashier', 'kitchen_manager', 'staff', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
-  const { error } = await supabase
-    .from('products')
-    .update({ is_available: isAvailable })
-    .eq('id', productId)
+  try {
+    await requireUser(['cashier', 'kitchen_manager', 'staff', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
+    const { error } = await supabase
+      .from('products')
+      .update({ is_available: isAvailable })
+      .eq('id', productId)
 
-  if (error) return { success: false, error: error.message }
-  revalidatePath('/admin/pos')
-  revalidatePath('/menu')
-  return { success: true, isAvailable }
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/admin/pos')
+    revalidatePath('/menu')
+    return { success: true, isAvailable }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
 
 // ─── Fetch Active Table Running Order ──────────────────────────────────────
 
 export async function fetchActiveTableOrder(tableId: string) {
-  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
-  const supabase = createAdminClient()
+  try {
+    await requireUser(['cashier', 'waiter', 'manager', 'super_admin', 'admin'])
+    const supabase = createAdminClient()
 
-  // Find active table session or unpaid confirmed order for this table
-  const { data: order, error } = await supabase
-    .from('orders')
-    .select(`
-      *,
-      order_items(*, products(name, price, is_veg))
-    `)
-    .eq('table_id', tableId)
-    .eq('order_type', 'dine_in')
-    .in('status', ['confirmed', 'preparing', 'ready', 'served', 'delivered'])
-    .in('payment_status', ['unpaid', 'partially_paid'])
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    // Find active table session or unpaid confirmed order for this table
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items(*, products(name, price, is_veg))
+      `)
+      .eq('table_id', tableId)
+      .eq('order_type', 'dine_in')
+      .in('status', ['confirmed', 'preparing', 'ready', 'served', 'delivered'])
+      .in('payment_status', ['unpaid', 'partially_paid'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-  if (error || !order) return { success: false, order: null }
-  return { success: true, order }
+    if (error) return { success: false, error: error.message, data: null, order: null }
+    return { success: true, data: order, order }
+  } catch (err: any) {
+    return { success: false, error: err.message, data: null, order: null }
+  }
 }

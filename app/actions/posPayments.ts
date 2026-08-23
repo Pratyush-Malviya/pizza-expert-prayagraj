@@ -25,13 +25,11 @@ export interface ProcessPOSPaymentPayload {
 // ─── Process POS Payment ────────────────────────────────────────────────────
 
 export async function processPOSPayment(payload: ProcessPOSPaymentPayload) {
-  const user = await requireUser(['cashier', 'manager', 'super_admin'])
-  
-  const validData = processPOSPaymentSchema.parse(payload)
-
-  const supabase = createAdminClient()
-
   try {
+    const user = await requireUser(['cashier', 'manager', 'super_admin', 'admin'])
+    const validData = processPOSPaymentSchema.parse(payload)
+    const supabase = createAdminClient()
+
     const { orderId, shiftId, tenders, orderTotal } = payload
 
     // Validate total tendered covers order total
