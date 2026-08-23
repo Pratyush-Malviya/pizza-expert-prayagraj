@@ -368,13 +368,14 @@
   /* Form Field styling */
   .input-field {
     width: 100%;
-    background-color: #16192C;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #FFFFFF;
+    background-color: #FFFFFF;
+    border: 1px solid #DDE2EB;
+    color: #181B2E;
     padding: 0.8rem 1.1rem;
     border-radius: var(--radius-md);
     outline: none;
     font-size: 0.9375rem;
+    font-weight: 500;
     transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition);
   }
   .input-field::placeholder {
@@ -382,10 +383,30 @@
   }
   .input-field:focus {
     border-color: var(--vibe-primary);
-    box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.25);
-    background-color: #1A1E34;
+    box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.15);
+    background-color: #FFFFFF;
+    color: #181B2E;
   }
   .input-field option {
+    background-color: #FFFFFF;
+    color: #181B2E;
+  }
+
+  [data-theme='dark'] .input-field {
+    background-color: #16192C;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #FFFFFF;
+  }
+  [data-theme='dark'] .input-field::placeholder {
+    color: #80828D;
+  }
+  [data-theme='dark'] .input-field:focus {
+    border-color: var(--vibe-primary);
+    box-shadow: 0 0 0 3px rgba(0, 115, 234, 0.25);
+    background-color: #1A1E34;
+    color: #FFFFFF;
+  }
+  [data-theme='dark'] .input-field option {
     background-color: #16192C;
     color: #FFFFFF;
   }

@@ -522,14 +522,14 @@ export default function MediaLibraryModal({
                     value={customUrlInput}
                     onChange={(e) => setCustomUrlInput(e.target.value)}
                     placeholder="https://images.unsplash.com/..."
-                    className="input-field text-xs w-full"
+                    className="w-full bg-[#FBF9F5] border border-[#E7E0D8] text-xs font-semibold rounded-xl px-3 py-2 text-[#1C1917] placeholder:text-[#A8A29E] focus:bg-white focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all"
                   />
                   <input
                     type="text"
                     value={customAltInput}
                     onChange={(e) => setCustomAltInput(e.target.value)}
                     placeholder="Describe image for SEO & Accessibility (Alt Text)"
-                    className="input-field text-xs w-full"
+                    className="w-full bg-[#FBF9F5] border border-[#E7E0D8] text-xs font-semibold rounded-xl px-3 py-2 text-[#1C1917] placeholder:text-[#A8A29E] focus:bg-white focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all"
                   />
                   <button
                     onClick={handleUseCustomUrl}
@@ -685,7 +685,7 @@ export default function MediaLibraryModal({
                     value={selectedTitle}
                     onChange={(e) => setSelectedTitle(e.target.value)}
                     placeholder="e.g. Margherita Pizza Large"
-                    className="input-field text-xs py-1.5 px-2.5 h-8 bg-[#FBF9F5]"
+                    className="w-full bg-[#FBF9F5] border border-[#E7E0D8] text-xs font-semibold rounded-xl px-3 py-1.5 h-9 text-[#1C1917] placeholder:text-[#A8A29E] focus:bg-white focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-2xs"
                   />
                 </div>
 
@@ -702,21 +702,21 @@ export default function MediaLibraryModal({
                       Save Metadata
                     </button>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     <input
                       type="text"
                       value={selectedAlt}
                       onChange={(e) => setSelectedAlt(e.target.value)}
-                      placeholder="Descriptive alt text..."
-                      className="input-field text-xs py-1.5 px-2.5 h-8 bg-[#FBF9F5] flex-1"
+                      placeholder="Descriptive alt text for SEO..."
+                      className="flex-1 bg-[#FBF9F5] border border-[#E7E0D8] text-xs font-semibold rounded-xl px-3 py-1.5 h-9 text-[#1C1917] placeholder:text-[#A8A29E] focus:bg-white focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-2xs"
                     />
                     <button
                       type="button"
                       onClick={handleSaveAltText}
-                      className="btn btn-secondary btn-xs h-8 px-2 flex items-center gap-1 text-[10px]"
+                      className="btn btn-secondary btn-xs h-9 px-2.5 flex items-center gap-1 text-[11px] font-bold"
                       title="Save Alt Text"
                     >
-                      <Save size={11} />
+                      <Save size={12} /> Save
                     </button>
                   </div>
                 </div>
