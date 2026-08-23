@@ -31,8 +31,58 @@ export function categorizeImage(titleOrKey: string): MediaImage['category'] {
 export function formatSlugTitle(slug: string): string {
   return slug
     .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+// Helper to safely compress data URL images before local storage
+export function compressImageDataUrl(dataUrl: string, maxDim: number = 1000, quality: number = 0.85): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !dataUrl.startsWith('data:image')) {
+      resolve(dataUrl)
+      return
+    }
+    // If it's a small image already, don't recompress
+    if (dataUrl.length < 250000) {
+      resolve(dataUrl)
+      return
+    }
+
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width <= maxDim && height <= maxDim && dataUrl.length < 350000) {
+        resolve(dataUrl)
+        return
+      }
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width)
+          width = maxDim
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height)
+          height = maxDim
+        }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        resolve(dataUrl)
+        return
+      }
+      ctx.drawImage(img, 0, 0, width, height)
+      const isPng = dataUrl.startsWith('data:image/png')
+      const mime = isPng ? 'image/png' : 'image/jpeg'
+      const compressed = canvas.toDataURL(mime, quality)
+      resolve(compressed)
+    }
+    img.onerror = () => resolve(dataUrl)
+    img.src = dataUrl
+  })
 }
 
 // Get metadata dictionary
@@ -149,7 +199,7 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
               id: item.id || `upload-${index}`,
               url: item.url,
               title: item.title || `Uploaded Image ${index + 1}`,
-              alt: item.alt || item.title || `Uploaded pizza food photo ${index + 1}`,
+              alt: item.alt || item.title || `Uploaded photo ${index + 1}`,
               category: 'uploads',
               source: 'uploaded',
               addedAt: item.addedAt,
@@ -162,7 +212,7 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
     }
   }
 
-  // 2. Fetch from Supabase tables (products, categories, offers, settings)
+  // 2. Fetch from Supabase tables (products, categories, offers)
   try {
     const supabase = createClient()
 
@@ -221,7 +271,7 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
             id: `db-offer-${offer.id}`,
             url: offer.image_url,
             title: `${offer.title} (Offer)`,
-            alt: `${offer.title} special promotional deal`,
+            alt: `${offer.title} special promotional offer`,
             category: 'general',
             source: 'database',
           })
@@ -229,44 +279,46 @@ export async function fetchAllMediaImages(): Promise<MediaImage[]> {
       })
     }
   } catch (err) {
-    console.warn('Supabase media fetch fallback:', err)
+    console.warn('Could not fetch remote media images from Supabase tables', err)
   }
 
-  // 3. Check LocalStorage caches for products, categories, offers
+  // 3. Fallback Local Storage Items (Offline / Local Mode)
   if (typeof window !== 'undefined') {
     try {
-      const storedProdsRaw = localStorage.getItem('pizza_products')
-      if (storedProdsRaw) {
-        const storedProds = JSON.parse(storedProdsRaw)
-        if (Array.isArray(storedProds)) {
-          storedProds.forEach((prod) => {
-            if (prod.image_url) {
+      const storedCategoriesRaw = localStorage.getItem('pizza_categories')
+      if (storedCategoriesRaw) {
+        const storedCategories = JSON.parse(storedCategoriesRaw)
+        if (Array.isArray(storedCategories)) {
+          storedCategories.forEach((cat) => {
+            const imgUrl = cat.imageUrl || cat.image_url
+            if (imgUrl) {
               addImage({
-                id: `local-prod-${prod.id || prod.slug}`,
-                url: prod.image_url,
-                title: prod.name || formatSlugTitle(prod.slug || 'Product'),
-                alt: `${prod.name || prod.slug} delicious food`,
-                category: categorizeImage(prod.name || prod.slug || ''),
-                source: prod.image_url.startsWith('data:') ? 'uploaded' : 'database',
+                id: `local-cat-${cat.id || cat.slug}`,
+                url: imgUrl,
+                title: `${cat.name || cat.slug} (Category)`,
+                alt: `${cat.name || cat.slug} food category banner`,
+                category: categorizeImage(cat.name || cat.slug || ''),
+                source: imgUrl.startsWith('data:') ? 'uploaded' : 'database',
               })
             }
           })
         }
       }
 
-      const storedCatsRaw = localStorage.getItem('pizza_categories')
-      if (storedCatsRaw) {
-        const storedCats = JSON.parse(storedCatsRaw)
-        if (Array.isArray(storedCats)) {
-          storedCats.forEach((cat) => {
-            if (cat.image_url) {
+      const storedProductsRaw = localStorage.getItem('pizza_products')
+      if (storedProductsRaw) {
+        const storedProducts = JSON.parse(storedProductsRaw)
+        if (Array.isArray(storedProducts)) {
+          storedProducts.forEach((prod) => {
+            const imgUrl = prod.imageUrl || prod.image_url || (prod.images && prod.images[0]?.image_url)
+            if (imgUrl) {
               addImage({
-                id: `local-cat-${cat.id || cat.slug}`,
-                url: cat.image_url,
-                title: `${cat.name} (Category)`,
-                alt: `${cat.name} category image`,
-                category: categorizeImage(cat.name || cat.slug || ''),
-                source: cat.image_url.startsWith('data:') ? 'uploaded' : 'database',
+                id: `local-prod-${prod.id || prod.slug}`,
+                url: imgUrl,
+                title: prod.name || prod.slug || 'Menu Item',
+                alt: `${prod.name || prod.slug} delicious menu dish`,
+                category: categorizeImage(prod.name || prod.slug || ''),
+                source: imgUrl.startsWith('data:') ? 'uploaded' : 'database',
               })
             }
           })
@@ -319,8 +371,12 @@ export function saveUploadedImageToHistory(url: string, title?: string, alt?: st
     const raw = localStorage.getItem(UPLOADS_STORAGE_KEY)
     let list: Array<{ id: string; url: string; title: string; alt?: string; addedAt?: string }> = []
     if (raw) {
-      list = JSON.parse(raw)
-      if (!Array.isArray(list)) list = []
+      try {
+        list = JSON.parse(raw)
+        if (!Array.isArray(list)) list = []
+      } catch {
+        list = []
+      }
     }
 
     // Filter out if duplicate URL exists already
@@ -338,15 +394,32 @@ export function saveUploadedImageToHistory(url: string, title?: string, alt?: st
       addedAt: new Date().toISOString(),
     })
 
-    // Also update metadata store
-    updateImageMetadata(url, { alt: finalAlt, title: finalTitle })
-
-    // Keep up to 60 most recent uploads
-    if (list.length > 60) {
-      list = list.slice(0, 60)
+    // Also remove from deleted URLs if it was previously deleted
+    const deletedSet = getDeletedImageUrls()
+    if (deletedSet.has(url)) {
+      deletedSet.delete(url)
+      try {
+        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deletedSet)))
+      } catch {}
     }
 
-    localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(list))
+    // Save to localStorage with progressive eviction if quota is exceeded
+    let saved = false
+    while (!saved && list.length > 0) {
+      try {
+        localStorage.setItem(UPLOADS_STORAGE_KEY, JSON.stringify(list))
+        saved = true
+      } catch (quotaErr) {
+        if (list.length > 1) {
+          list.pop() // Evict oldest upload to make room
+        } else {
+          break
+        }
+      }
+    }
+
+    // Also update metadata store
+    updateImageMetadata(url, { alt: finalAlt, title: finalTitle })
   } catch (err) {
     console.error('Failed to save uploaded image to history', err)
   }

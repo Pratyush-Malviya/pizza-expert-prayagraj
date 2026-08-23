@@ -40,7 +40,7 @@ import { updateHomepageReviewSettings } from '@/app/actions/settings'
 import EmailTemplateManager from '@/components/admin/EmailTemplateManager'
 import Image from 'next/image'
 import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
-import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
+import { saveUploadedImageToHistory, compressImageDataUrl } from '@/lib/utils/mediaLibrary'
 
 const DAYS_OF_WEEK = [
   { key: 'monday', label: 'Monday' },
@@ -278,35 +278,77 @@ function AdminSettingsContent() {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo file must be less than 2MB')
+
+    if (!file.type.startsWith('image/')) {
+      toast.error(`"${file.name}" is not a valid image file. Please upload PNG, JPG, WebP, or SVG.`)
+      e.target.value = ''
       return
     }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max logo size is 10MB.`)
+      e.target.value = ''
+      return
+    }
+
+    const toastId = toast.loading(`Uploading logo "${file.name}"...`)
     const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      setLogoDataUrl(result)
-      saveUploadedImageToHistory(result, 'Store Logo')
-      toast.success('Logo updated successfully!')
+    reader.onload = async () => {
+      try {
+        const raw = reader.result as string
+        const compressed = await compressImageDataUrl(raw, 800, 0.9)
+        setLogoDataUrl(compressed)
+        saveUploadedImageToHistory(compressed, 'Store Logo')
+        toast.success('Store logo uploaded and applied! Click "Save All Business Settings" to permanently save.', {
+          id: toastId,
+        })
+      } catch (err: any) {
+        toast.error('Failed to process logo: ' + (err?.message || 'Unknown error'), { id: toastId })
+      }
+    }
+    reader.onerror = () => {
+      toast.error(`Failed to read file "${file.name}". Please try another image.`, { id: toastId })
     }
     reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Avatar image must be less than 2MB')
+
+    if (!file.type.startsWith('image/')) {
+      toast.error(`"${file.name}" is not an image file. Please upload a photo.`)
+      e.target.value = ''
       return
     }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`"${file.name}" is too large. Max size is 10MB.`)
+      e.target.value = ''
+      return
+    }
+
+    const toastId = toast.loading(`Uploading avatar "${file.name}"...`)
     const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      setFormData({ ...formData, adminAvatarUrl: result })
-      saveUploadedImageToHistory(result, 'Admin Avatar')
-      toast.success('Admin avatar photo uploaded!')
+    reader.onload = async () => {
+      try {
+        const raw = reader.result as string
+        const compressed = await compressImageDataUrl(raw, 600, 0.88)
+        setFormData({ ...formData, adminAvatarUrl: compressed })
+        saveUploadedImageToHistory(compressed, 'Admin Avatar')
+        toast.success('Admin avatar photo uploaded! Click "Save All Business Settings" to save.', {
+          id: toastId,
+        })
+      } catch (err: any) {
+        toast.error('Failed to process avatar: ' + (err?.message || 'Unknown error'), { id: toastId })
+      }
+    }
+    reader.onerror = () => {
+      toast.error(`Failed to read file "${file.name}". Please try another photo.`, { id: toastId })
     }
     reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const handleExportBackup = () => {
@@ -702,12 +744,11 @@ function AdminSettingsContent() {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         {logoDataUrl ? (
-                          <div className="relative w-32 h-9">
-                            <Image
+                          <div className="relative h-8 flex items-center">
+                            <img
                               src={logoDataUrl}
                               alt="Store Logo"
-                              fill
-                              className="object-contain object-left"
+                              className="h-8 max-w-[160px] object-contain object-left"
                             />
                           </div>
                         ) : (
@@ -800,7 +841,11 @@ function AdminSettingsContent() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                     <div className="w-36 h-20 border-2 border-dashed border-[#E7E0D8] bg-[#FBF9F5] rounded-xl flex items-center justify-center relative overflow-hidden p-2">
                       {logoDataUrl ? (
-                        <Image src={logoDataUrl} alt="Store Logo" fill className="object-contain p-2" />
+                        <img
+                          src={logoDataUrl}
+                          alt="Store Logo"
+                          className="max-h-full max-w-full object-contain p-1"
+                        />
                       ) : (
                         <span className="text-xs text-[#78716C] font-semibold text-center">
                           No Logo File

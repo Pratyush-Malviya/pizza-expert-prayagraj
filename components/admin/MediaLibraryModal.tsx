@@ -29,6 +29,7 @@ import {
   saveUploadedImageToHistory,
   deleteMediaImages,
   updateImageMetadata,
+  compressImageDataUrl,
   MediaImage,
 } from '@/lib/utils/mediaLibrary'
 import { toast } from 'sonner'
@@ -219,36 +220,53 @@ export default function MediaLibraryModal({
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file (PNG, JPG, WebP, SVG)')
+      toast.error(`"${file.name}" is not a valid image file. Please choose PNG, JPG, WebP, or SVG.`)
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB')
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max size is 10MB.`)
       return
     }
 
     setUploading(true)
+    const toastId = toast.loading(`Uploading "${file.name}"...`)
     const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const titleName = file.name.replace(/\.[^/.]+$/, '')
-      const autoAlt = `${titleName} - Pizza Expert Prayagraj`
 
-      saveUploadedImageToHistory(dataUrl, titleName, autoAlt)
-      setSelectedUrl(dataUrl)
-      setSelectedTitle(titleName)
-      setSelectedAlt(autoAlt)
+    reader.onload = async () => {
+      try {
+        const rawDataUrl = reader.result as string
+        const dataUrl = await compressImageDataUrl(rawDataUrl, 1200, 0.88)
+        const titleName = file.name.replace(/\.[^/.]+$/, '')
+        const autoAlt = `${titleName} - Pizza Expert Prayagraj`
 
-      toast.success('Image uploaded & added to library!')
-      setUploading(false)
-      loadImages()
-      setActiveTab('all')
+        saveUploadedImageToHistory(dataUrl, titleName, autoAlt)
+        setSelectedUrl(dataUrl)
+        setSelectedTitle(titleName)
+        setSelectedAlt(autoAlt)
+
+        await loadImages()
+        setActiveTab('uploaded')
+        toast.success(`"${file.name}" uploaded successfully and added to Uploaded library!`, {
+          id: toastId,
+        })
+      } catch (err: any) {
+        console.error('File upload error:', err)
+        toast.error('Failed to process image: ' + (err?.message || 'Unknown error'), {
+          id: toastId,
+        })
+      } finally {
+        setUploading(false)
+      }
     }
+
     reader.onerror = () => {
-      toast.error('Failed to read file')
+      toast.error(`Failed to read file "${file.name}". Please try another image.`, {
+        id: toastId,
+      })
       setUploading(false)
     }
+
     reader.readAsDataURL(file)
   }
 
@@ -270,21 +288,25 @@ export default function MediaLibraryModal({
       updateImageMetadata(selectedUrl, { alt: selectedAlt.trim() })
     }
     onSelect(selectedUrl, selectedAlt.trim())
+    toast.success('Image selected successfully!')
     onClose()
   }
 
-  const handleUseCustomUrl = () => {
+  const handleUseCustomUrl = async () => {
     if (!customUrlInput.trim()) {
-      toast.error('Please enter a valid URL')
+      toast.error('Please enter a valid image URL')
       return
     }
     const cleanUrl = customUrlInput.trim()
-    const autoAlt = customAltInput.trim() || 'Custom Pizza Web Image'
+    const autoAlt = customAltInput.trim() || 'Custom Web Image'
 
     saveUploadedImageToHistory(cleanUrl, 'Web Linked Image', autoAlt)
     setSelectedUrl(cleanUrl)
     setSelectedAlt(autoAlt)
+    await loadImages()
+    setActiveTab('uploaded')
     onSelect(cleanUrl, autoAlt)
+    toast.success('Web image added to library and selected!')
     onClose()
   }
 
