@@ -36,11 +36,43 @@ import Link from 'next/link'
 interface Product {
   id: string
   name: string
+  slug?: string
   price: number
   category_id: string
   is_available: boolean
   is_veg: boolean
   image_url?: string
+}
+
+export const resolveProductImage = (prod?: { id?: string; name?: string; slug?: string; image_url?: string } | null): string => {
+  if (!prod) return FOOD_IMAGES['hero-pizza']
+  if (prod.image_url) return prod.image_url
+  if (prod.slug && FOOD_IMAGES[prod.slug]) return FOOD_IMAGES[prod.slug]
+  
+  const fallback = FALLBACK_PRODUCTS.find(
+    (fp) => fp.id === prod.id || fp.slug === prod.slug || fp.name.toLowerCase() === prod.name?.toLowerCase()
+  )
+  if (fallback?.imageUrl) return fallback.imageUrl
+
+  const n = (prod.name || '').toLowerCase()
+  if (n.includes('margherita')) return FOOD_IMAGES['margherita-pizza']
+  if (n.includes('paneer') || n.includes('tikka')) return FOOD_IMAGES['paneer-tikka-pizza']
+  if (n.includes('farm') || n.includes('house') || n.includes('veggie')) return FOOD_IMAGES['farm-house-pizza']
+  if (n.includes('supreme') || (n.includes('chicken') && n.includes('pizza'))) return FOOD_IMAGES['chicken-supreme-pizza']
+  if (n.includes('peri') && n.includes('chicken')) return FOOD_IMAGES['peri-peri-chicken-pizza']
+  if (n.includes('pepperoni')) return FOOD_IMAGES['hero-pizza']
+  if (n.includes('zinger')) return FOOD_IMAGES['chicken-zinger-burger']
+  if (n.includes('burger') || n.includes('crispy')) return FOOD_IMAGES['veg-crispy-burger']
+  if (n.includes('arrabiata') || n.includes('pasta')) return FOOD_IMAGES['penne-arrabiata']
+  if (n.includes('alfredo')) return FOOD_IMAGES['chicken-alfredo-pasta']
+  if (n.includes('garlic') || n.includes('bread')) return FOOD_IMAGES['garlic-bread']
+  if (n.includes('peri') && n.includes('fries')) return FOOD_IMAGES['peri-peri-fries']
+  if (n.includes('fries')) return FOOD_IMAGES['french-fries']
+  if (n.includes('coke') || n.includes('cola') || n.includes('drink') || n.includes('pepsi')) return FOOD_IMAGES['coca-cola-330ml']
+  if (n.includes('lassi') || n.includes('shake') || n.includes('mango')) return FOOD_IMAGES['mango-lassi']
+  if (n.includes('combo') || n.includes('feast') || n.includes('meal')) return FOOD_IMAGES['family-feast-combo']
+
+  return FOOD_IMAGES['hero-pizza'] || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'
 }
 
 interface Category {
@@ -216,9 +248,10 @@ export default function POSScreen() {
   const loadCatalog = useCallback(async () => {
     try {
       const supabase = createClient()
-      const [{ data: cats }, { data: prods }] = await Promise.all([
+      const [{ data: cats }, { data: prods }, { data: prodImgs }] = await Promise.all([
         supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
-        supabase.from('products').select('id, name, price, category_id, is_available, is_veg').order('sort_order'),
+        supabase.from('products').select('id, name, slug, price, category_id, is_available, is_veg').order('sort_order'),
+        supabase.from('product_images').select('product_id, image_url, is_primary').order('sort_order'),
       ])
 
       const validCats: Category[] = cats && cats.length > 0
@@ -226,14 +259,29 @@ export default function POSScreen() {
         : FALLBACK_CATEGORIES.map(c => ({ id: c.id, name: c.name, slug: c.slug }))
 
       const validProds: Product[] = prods && prods.length > 0
-        ? prods
+        ? prods.map(p => {
+            const dbImg = prodImgs?.find(img => img.product_id === p.id && img.is_primary)?.image_url 
+              || prodImgs?.find(img => img.product_id === p.id)?.image_url
+            return {
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              price: p.price,
+              category_id: p.category_id,
+              is_available: p.is_available !== false,
+              is_veg: p.is_veg,
+              image_url: dbImg || resolveProductImage(p),
+            }
+          })
         : FALLBACK_PRODUCTS.map(p => ({
             id: p.id,
             name: p.name,
+            slug: p.slug,
             price: p.price,
             category_id: p.categoryId,
             is_available: true,
-            is_veg: p.isVeg
+            is_veg: p.isVeg,
+            image_url: p.imageUrl || resolveProductImage(p),
           }))
 
       setCategories(validCats)
@@ -244,10 +292,12 @@ export default function POSScreen() {
       setProducts(FALLBACK_PRODUCTS.map(p => ({
         id: p.id,
         name: p.name,
+        slug: p.slug,
         price: p.price,
         category_id: p.categoryId,
         is_available: true,
-        is_veg: p.isVeg
+        is_veg: p.isVeg,
+        image_url: p.imageUrl || resolveProductImage(p),
       })))
     } finally {
       setLoadingCatalog(false)
@@ -1030,80 +1080,107 @@ export default function POSScreen() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => fastAddToCart(product)}
-                  className={cn(
-                    'group relative flex flex-col justify-between p-3 rounded-2xl border transition-all text-left cursor-pointer select-none',
-                    product.is_available
-                      ? 'bg-gradient-to-b from-white/5 to-white/2 border-white/10 hover:border-red-500/50 hover:from-white/10 hover:shadow-lg hover:shadow-red-950/20 active:scale-[0.98]'
-                      : 'bg-white/2 border-white/5 opacity-50'
-                  )}
-                >
-                  {/* Top Bar: Veg Badge + 86'd Switch */}
-                  <div className="flex items-center justify-between w-full mb-1.5">
-                    <span className={cn('w-3.5 h-3.5 rounded-sm border flex items-center justify-center', product.is_veg ? 'border-green-500' : 'border-red-500')}>
-                      <span className={cn('w-1.5 h-1.5 rounded-full', product.is_veg ? 'bg-green-500' : 'bg-red-500')} />
-                    </span>
-
-                    {/* Quick 86'd stock toggle */}
-                    <button
-                      onClick={(e) => handleToggle86(product, e)}
-                      className={cn(
-                        'text-[10px] font-bold px-1.5 py-0.5 rounded transition',
-                        product.is_available
-                          ? 'text-white/30 hover:text-red-400 hover:bg-red-950/40'
-                          : 'bg-red-900/80 text-red-200 border border-red-700'
-                      )}
-                      title={product.is_available ? "Click to 86 (mark out of stock)" : "Click to mark Available"}
-                    >
-                      {product.is_available ? "86" : "OUT"}
-                    </button>
-                  </div>
-
-                  {/* Product Title */}
-                  <div className="mb-3">
-                    <h4 className="text-xs font-bold text-white/95 leading-snug line-clamp-2">
-                      {product.name}
-                    </h4>
-                  </div>
-
-                  {/* Price & Action Row */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <span className="text-sm font-black text-amber-300">
-                      ₹{product.price}
-                    </span>
-
-                    <div className="flex items-center gap-1">
-                      {/* Customize button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openCustomizer(product)
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredProducts.map((product) => {
+                const prodImg = resolveProductImage(product)
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => fastAddToCart(product)}
+                    className={cn(
+                      'group relative flex flex-col justify-between rounded-2xl border transition-all text-left cursor-pointer select-none overflow-hidden',
+                      product.is_available
+                        ? 'bg-gradient-to-b from-white/[0.07] to-white/[0.02] border-white/10 hover:border-red-500/60 hover:from-white/[0.12] hover:shadow-xl hover:shadow-red-950/30 active:scale-[0.98]'
+                        : 'bg-white/2 border-white/5 opacity-50'
+                    )}
+                  >
+                    {/* Visual Food Thumbnail with Overlay Badges */}
+                    <div className="relative w-full h-28 bg-black/60 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={prodImg}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-108"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = FOOD_IMAGES['hero-pizza'] || ''
                         }}
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition"
-                        title="Customize crust, size & toppings"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+                      {/* Top Left: Veg / Non-Veg Indicator */}
+                      <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-white/15 flex items-center gap-1 shadow-sm">
+                        <span className={cn('w-2.5 h-2.5 rounded-sm border flex items-center justify-center', product.is_veg ? 'border-green-500' : 'border-red-500')}>
+                          <span className={cn('w-1.5 h-1.5 rounded-full', product.is_veg ? 'bg-green-500' : 'bg-red-500')} />
+                        </span>
+                        <span className="text-[9px] font-bold text-white/90 uppercase tracking-wider">
+                          {product.is_veg ? 'Veg' : 'Non-Veg'}
+                        </span>
+                      </div>
+
+                      {/* Top Right: Quick 86'd stock toggle */}
+                      <button
+                        onClick={(e) => handleToggle86(product, e)}
+                        className={cn(
+                          'absolute top-2 right-2 text-[9px] font-black px-2 py-0.5 rounded-md transition backdrop-blur-md shadow-sm',
+                          product.is_available
+                            ? 'bg-black/70 text-white/40 hover:text-red-300 hover:bg-red-950/90 border border-white/15'
+                            : 'bg-red-600 text-white border border-red-500'
+                        )}
+                        title={product.is_available ? "Click to 86 (mark out of stock)" : "Click to mark Available"}
                       >
-                        <SlidersHorizontal size={11} />
+                        {product.is_available ? "86" : "OUT"}
                       </button>
 
-                      {/* Fast add button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          fastAddToCart(product)
-                        }}
-                        disabled={!product.is_available}
-                        className="w-7 h-7 rounded-lg bg-[#B91C1C] hover:bg-[#DC2626] text-white flex items-center justify-center font-bold transition shadow"
-                      >
-                        <Plus size={14} />
-                      </button>
+                      {/* Bottom-left Price inside image container for high visibility */}
+                      <div className="absolute bottom-1.5 left-2">
+                        <span className="text-sm font-black text-amber-300 drop-shadow-md">
+                          ₹{product.price}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Body: Title & Action Row */}
+                    <div className="p-2.5 flex flex-col justify-between flex-1 gap-2 bg-[#171717]">
+                      <h4 className="text-xs font-bold text-white/95 leading-snug line-clamp-2 min-h-[2rem]">
+                        {product.name}
+                      </h4>
+
+                      <div className="flex items-center justify-between pt-1.5 border-t border-white/5">
+                        <span className="text-[10px] text-white/40 font-medium">
+                          {product.is_available ? 'In Stock' : 'Unavailable'}
+                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Customize button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openCustomizer(product)
+                            }}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition"
+                            title="Customize crust, size & toppings"
+                          >
+                            <SlidersHorizontal size={12} />
+                          </button>
+
+                          {/* Fast add button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              fastAddToCart(product)
+                            }}
+                            disabled={!product.is_available}
+                            className="w-7 h-7 rounded-lg bg-[#B91C1C] hover:bg-[#DC2626] text-white flex items-center justify-center font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -1298,112 +1375,128 @@ export default function POSScreen() {
               <p className="text-xs text-white/20 mt-0.5">Select menu items to build ticket</p>
             </div>
           ) : (
-            cart.map((line) => (
-              <div key={line.lineId} className="p-2.5 rounded-xl hover:bg-white/3 transition group space-y-1.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-white">
-                        {line.productName}
-                      </span>
-                      {line.variantSize && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-white/70 font-semibold">
-                          {line.variantSize}
-                        </span>
-                      )}
-                      {line.crust && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20">
-                          {line.crust}
-                        </span>
-                      )}
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.2 rounded font-bold uppercase',
-                        line.course === 'Starters' ? 'bg-blue-900/50 text-blue-300' :
-                        line.course === 'Beverages' ? 'bg-teal-900/50 text-teal-300' :
-                        line.course === 'Dessert' ? 'bg-purple-900/50 text-purple-300' : 'bg-white/10 text-white/60'
-                      )}>
-                        {line.course}
-                      </span>
-                      {line.isHeld && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-950 text-red-300 border border-red-700 font-bold">
-                          ⛔ HELD
-                        </span>
-                      )}
+            cart.map((line) => {
+              const lineImg = resolveProductImage({ id: line.productId, name: line.productName })
+              return (
+                <div key={line.lineId} className="p-2.5 rounded-xl hover:bg-white/3 transition group space-y-1.5">
+                  <div className="flex items-start justify-between gap-2.5">
+                    {/* Item Thumbnail */}
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-black/60 shrink-0 border border-white/10 relative mt-0.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={lineImg}
+                        alt={line.productName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = FOOD_IMAGES['hero-pizza'] || ''
+                        }}
+                      />
                     </div>
 
-                    {/* Modifiers / Add-ons pills */}
-                    {line.modifiers && line.modifiers.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {line.modifiers.map((mod, idx) => (
-                          <span key={idx} className="text-[10px] text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-600/30">
-                            +{mod.name} (₹{mod.price})
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-white">
+                          {line.productName}
+                        </span>
+                        {line.variantSize && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-white/70 font-semibold">
+                            {line.variantSize}
                           </span>
-                        ))}
+                        )}
+                        {line.crust && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20">
+                            {line.crust}
+                          </span>
+                        )}
+                        <span className={cn(
+                          'text-[10px] px-1.5 py-0.2 rounded font-bold uppercase',
+                          line.course === 'Starters' ? 'bg-blue-900/50 text-blue-300' :
+                          line.course === 'Beverages' ? 'bg-teal-900/50 text-teal-300' :
+                          line.course === 'Dessert' ? 'bg-purple-900/50 text-purple-300' : 'bg-white/10 text-white/60'
+                        )}>
+                          {line.course}
+                        </span>
+                        {line.isHeld && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-950 text-red-300 border border-red-700 font-bold">
+                            ⛔ HELD
+                          </span>
+                        )}
                       </div>
-                    )}
 
-                    {/* Special instructions */}
-                    {line.notes && (
-                      <p className="text-[10px] text-amber-400/90 italic mt-0.5">
-                        Note: {line.notes}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-black text-amber-300">
-                      ₹{(line.unitPrice * line.quantity).toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-white/40">
-                      ₹{line.unitPrice} ea
-                    </p>
-                  </div>
-                </div>
-
-                {/* Stepper & Line Actions */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => toggleHoldCourse(line.lineId)}
-                      className={cn(
-                        'text-[10px] font-bold px-2 py-0.5 rounded transition',
-                        line.isHeld
-                          ? 'bg-red-900/80 text-white'
-                          : 'bg-white/5 hover:bg-white/10 text-white/50'
+                      {/* Modifiers / Add-ons pills */}
+                      {line.modifiers && line.modifiers.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {line.modifiers.map((mod, idx) => (
+                            <span key={idx} className="text-[10px] text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-600/30">
+                              +{mod.name} (₹{mod.price})
+                            </span>
+                          ))}
+                        </div>
                       )}
-                      title="Hold this item from firing immediately on KOT"
-                    >
-                      {line.isHeld ? 'Unhold' : 'Hold Course'}
-                    </button>
+
+                      {/* Special instructions */}
+                      {line.notes && (
+                        <p className="text-[10px] text-amber-400/90 italic mt-0.5">
+                          Note: {line.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-black text-amber-300">
+                        ₹{(line.unitPrice * line.quantity).toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-white/40">
+                        ₹{line.unitPrice} ea
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded-lg p-0.5">
+                  {/* Stepper & Line Actions */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-1">
                       <button
-                        onClick={() => updateQty(line.lineId, -1)}
-                        className="w-5 h-5 rounded bg-white/5 hover:bg-white/20 flex items-center justify-center text-white transition"
+                        onClick={() => toggleHoldCourse(line.lineId)}
+                        className={cn(
+                          'text-[10px] font-bold px-2 py-0.5 rounded transition',
+                          line.isHeld
+                            ? 'bg-red-900/80 text-white'
+                            : 'bg-white/5 hover:bg-white/10 text-white/50'
+                        )}
+                        title="Hold this item from firing immediately on KOT"
                       >
-                        <Minus size={10} />
-                      </button>
-                      <span className="text-xs font-bold w-5 text-center">{line.quantity}</span>
-                      <button
-                        onClick={() => updateQty(line.lineId, 1)}
-                        className="w-5 h-5 rounded bg-red-600 hover:bg-red-500 flex items-center justify-center text-white transition"
-                      >
-                        <Plus size={10} />
+                        {line.isHeld ? 'Unhold' : 'Hold Course'}
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => removeLine(line.lineId)}
-                      className="text-white/20 hover:text-red-400 transition p-1"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded-lg p-0.5">
+                        <button
+                          onClick={() => updateQty(line.lineId, -1)}
+                          className="w-5 h-5 rounded bg-white/5 hover:bg-white/20 flex items-center justify-center text-white transition"
+                        >
+                          <Minus size={10} />
+                        </button>
+                        <span className="text-xs font-bold w-5 text-center">{line.quantity}</span>
+                        <button
+                          onClick={() => updateQty(line.lineId, 1)}
+                          className="w-5 h-5 rounded bg-red-600 hover:bg-red-500 flex items-center justify-center text-white transition"
+                        >
+                          <Plus size={10} />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => removeLine(line.lineId)}
+                        className="text-white/20 hover:text-red-400 transition p-1"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
 
@@ -1789,17 +1882,30 @@ export default function POSScreen() {
           <div className="w-full max-w-lg rounded-3xl bg-[#181818] border border-white/15 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
             
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-white/10 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={cn('w-3.5 h-3.5 rounded-sm border flex items-center justify-center', customizingProduct.is_veg ? 'border-green-500' : 'border-red-500')}>
-                    <span className={cn('w-1.5 h-1.5 rounded-full', customizingProduct.is_veg ? 'bg-green-500' : 'bg-red-500')} />
-                  </span>
+            <div className="flex items-start justify-between border-b border-white/10 pb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-13 h-13 rounded-2xl overflow-hidden bg-black/60 shrink-0 border border-white/10 relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveProductImage(customizingProduct)}
+                    alt={customizingProduct.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = FOOD_IMAGES['hero-pizza'] || ''
+                    }}
+                  />
+                  <div className="absolute top-1 left-1 bg-black/80 px-1 py-0.5 rounded border border-white/10 flex items-center justify-center">
+                    <span className={cn('w-2 h-2 rounded-sm border flex items-center justify-center', customizingProduct.is_veg ? 'border-green-500' : 'border-red-500')}>
+                      <span className={cn('w-1 h-1 rounded-full', customizingProduct.is_veg ? 'bg-green-500' : 'bg-red-500')} />
+                    </span>
+                  </div>
+                </div>
+                <div>
                   <h3 className="font-extrabold text-base text-white">
                     Customize {customizingProduct.name}
                   </h3>
+                  <p className="text-xs text-white/50 mt-0.5">Select size, gourmet crust, toppings and course</p>
                 </div>
-                <p className="text-xs text-white/50 mt-0.5">Select size, gourmet crust, toppings and course</p>
               </div>
 
               <button
