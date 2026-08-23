@@ -895,13 +895,10 @@ export default function POSScreen() {
 
     setGatewayStatus('loading')
     try {
-      const storeSettings = useSettingsStore.getState()
       const tempRef = `POS_${Date.now().toString().slice(-6)}`
       const rzpRes = await createRazorpayOrder({
         amount: totals.total,
         orderId: tempRef,
-        customKeyId: storeSettings.enableRazorpay ? storeSettings.razorpayKeyId : undefined,
-        customKeySecret: storeSettings.enableRazorpay ? storeSettings.razorpayKeySecret : undefined,
       })
 
       if (!rzpRes.success || !rzpRes.razorpayOrderId) {
@@ -912,9 +909,28 @@ export default function POSScreen() {
 
       setGatewayOrderId(rzpRes.razorpayOrderId)
 
-      const windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void; open: () => void } }
+      let windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void; open: () => void } }
       if (!windowWithRzp.Razorpay) {
-        toast.error('Razorpay SDK is loading. Please click again.')
+        // Dynamically load Razorpay SDK if not already loaded
+        await new Promise<void>((resolve) => {
+          const existing = document.getElementById('razorpay-checkout-js')
+          if (existing) {
+            existing.addEventListener('load', () => resolve())
+            setTimeout(resolve, 1500)
+            return
+          }
+          const script = document.createElement('script')
+          script.id = 'razorpay-checkout-js'
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+          script.onload = () => resolve()
+          script.onerror = () => resolve()
+          document.body.appendChild(script)
+        })
+        windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { on: (event: string, cb: (res: { error?: { description?: string } }) => void) => void; open: () => void } }
+      }
+
+      if (!windowWithRzp.Razorpay) {
+        toast.error('Razorpay SDK could not be loaded. Please check your internet connection.')
         setGatewayStatus('idle')
         return
       }
