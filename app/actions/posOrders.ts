@@ -341,3 +341,44 @@ export async function updateKOTStatus(kotId: string, status: string) {
   revalidatePath('/admin/kitchen')
   return { success: true }
 }
+
+// ─── 86'd / Quick Out-of-Stock Toggle ──────────────────────────────────────
+
+export async function toggleProduct86(productId: string, isAvailable: boolean) {
+  await requireUser(['cashier', 'kitchen_manager', 'staff', 'manager', 'super_admin'])
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('products')
+    .update({ is_available: isAvailable })
+    .eq('id', productId)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/admin/pos')
+  revalidatePath('/menu')
+  return { success: true, isAvailable }
+}
+
+// ─── Fetch Active Table Running Order ──────────────────────────────────────
+
+export async function fetchActiveTableOrder(tableId: string) {
+  await requireUser(['cashier', 'waiter', 'manager', 'super_admin'])
+  const supabase = createAdminClient()
+
+  // Find active table session or unpaid confirmed order for this table
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items(*, products(name, price, is_veg))
+    `)
+    .eq('table_id', tableId)
+    .eq('order_type', 'dine_in')
+    .in('status', ['confirmed', 'preparing', 'ready', 'served', 'delivered'])
+    .in('payment_status', ['unpaid', 'partially_paid'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !order) return { success: false, order: null }
+  return { success: true, order }
+}
