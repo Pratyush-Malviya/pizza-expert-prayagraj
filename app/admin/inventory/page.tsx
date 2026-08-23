@@ -63,7 +63,7 @@ export default function AdminInventoryPage() {
         .select('*')
         .order('name')
         
-      if (activeStoreId) {
+      if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
         ingQuery = ingQuery.eq('store_id', activeStoreId)
       }
 
@@ -79,7 +79,7 @@ export default function AdminInventoryPage() {
         .select('*')
         .order('name')
 
-      if (activeStoreId) {
+      if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
         prodQuery = prodQuery.eq('store_id', activeStoreId)
       }
 

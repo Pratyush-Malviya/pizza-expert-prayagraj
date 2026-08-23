@@ -157,7 +157,7 @@ export default function AdminOrdersPage() {
           .select('*, order_items(*, products(name))')
           .order('created_at', { ascending: false })
 
-        if (activeStoreId) {
+        if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
           query = query.eq('store_id', activeStoreId)
         }
 

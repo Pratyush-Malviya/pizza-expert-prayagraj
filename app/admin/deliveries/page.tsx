@@ -106,8 +106,8 @@ export default function AdminDeliveriesPage() {
       // 2. Fetch Drivers live table for GPS coordinates & busy states
       let liveDriversQuery = supabase
         .from('drivers')
-        .select('id, name, phone, vehicle_type, vehicle_number, is_online, is_busy, current_lat, current_lng, store_id')
-      if (activeStoreId) {
+        .select('id, name, phone, vehicle_type, vehicle_number, is_online, is_busy, current_lat, current_lng')
+      if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
         liveDriversQuery = liveDriversQuery.eq('store_id', activeStoreId)
       }
       const { data: liveDriversTable } = await liveDriversQuery
@@ -120,9 +120,6 @@ export default function AdminDeliveriesPage() {
       }
 
       // 3. Fetch Deliveries table records
-      // Since deliveries table might not have store_id directly, we filter orders later,
-      // or if it has store_id we can filter it. Assuming it does not for now, 
-      // we just filter orders.
       const { data: deliveriesData } = await supabase
         .from('deliveries')
         .select('*, driver:drivers(*)')
@@ -144,7 +141,7 @@ export default function AdminDeliveriesPage() {
         .select('*, order_items(*, products(name))')
         .order('created_at', { ascending: false })
         .limit(100)
-      if (activeStoreId) {
+      if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
         ordersQuery = ordersQuery.eq('store_id', activeStoreId)
       }
       const { data: allOrders } = await ordersQuery

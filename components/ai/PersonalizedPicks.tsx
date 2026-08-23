@@ -33,7 +33,7 @@ export default function PersonalizedPicks() {
         const supabase = createClient();
         
         let query = supabase.from('products').select('*, category:categories(name)').limit(3);
-        if (activeStoreId) {
+        if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
           query = query.eq('store_id', activeStoreId);
         }
         

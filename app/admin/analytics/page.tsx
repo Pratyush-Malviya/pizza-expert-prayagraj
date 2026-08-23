@@ -257,7 +257,9 @@ export default function AdminAnalyticsPage() {
 
       // User list (client-side Supabase for speed)
       let ordersQ = supabase.from('orders').select('id, user_id, total, status, created_at').order('created_at', { ascending: false }).limit(200)
-      if (activeStoreId) ordersQ = ordersQ.eq('store_id', activeStoreId)
+      if (activeStoreId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeStoreId)) {
+        ordersQ = ordersQ.eq('store_id', activeStoreId)
+      }
 
       const [{ data: profiles }, { data: orders }] = await Promise.all([
         supabase.from('profiles').select('*').limit(50),
