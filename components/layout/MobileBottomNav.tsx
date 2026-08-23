@@ -31,7 +31,7 @@ export default function MobileBottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0E12]/95 backdrop-blur-xl border-t border-white/10 py-2 px-3 md:hidden shadow-[0_-10px_25px_rgba(0,0,0,0.5)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-primary)]/95 backdrop-blur-xl border-t border-[var(--border)] py-2 px-3 md:hidden shadow-[var(--shadow-apple-md)]">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item, idx) => {
           const Icon = item.icon
@@ -41,7 +41,7 @@ export default function MobileBottomNav() {
               <button
                 key={idx}
                 onClick={toggleCart}
-                className="relative flex flex-col items-center gap-1 p-1 text-zinc-400 hover:text-white transition-colors"
+                className="relative flex flex-col items-center gap-1 p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 aria-label="Open Cart"
               >
                 <div className="relative">
@@ -68,7 +68,7 @@ export default function MobileBottomNav() {
               key={idx}
               href={item.href!}
               className={`flex flex-col items-center gap-1 p-1 transition-colors relative ${
-                isActive ? 'text-[#FF3B00]' : 'text-zinc-400 hover:text-zinc-200'
+                isActive ? 'text-[#FF3B00]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               <Icon size={20} />

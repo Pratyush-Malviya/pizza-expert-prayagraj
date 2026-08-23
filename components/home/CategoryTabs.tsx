@@ -28,7 +28,7 @@ export default function CategoryTabs({
   const activeProducts = productsByCategory[activeSlug] || []
 
   return (
-    <section className="section-py bg-[#0D0D11]" aria-labelledby="menu-heading">
+    <section className="section-py bg-[var(--bg-subtle)]" aria-labelledby="menu-heading">
       <div className="container-custom">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div className="max-w-2xl">
@@ -36,7 +36,7 @@ export default function CategoryTabs({
               <Sparkles size={14} />
               <span>CRAFTED DAILY IN ALLAPUR, PRAYAGRAJ</span>
             </div>
-            <h2 id="menu-heading" className="section-title text-white">
+            <h2 id="menu-heading" className="section-title text-[var(--text-primary)]">
               EXPLORE OUR MENU
             </h2>
             <p className="section-subtitle">
@@ -45,7 +45,7 @@ export default function CategoryTabs({
           </div>
           <Link
             href={`/menu?category=${activeSlug}`}
-            className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto flex items-center gap-2 border border-white/15 hover:border-white/30"
+            className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto flex items-center gap-2 border border-[var(--border)] hover:border-[#FF3B00]/40 text-[var(--text-primary)]"
           >
             <span>FULL MENU</span>
             <ArrowRight size={15} />
@@ -54,7 +54,7 @@ export default function CategoryTabs({
 
         {/* Filter Pill Toggles */}
         <div
-          className="flex gap-3 overflow-x-auto pb-4 mb-10 scrollbar-none border-b border-white/10"
+          className="flex gap-3 overflow-x-auto pb-4 mb-10 scrollbar-none border-b border-[var(--border)]"
           role="tablist"
         >
           {categories.map((cat) => {
@@ -66,10 +66,10 @@ export default function CategoryTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveSlug(cat.slug)}
-                className={`pill-toggle relative whitespace-nowrap px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                className={`pill-toggle relative whitespace-nowrap px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[#FF3B00] text-white shadow-lg shadow-[#FF3B00]/30'
-                    : 'bg-white/5 text-zinc-300 hover:text-white border border-white/10'
+                    : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] shadow-xs'
                 }`}
               >
                 {cat.name}

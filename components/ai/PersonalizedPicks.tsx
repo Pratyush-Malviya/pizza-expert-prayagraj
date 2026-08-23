@@ -53,10 +53,10 @@ export default function PersonalizedPicks() {
 
   if (loading) {
     return (
-      <section className="py-12 bg-[#FBF9F5]">
+      <section className="py-12 bg-[var(--bg-primary)]">
         <div className="container mx-auto px-4 text-center">
-          <Loader2 className="animate-spin mx-auto text-[#B91C1C] mb-4" size={32} />
-          <p className="text-[#78716C] font-semibold">Curating personalized picks for you...</p>
+          <Loader2 className="animate-spin mx-auto text-[#FF3B00] mb-4" size={32} />
+          <p className="text-[var(--text-secondary)] font-semibold">Curating personalized picks for you...</p>
         </div>
       </section>
     );
@@ -65,16 +65,16 @@ export default function PersonalizedPicks() {
   if (picks.length === 0) return null;
 
   return (
-    <section className="py-16 bg-[#FBF9F5]">
+    <section className="py-16 bg-[var(--bg-primary)] border-b border-[var(--border)]">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-amber-200">
-            <Sparkles size={14} className="text-amber-500" /> AI Powered
+          <div className="inline-flex items-center justify-center gap-2 px-3.5 py-1 bg-[#FFC01D]/15 text-[#FFC01D] rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-[#FFC01D]/30">
+            <Sparkles size={14} className="text-[#FFC01D]" /> AI Powered
           </div>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1C1917] mb-4">
+          <h2 className="section-title text-[var(--text-primary)] mb-2">
             Picked Just For You
           </h2>
-          <p className="text-[#78716C] max-w-2xl text-sm md:text-base">
+          <p className="section-subtitle">
             Based on current trends and what's hot right now in your area.
           </p>
         </div>

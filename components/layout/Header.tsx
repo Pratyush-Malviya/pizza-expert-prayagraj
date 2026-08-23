@@ -65,11 +65,11 @@ export default function Header() {
   return (
     <>
       {/* Top Utility & Delivery Location Bar */}
-      <div className="bg-[#09090D] border-b border-white/10 text-xs py-1.5 px-4 sm:px-8 text-zinc-300 flex items-center justify-between gap-3 overflow-hidden">
-        <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-300 truncate">
+      <div className="bg-[var(--bg-dark)] border-b border-[var(--border)] text-xs py-1.5 px-4 sm:px-8 text-[var(--text-secondary)] flex items-center justify-between gap-3 overflow-hidden">
+        <div className="flex items-center gap-2 text-[11px] font-semibold text-[var(--text-secondary)] truncate">
           <Sparkles size={12} className="text-[#FFC01D] animate-spin shrink-0" />
           <span className="truncate">
-            ⚡ <strong className="text-white">FREE Delivery</strong> on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj
+            ⚡ <strong className="text-[var(--text-primary)]">FREE Delivery</strong> on orders above ₹499 • Hot Wood-Fired Pizza in Prayagraj
           </span>
         </div>
 
@@ -80,8 +80,8 @@ export default function Header() {
       {/* Main Sticky Header */}
       <header
         className={cn(
-          'sticky top-0 z-40 bg-[#0D0D11]/95 backdrop-blur-xl border-b border-white/10 transition-all duration-300',
-          isScrolled ? 'py-3 shadow-[0_10px_30px_rgba(0,0,0,0.7)]' : 'py-4'
+          'sticky top-0 z-40 bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border)] transition-all duration-300',
+          isScrolled ? 'py-3 shadow-[var(--shadow-apple-md)]' : 'py-4'
         )}
       >
         <div className="container-custom flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function Header() {
             ) : (
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-[#FF3B00] group-hover:text-white transition-colors">
+                  <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-[#FF3B00] group-hover:text-[var(--text-primary)] transition-colors">
                     {mounted && businessName ? businessName.toUpperCase() : 'PIZZA EXPERT'}
                   </span>
                   {(mounted ? (brandBadge || '') : 'PRO') && (
@@ -105,7 +105,7 @@ export default function Header() {
                   )}
                 </div>
                 {(mounted ? (locationTagline !== undefined ? locationTagline : 'ALLAPUR • PRAYAGRAJ') : 'ALLAPUR • PRAYAGRAJ') && (
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--text-muted)]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                     <span className="uppercase tracking-wider">
                       {mounted ? (locationTagline || 'ALLAPUR • PRAYAGRAJ') : 'ALLAPUR • PRAYAGRAJ'}
@@ -117,7 +117,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav Links (Clean, Centered, Perfectly Balanced) */}
-          <nav className="hidden md:flex items-center gap-8 bg-white/5 border border-white/10 px-7 py-2.5 rounded-full backdrop-blur-md">
+          <nav className="hidden md:flex items-center gap-8 bg-[var(--bg-surface)] border border-[var(--border)] px-7 py-2.5 rounded-full backdrop-blur-md shadow-xs">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href
               return (
@@ -126,7 +126,7 @@ export default function Header() {
                   href={link.href}
                   className={cn(
                     'text-xs tracking-wider font-extrabold transition-colors relative py-1 uppercase',
-                    isActive ? 'text-[#FF3B00]' : 'text-zinc-300 hover:text-white'
+                    isActive ? 'text-[#FF3B00]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   )}
                 >
                   {link.label}
@@ -149,7 +149,7 @@ export default function Header() {
             {sessionInfo?.loggedIn ? (
               <Link
                 href={isAdminRole ? '/admin' : '/account'}
-                className="min-h-[44px] px-3.5 py-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
+                className="min-h-[44px] px-3.5 py-2.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-[var(--border)]"
                 aria-label="Account"
               >
                 <User size={16} className="text-[#FF3B00]" />
@@ -158,7 +158,7 @@ export default function Header() {
             ) : (
               <Link
                 href="/login"
-                className="min-h-[44px] px-3.5 py-2.5 text-zinc-300 hover:text-white hover:bg-white/10 rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-white/10"
+                className="min-h-[44px] px-3.5 py-2.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-full transition-colors hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-wider border border-[var(--border)]"
                 aria-label="Account"
               >
                 <User size={16} className="text-[#FF3B00]" />
@@ -184,7 +184,7 @@ export default function Header() {
             {/* Mobile Menu Hamburger (Generous 44x44 Touch Target for Thumb reachability) */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-white md:hidden hover:bg-white/10 active:bg-white/20 rounded-full border border-white/15 transition-all"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[var(--text-primary)] md:hidden hover:bg-[var(--bg-surface-hover)] active:scale-95 rounded-full border border-[var(--border)] transition-all"
               aria-label={isMobileOpen ? 'Close Menu' : 'Open Menu'}
               aria-expanded={isMobileOpen}
             >
@@ -201,17 +201,17 @@ export default function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#0D0D11] border-b border-white/10 overflow-hidden sticky top-[68px] z-30 shadow-2xl"
+            className="md:hidden bg-[var(--bg-primary)] border-b border-[var(--border)] overflow-hidden sticky top-[68px] z-30 shadow-2xl"
           >
             <div className="container-custom py-6 flex flex-col gap-4">
               {/* Mobile Location Quick Bar */}
               <div className="pb-2">
-                <HeaderLocationPicker className="flex w-full max-w-none justify-between p-3 rounded-2xl bg-white/10" />
+                <HeaderLocationPicker className="flex w-full max-w-none justify-between p-3 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border)]" />
               </div>
 
               {/* Theme Switcher for Mobile Drawer */}
-              <div className="flex items-center justify-between py-2 border-b border-white/10">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Theme</span>
+              <div className="flex items-center justify-between py-2 border-b border-[var(--border)]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Theme</span>
                 <ThemeToggle variant="pill" />
               </div>
 
@@ -221,8 +221,8 @@ export default function Header() {
                   href={link.href}
                   onClick={() => setIsMobileOpen(false)}
                   className={cn(
-                    'py-3 border-b border-white/10 font-heading text-xl font-bold tracking-tight transition-colors flex items-center justify-between',
-                    pathname === link.href ? 'text-[#FF3B00]' : 'text-white'
+                    'py-3 border-b border-[var(--border)] font-heading text-xl font-bold tracking-tight transition-colors flex items-center justify-between',
+                    pathname === link.href ? 'text-[#FF3B00]' : 'text-[var(--text-primary)]'
                   )}
                 >
                   <span>{link.label}</span>

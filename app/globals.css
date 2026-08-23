@@ -13,13 +13,29 @@
   --color-brand-orange: #FF3B00;
   --color-brand-yellow: #FFC01D;
   --color-brand-green: #00C875;
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+  --color-bg-surface-elevated: var(--bg-surface-elevated);
+  --color-bg-dark: var(--bg-dark);
+  --color-bg-subtle: var(--bg-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-dark: var(--text-dark);
+
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 @layer base {
   /* ─── Apple HIG x Monday Vibe Unified Design System ─────────────── */
-  :root, [data-theme='dark'], .theme-dark {
+  :root, [data-theme='light'], .theme-light {
     /* ─── Monday Vibe Palette (Primary & Semantic) ─── */
     --vibe-primary:        #0073EA; /* Classic Monday Blue */
     --vibe-primary-hover:  #0060C0;
@@ -39,25 +55,25 @@
     --vibrant-green:       #00C875;
     --vibrant-red:         #E2445C;
 
-    /* Canvas & Surfaces (Default Dark - Pizzeria Premium Vibe Theme) */
-    --bg-primary:          #0E1117; /* Deep Vibe Night Canvas */
-    --bg-surface:          #181B2E; /* Monday Vibe elevated card */
-    --bg-surface-hover:    #22263F;
-    --bg-surface-elevated: #2A304F;
-    --bg-dark:             #090B10; /* Deep Nav / Footer */
-    --bg-subtle:           #141724;
+    /* Canvas & Surfaces (Default Light - Monday Vibe Theme) */
+    --bg-primary:          #F6F7FB; /* Clean Light Canvas */
+    --bg-surface:          #FFFFFF; /* Elevated Card */
+    --bg-surface-hover:    #EEF1F7;
+    --bg-surface-elevated: #FFFFFF;
+    --bg-dark:             #FFFFFF;
+    --bg-subtle:           #F0F3F9;
 
     /* Text Colors */
-    --text-primary:        #FFFFFF;
-    --text-secondary:      #C5C7D0; /* Vibe High-Contrast Secondary */
+    --text-primary:        #181B2E; /* Monday Vibe Crisp Charcoal/Black */
+    --text-secondary:      #57534E; /* High-contrast readable secondary */
     --text-muted:          #80828D;
-    --text-dark:           #323338;
+    --text-dark:           #181B2E;
 
     /* Borders & Glass Dividers */
-    --border:              rgba(255, 255, 255, 0.09);
-    --border-subtle:       rgba(255, 255, 255, 0.05);
+    --border:              rgba(0, 0, 0, 0.09);
+    --border-subtle:       rgba(0, 0, 0, 0.05);
     --border-focus:        #0073EA;
-    --border-brand:        rgba(255, 59, 0, 0.4);
+    --border-brand:        rgba(255, 59, 0, 0.35);
 
     /* ─── Apple HIG Squircle Radii ─── */
     --radius-xs:           6px;
@@ -73,13 +89,13 @@
 
     /* ─── Apple Multi-Layered Shadows ─── */
     --shadow-apple-xs:     0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-apple-sm:     0 2px 8px -2px rgba(0, 0, 0, 0.25), 0 1px 4px -1px rgba(0, 0, 0, 0.15);
-    --shadow-apple-md:     0 8px 24px -6px rgba(0, 0, 0, 0.35), 0 2px 8px -2px rgba(0, 0, 0, 0.2);
-    --shadow-apple-lg:     0 16px 40px -10px rgba(0, 0, 0, 0.45), 0 6px 16px -4px rgba(0, 0, 0, 0.25);
-    --shadow-apple-float:  0 24px 60px -12px rgba(0, 0, 0, 0.6);
-    --shadow-brand:        0 10px 30px -8px rgba(255, 59, 0, 0.45);
-    --shadow-vibe:         0 10px 30px -8px rgba(0, 115, 234, 0.45);
-    --shadow-card:         0 8px 24px -6px rgba(0, 0, 0, 0.4);
+    --shadow-apple-sm:     0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 4px -1px rgba(0, 0, 0, 0.04);
+    --shadow-apple-md:     0 8px 24px -6px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+    --shadow-apple-lg:     0 16px 40px -10px rgba(0, 0, 0, 0.12), 0 6px 16px -4px rgba(0, 0, 0, 0.06);
+    --shadow-apple-float:  0 24px 60px -12px rgba(0, 0, 0, 0.14);
+    --shadow-brand:        0 10px 30px -8px rgba(255, 59, 0, 0.35);
+    --shadow-vibe:         0 10px 30px -8px rgba(0, 115, 234, 0.35);
+    --shadow-card:         0 4px 20px -4px rgba(0, 0, 0, 0.06);
 
     /* Typography */
     --font-heading:        'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -91,29 +107,33 @@
     --transition-bounce:   350ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  /* ─── Monday Vibe Light Theme Variables ──────────────────────── */
-  [data-theme='light'], .theme-light {
-    --bg-primary:          #F6F7FB; /* Monday Vibe Light Canvas */
-    --bg-surface:          #FFFFFF;
-    --bg-surface-hover:    #EEF1F7;
-    --bg-surface-elevated: #FFFFFF;
-    --bg-dark:             #FFFFFF;
-    --bg-subtle:           #F0F3F9;
+  /* ─── Monday Vibe Dark Theme Variables ──────────────────────── */
+  [data-theme='dark'], .theme-dark {
+    --bg-primary:          #0E1117; /* Deep Vibe Night Canvas */
+    --bg-surface:          #181B2E; /* Monday Vibe elevated card */
+    --bg-surface-hover:    #22263F;
+    --bg-surface-elevated: #2A304F;
+    --bg-dark:             #090B10; /* Deep Nav / Footer */
+    --bg-subtle:           #141724;
 
-    --text-primary:        #323338; /* Monday Vibe Charcoal */
-    --text-secondary:      #676879; /* Monday Vibe Secondary */
-    --text-muted:          #9699A6;
-    --text-dark:           #181B2E;
+    --text-primary:        #FFFFFF;
+    --text-secondary:      #C5C7D0; /* Vibe High-Contrast Secondary */
+    --text-muted:          #80828D;
+    --text-dark:           #323338;
 
-    --border:              rgba(0, 0, 0, 0.08);
-    --border-subtle:       rgba(0, 0, 0, 0.04);
+    --border:              rgba(255, 255, 255, 0.09);
+    --border-subtle:       rgba(255, 255, 255, 0.05);
     --border-focus:        #0073EA;
-    --border-brand:        rgba(255, 59, 0, 0.3);
+    --border-brand:        rgba(255, 59, 0, 0.4);
 
-    --shadow-apple-sm:     0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 4px -1px rgba(0, 0, 0, 0.04);
-    --shadow-apple-md:     0 8px 24px -6px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
-    --shadow-apple-lg:     0 16px 40px -10px rgba(0, 0, 0, 0.12), 0 6px 16px -4px rgba(0, 0, 0, 0.06);
-    --shadow-card:         0 4px 20px -4px rgba(0, 0, 0, 0.06);
+    --shadow-apple-xs:     0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-apple-sm:     0 2px 8px -2px rgba(0, 0, 0, 0.25), 0 1px 4px -1px rgba(0, 0, 0, 0.15);
+    --shadow-apple-md:     0 8px 24px -6px rgba(0, 0, 0, 0.35), 0 2px 8px -2px rgba(0, 0, 0, 0.2);
+    --shadow-apple-lg:     0 16px 40px -10px rgba(0, 0, 0, 0.45), 0 6px 16px -4px rgba(0, 0, 0, 0.25);
+    --shadow-apple-float:  0 24px 60px -12px rgba(0, 0, 0, 0.6);
+    --shadow-brand:        0 10px 30px -8px rgba(255, 59, 0, 0.45);
+    --shadow-vibe:         0 10px 30px -8px rgba(0, 115, 234, 0.45);
+    --shadow-card:         0 8px 24px -6px rgba(0, 0, 0, 0.4);
   }
 
   /* ─── Base Reset & Defaults ──────────────────────────────── */

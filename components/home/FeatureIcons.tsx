@@ -32,7 +32,7 @@ const FEATURES = [
 
 export default function FeatureIcons() {
   return (
-    <section className="section-py bg-[#0D0D11] border-b border-white/10" aria-labelledby="brand-story-heading">
+    <section className="section-py bg-[var(--bg-primary)] border-b border-[var(--border)]" aria-labelledby="brand-story-heading">
       <div className="container-custom">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
@@ -42,10 +42,10 @@ export default function FeatureIcons() {
               <Flame size={15} />
               <span>THE PIZZA EXPERT DIFFERENCE</span>
             </div>
-            <h2 id="brand-story-heading" className="section-title text-white mb-6">
+            <h2 id="brand-story-heading" className="section-title text-[var(--text-primary)] mb-6">
               THE SECRET TO <br />OUR SLICES.
             </h2>
-            <p className="text-zinc-300 leading-relaxed text-base font-normal">
+            <p className="text-[var(--text-secondary)] leading-relaxed text-base font-normal">
               We believe great pizza requires patience. From our 24-hour slow-fermented dough to our wood-fired hearth, every pizza is an authentic craft experience right here in Prayagraj.
             </p>
           </div>
@@ -61,20 +61,20 @@ export default function FeatureIcons() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.1 }}
-                  className="bg-[#16161E] rounded-3xl p-6 border border-white/10 hover:border-[#FF3B00]/40 transition-all group"
+                  className="bg-[var(--bg-surface)] rounded-3xl p-6 border border-[var(--border)] hover:border-[#FF3B00]/40 shadow-sm hover:shadow-md transition-all group"
                 >
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border)]">
                     <span className="font-mono font-black text-xs text-[#FFC01D] tracking-widest">
                       {feature.num}
                     </span>
-                    <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-[#FF3B00] group-hover:bg-[#FF3B00] group-hover:text-white transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--bg-subtle)] flex items-center justify-center text-[#FF3B00] group-hover:bg-[#FF3B00] group-hover:text-white transition-colors">
                       <Icon size={18} />
                     </div>
                   </div>
-                  <h3 className="font-heading font-extrabold text-white text-lg mb-2 tracking-tight">
+                  <h3 className="font-heading font-extrabold text-[var(--text-primary)] text-lg mb-2 tracking-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-zinc-400 text-sm leading-relaxed font-normal">
+                  <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-normal">
                     {feature.desc}
                   </p>
                 </motion.div>

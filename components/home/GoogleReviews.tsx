@@ -66,10 +66,10 @@ export default function GoogleReviews() {
       : headerSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review'
 
   return (
-    <section className="section-py bg-[#08080B] border-y border-white/10" aria-labelledby="reviews-heading">
+    <section className="section-py bg-[var(--bg-subtle)] border-y border-[var(--border)]" aria-labelledby="reviews-heading">
       <div className="container-custom">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12 border-b border-white/10 pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12 border-b border-[var(--border)] pb-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="flex items-center gap-1 text-[#FFC01D]">
@@ -77,11 +77,11 @@ export default function GoogleReviews() {
                   <Star key={idx} size={18} fill="currentColor" />
                 ))}
               </div>
-              <span className="font-mono font-black text-white text-sm bg-white/10 px-2 py-0.5 rounded-md">
+              <span className="font-mono font-black text-[var(--text-primary)] text-sm bg-[var(--bg-surface)] border border-[var(--border)] px-2 py-0.5 rounded-md shadow-xs">
                 {ratingScore}
               </span>
             </div>
-            <h2 id="reviews-heading" className="section-title text-white">
+            <h2 id="reviews-heading" className="section-title text-[var(--text-primary)]">
               {sectionTitle}
             </h2>
             <p className="section-subtitle">
@@ -93,7 +93,7 @@ export default function GoogleReviews() {
             href={mounted ? googleLink : '#'}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto border border-white/15 hover:border-white/30"
+            className="btn btn-secondary rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 self-start md:self-auto border border-[var(--border)] hover:border-[#FF3B00]/40 text-[var(--text-primary)]"
           >
             {btnText}
           </a>
@@ -108,7 +108,7 @@ export default function GoogleReviews() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: (i % 3) * 0.1 }}
-              className="bg-[#16161E] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full hover:border-white/20 transition-all shadow-xl"
+              className="bg-[var(--bg-surface)] rounded-3xl p-6 border border-[var(--border)] flex flex-col justify-between h-full hover:border-[#FF3B00]/30 transition-all shadow-md"
             >
               <div>
                 <div className="flex items-center gap-1 text-[#FFC01D] mb-3">
@@ -116,17 +116,17 @@ export default function GoogleReviews() {
                     <Star key={idx} size={14} fill="currentColor" />
                   ))}
                 </div>
-                <p className="text-zinc-200 text-sm sm:text-base leading-relaxed italic mb-6 font-normal">
+                <p className="text-[var(--text-secondary)] text-sm sm:text-base leading-relaxed italic mb-6 font-normal">
                   &quot;{review.comment}&quot;
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                 <div>
-                  <p className="font-heading font-extrabold text-white text-base tracking-tight">
+                  <p className="font-heading font-extrabold text-[var(--text-primary)] text-base tracking-tight">
                     {review.customer_name}
                   </p>
-                  <p className="text-zinc-400 text-xs flex items-center gap-1 mt-0.5 font-medium">
+                  <p className="text-[var(--text-muted)] text-xs flex items-center gap-1 mt-0.5 font-medium">
                     <MapPin size={12} className="text-[#FF3B00]" /> {review.location || 'Prayagraj'}
                   </p>
                 </div>

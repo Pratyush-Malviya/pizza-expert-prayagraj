@@ -30,7 +30,7 @@ export default function HeroBanner() {
   const heroImg = mounted && store.heroImageUrl ? store.heroImageUrl : FOOD_IMAGES['hero-pizza']
 
   return (
-    <section className="relative min-h-[78vh] lg:min-h-[84vh] flex items-center overflow-hidden pt-10 pb-14 lg:pt-16 lg:pb-20 bg-[#0A0A0E]">
+    <section className="relative min-h-[78vh] lg:min-h-[84vh] flex items-center overflow-hidden pt-10 pb-14 lg:pt-16 lg:pb-20 bg-[var(--bg-primary)]">
       {/* Subtle Ambient Radial Glow */}
       <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] rounded-full bg-[#FF3B00]/10 blur-[150px] pointer-events-none" />
 
@@ -45,7 +45,7 @@ export default function HeroBanner() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase text-zinc-300 backdrop-blur-md"
+              className="inline-flex items-center gap-2 border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase text-[var(--text-secondary)] backdrop-blur-md shadow-xs"
             >
               <Sparkles size={13} className="text-[#FFC01D]" />
               <span>{badgeText}</span>
@@ -56,14 +56,14 @@ export default function HeroBanner() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="space-y-1 drop-shadow-2xl"
+              className="space-y-1 drop-shadow-sm"
             >
-              <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-[80px] uppercase leading-[0.9] tracking-tight text-white">
-                <span className="text-[#FF3B00] drop-shadow-[0_4px_24px_rgba(255,59,0,0.4)]">{titleLine1}</span>
+              <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-[80px] uppercase leading-[0.9] tracking-tight text-[var(--text-primary)]">
+                <span className="text-[#FF3B00] drop-shadow-[0_4px_24px_rgba(255,59,0,0.3)]">{titleLine1}</span>
                 <span className="block text-2xl sm:text-4xl lg:text-[44px] font-serif italic font-normal text-[#FFC01D] my-1.5 tracking-normal lowercase first-letter:uppercase">
                   {titleSub}
                 </span>
-                <span className="text-white">{titleLine2}</span>
+                <span className="text-[var(--text-primary)]">{titleLine2}</span>
               </h1>
             </motion.div>
 
@@ -72,7 +72,7 @@ export default function HeroBanner() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-base sm:text-lg leading-relaxed max-w-xl text-zinc-400 font-normal"
+              className="text-base sm:text-lg leading-relaxed max-w-xl text-[var(--text-secondary)] font-normal"
             >
               {description}
             </motion.p>
@@ -94,7 +94,7 @@ export default function HeroBanner() {
 
               <Link
                 href={secondaryBtnLink}
-                className="btn btn-secondary rounded-full px-7 py-3.5 text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border border-white/10 hover:border-white/20 transition-all text-zinc-200"
+                className="btn btn-secondary rounded-full px-7 py-3.5 text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 border border-[var(--border)] hover:border-[#FF3B00]/40 transition-all text-[var(--text-primary)]"
               >
                 <span>{secondaryBtnText}</span>
               </Link>
@@ -105,7 +105,7 @@ export default function HeroBanner() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.35 }}
-              className="flex flex-wrap items-center gap-6 text-xs text-zinc-400 pt-3"
+              className="flex flex-wrap items-center gap-6 text-xs text-[var(--text-secondary)] pt-3"
             >
               <div className="flex items-center gap-2 font-medium">
                 <div className="flex items-center text-[#FFC01D]">
@@ -113,15 +113,15 @@ export default function HeroBanner() {
                     <Star key={i} size={13} fill="currentColor" />
                   ))}
                 </div>
-                <span className="font-bold text-white font-mono">4.9</span>
-                <span className="text-zinc-500">(500+ Prayagraj reviews)</span>
+                <span className="font-bold text-[var(--text-primary)] font-mono">4.9</span>
+                <span className="text-[var(--text-muted)]">(500+ Prayagraj reviews)</span>
               </div>
 
-              <span className="hidden sm:inline text-zinc-700">•</span>
+              <span className="hidden sm:inline text-[var(--border)]">•</span>
 
               <div className="flex items-center gap-1.5 font-medium">
                 <Clock size={13} className="text-[#10B981]" />
-                <span className="text-zinc-300">25–30 min average delivery</span>
+                <span className="text-[var(--text-secondary)]">25–30 min average delivery</span>
               </div>
             </motion.div>
 
@@ -134,7 +134,7 @@ export default function HeroBanner() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="lg:col-span-5 relative flex justify-center"
           >
-            <div className="relative w-full max-w-[440px] aspect-square rounded-3xl overflow-hidden bg-[#121218] border border-white/10 shadow-2xl group">
+            <div className="relative w-full max-w-[440px] aspect-square rounded-3xl overflow-hidden bg-[var(--bg-surface)] border border-[var(--border)] shadow-2xl group">
               <img
                 src={heroImg}
                 alt="Pizza Expert Prayagraj Signature Pizza"
