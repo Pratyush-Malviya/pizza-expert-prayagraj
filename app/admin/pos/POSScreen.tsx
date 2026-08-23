@@ -246,10 +246,7 @@ export default function POSScreen() {
   // ── State: Payment ──
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle')
   const [cashTendered, setCashTendered] = useState('')
-  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'split' | 'gateway_qr'>('cash')
-  const [splitCash, setSplitCash] = useState('')
-  const [splitUpi, setSplitUpi] = useState('')
-  const [splitCard, setSplitCard] = useState('')
+  const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'gateway_qr'>('cash')
   const [cardReference, setCardReference] = useState('')
   const [upiReference, setUpiReference] = useState('')
   const [gatewayStatus, setGatewayStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
@@ -1023,16 +1020,6 @@ export default function POSScreen() {
           amount: totals.total,
           reference: upiReference ? `UPI_${upiReference}` : `UPI_QR_${lastOrderId.slice(-6)}`
         }]
-      } else if (paymentMode === 'split') {
-        const c = parseFloat(splitCash) || 0
-        const u = parseFloat(splitUpi) || 0
-        const card = parseFloat(splitCard) || 0
-        if (c + u + card < totals.total) {
-          throw new Error(`Total split tender (₹${(c + u + card).toFixed(2)}) is less than bill amount (₹${totals.total.toFixed(2)})`)
-        }
-        if (c > 0) tenders.push({ tenderType: 'cash', amount: c, changeGiven: Math.max(0, c + u + card - totals.total) })
-        if (u > 0) tenders.push({ tenderType: 'upi', amount: u, reference: upiReference ? `UPI_${upiReference}` : undefined })
-        if (card > 0) tenders.push({ tenderType: 'card', amount: card, reference: cardReference ? `EDC_${cardReference}` : undefined })
       } else {
         tenders = [{ tenderType: paymentMode as any, amount: totals.total }]
       }
@@ -1116,7 +1103,7 @@ export default function POSScreen() {
       total: totals.total,
       payments: [
         {
-          tenderType: paymentMode === 'split' ? 'split payment' : paymentMode,
+          tenderType: paymentMode,
           amount: totals.total,
           changeGiven:
             paymentMode === 'cash' ? Math.max(0, (parseFloat(cashTendered) || 0) - totals.total) : 0,
@@ -1964,14 +1951,13 @@ export default function POSScreen() {
               </span>
             </div>
 
-            {/* Tender Mode Tabs (Cash, UPI QR, Online Gateway / Razorpay, Card, Split) */}
-            <div className="grid grid-cols-5 gap-1">
+            {/* Tender Mode Tabs (Cash, UPI QR, Online Gateway / Razorpay, Card) */}
+            <div className="grid grid-cols-4 gap-1.5">
               {([
                 { type: 'cash', icon: Banknote, label: 'Cash' },
                 { type: 'gateway_qr', icon: QrCode, label: 'UPI QR' },
-                { type: 'razorpay', icon: CreditCard, label: 'Gateway' },
                 { type: 'card', icon: CreditCard, label: 'Card' },
-                { type: 'split', icon: Layers, label: 'Split' },
+                { type: 'razorpay', icon: CreditCard, label: 'Gateway' },
               ] as const).map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
@@ -2105,7 +2091,7 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* 3. Razorpay Payment Gateway Modal / Link Trigger */}
+            {/* 4. Razorpay Payment Gateway Modal / Link Trigger */}
             {paymentMode === 'razorpay' && (
               <div className="p-3 rounded-2xl bg-gradient-to-b from-red-950/30 to-black/40 border border-red-500/30 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
@@ -2151,68 +2137,13 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* 4. Split Tender Inputs */}
-            {paymentMode === 'split' && (
-              <div className="space-y-2 p-3 rounded-2xl bg-black/40 border border-white/10 text-xs">
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[10px] text-white/50 block mb-1">💵 Cash (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={splitCash}
-                      onChange={(e) => setSplitCash(e.target.value)}
-                      className="w-full bg-black border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-white/50 block mb-1">📱 UPI (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={splitUpi}
-                      onChange={(e) => setSplitUpi(e.target.value)}
-                      className="w-full bg-black border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-white/50 block mb-1">💳 Card (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={splitCard}
-                      onChange={(e) => setSplitCard(e.target.value)}
-                      className="w-full bg-black border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white font-mono"
-                    />
-                  </div>
-                </div>
-
-                {(() => {
-                  const splitSum = (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0)
-                  const diff = totals.total - splitSum
-                  return (
-                    <div className="flex items-center justify-between font-mono pt-1 text-[11px] border-t border-white/10">
-                      <span className="text-white/60">Tendered: ₹{splitSum.toFixed(2)}</span>
-                      {diff > 0 ? (
-                        <span className="text-amber-400 font-bold">Remaining Due: ₹{diff.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-emerald-400 font-bold">✓ Settled {diff < 0 ? `(Change: ₹${Math.abs(diff).toFixed(2)})` : ''}</span>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
-
             {/* Settle Action Button */}
             {paymentMode !== 'razorpay' && (
               <button
                 onClick={processPayment}
                 disabled={
                   placing ||
-                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
-                  (paymentMode === 'split' &&
-                    (parseFloat(splitCash) || 0) + (parseFloat(splitUpi) || 0) + (parseFloat(splitCard) || 0) < totals.total)
+                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total)
                 }
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
               >
