@@ -12,7 +12,7 @@ import {
   Layers, ShieldCheck, Search,
   Monitor, Clock, Pause, ClipboardList, Banknote,
   ChefHat, Trash2, SlidersHorizontal, Gift, Percent, BarChart3,
-  Mail, ArrowUpRight
+  Mail, ArrowUpRight, Building
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -135,7 +135,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     keywords: ['admin', 'config', 'staff', 'rbac', 'taxes', 'email templates', 'theme'],
     items: [
       { label: 'User & Team Management', href: '/admin/users', icon: ShieldCheck, keywords: ['users', 'staff', 'drivers', 'roles', 'permissions', 'super admin', 'access control', 'roster'] },
-      { label: 'General Settings', href: '/admin/settings', icon: Settings, keywords: ['store details', 'logo', 'business name', 'operating hours', 'contact'] },
+      { label: '🏢 Client Business Hub', href: '/admin/settings', icon: Building, keywords: ['client business', 'client details', 'business info', 'company profile', 'store details', 'fssai', 'gstin', 'operating hours', 'contact', 'address', 'phone', 'branding', 'all settings', 'store center', 'delivery fees', 'upi', 'bank', 'general settings'] },
       { label: 'Email Templates', href: '/admin/settings?tab=emails', icon: Mail, keywords: ['email templates', 'mail notifications', 'resend', 'receipt template', 'alerts'] },
       { label: 'Tax Engine & GST', href: '/admin/settings/taxes', icon: Percent, keywords: ['gst rate', 'tax slab', 'fssai', 'gstin number'] },
       { label: 'Theme & Customizer', href: '/admin/theme', icon: Palette, keywords: ['colors', 'styling', 'hero editor', 'fonts', 'branding'] },

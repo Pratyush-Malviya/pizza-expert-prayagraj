@@ -76,20 +76,45 @@ interface SettingsState {
   businessName: string
   brandBadge: string
   locationTagline: string
+  businessBio: string
+  storeStatus: 'open' | 'closed' | 'busy'
   phone: string
   whatsapp: string
   email: string
   address: string
+  landmark: string
+  googleMapsDirectionsUrl: string
+  
+  // Operating Schedule
+  operatingHoursText: string
+  weeklySchedule: Record<string, { open: string; close: string; closed: boolean }>
+  prepTimeMinutes: number
+  deliveryTimeText: string
+  
+  // Ordering & Service Rules
+  deliveryRadiusKm: number
   deliveryFee: number
   freeDeliveryAbove: number
+  minOrderValue: number
+  packagingCharge: number
+  enableDelivery: boolean
+  enableTakeaway: boolean
+  enableDineIn: boolean
+  enableCod: boolean
+  
+  // Taxes, Compliance & Invoicing
   taxRate: number
   gstinNumber: string
   fssaiNumber: string
+  panNumber: string
+  invoiceFooterNote: string
   
-  // Social Links
+  // Social Links & Food Delivery Aggregators
   facebookUrl: string
   instagramUrl: string
   twitterUrl: string
+  zomatoUrl: string
+  swiggyUrl: string
   
   // Integrations & Google Reviews Section Customizer
   googleReviewsLink: string
@@ -107,10 +132,14 @@ interface SettingsState {
   flashBannerLink: string
   flashBannerImageUrl: string
   
-  // Payment Gateways
+  // Payment Gateways & Banking
   enableRazorpay: boolean
   razorpayKeyId: string
   razorpayKeySecret: string
+  upiId: string
+  bankName: string
+  bankAccountNumber: string
+  bankIfsc: string
 
   // Admin Profile Customization
   adminName: string
@@ -267,19 +296,53 @@ export const useSettingsStore = create<SettingsState>()(
       businessName: 'Pizza Expert',
       brandBadge: 'PRO',
       locationTagline: 'ALLAPUR • PRAYAGRAJ',
+      businessBio: 'Authentic wood-fired Neapolitan pizzeria serving slow-fermented crusts, artisanal toppings, and handcrafted sides in the heart of Prayagraj.',
+      storeStatus: 'open',
       phone: '+91-9999999999',
       whatsapp: '919999999999',
       email: 'hello@pizzaexpert.in',
-      address: 'Allapur, Prayagraj, Uttar Pradesh 211006',
+      address: 'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
+      landmark: 'Near Allapur Water Tank, Opposite SBI Branch',
+      googleMapsDirectionsUrl: 'https://maps.google.com/?q=Pizza+Expert+Allapur+Prayagraj',
+
+      // Operating Schedule
+      operatingHoursText: '11:00 AM – 11:30 PM (All Days)',
+      weeklySchedule: {
+        monday: { open: '11:00', close: '23:30', closed: false },
+        tuesday: { open: '11:00', close: '23:30', closed: false },
+        wednesday: { open: '11:00', close: '23:30', closed: false },
+        thursday: { open: '11:00', close: '23:30', closed: false },
+        friday: { open: '11:00', close: '23:59', closed: false },
+        saturday: { open: '11:00', close: '23:59', closed: false },
+        sunday: { open: '11:00', close: '23:59', closed: false },
+      },
+      prepTimeMinutes: 15,
+      deliveryTimeText: '30-45 mins',
+
+      // Delivery & Service Rules
+      deliveryRadiusKm: 8,
       deliveryFee: 40,
       freeDeliveryAbove: 499,
+      minOrderValue: 149,
+      packagingCharge: 15,
+      enableDelivery: true,
+      enableTakeaway: true,
+      enableDineIn: true,
+      enableCod: true,
+
+      // Taxes, Compliance & Invoicing
       taxRate: 5,
       gstinNumber: '09ABCDE1234F1Z5',
       fssaiNumber: '12723999000123',
+      panNumber: 'ABCDE1234F',
+      invoiceFooterNote: 'Thank you for choosing Pizza Expert Prayagraj! For party bookings & queries, call +91-9999999999.',
 
-      facebookUrl: '',
-      instagramUrl: '',
-      twitterUrl: '',
+      // Social Links & Delivery Aggregators
+      facebookUrl: 'https://facebook.com/pizzaexpertprayagraj',
+      instagramUrl: 'https://instagram.com/pizzaexpertprayagraj',
+      twitterUrl: 'https://twitter.com/pizzaexpert',
+      zomatoUrl: 'https://www.zomato.com/allahabad/pizza-expert-allapur',
+      swiggyUrl: 'https://www.swiggy.com/restaurants/pizza-expert-allapur-prayagraj',
 
       googleReviewsLink: 'https://g.page/r/pizzaexpert-prayagraj/review',
       googleMapsEmbedUrl: 'https://maps.google.com/maps?q=Allapur,+Prayagraj,+Uttar+Pradesh&t=&z=14&ie=UTF8&iwloc=&output=embed',
@@ -295,9 +358,14 @@ export const useSettingsStore = create<SettingsState>()(
       flashBannerLink: '/menu',
       flashBannerImageUrl: '',
 
+      // Payment Gateways & Banking
       enableRazorpay: true,
       razorpayKeyId: 'rzp_test_TOUKlh4UdsSiXL',
       razorpayKeySecret: '7jQXoto16ovDYBjCXXv6rFTM',
+      upiId: 'pizzaexpert@okhdfcbank',
+      bankName: 'HDFC Bank Ltd.',
+      bankAccountNumber: '50200012345678',
+      bankIfsc: 'HDFC0001234',
 
       // Admin Profile Defaults
       adminName: 'Pratyush Malviya',
