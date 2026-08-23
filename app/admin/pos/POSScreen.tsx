@@ -250,6 +250,8 @@ export default function POSScreen() {
   const [splitCash, setSplitCash] = useState('')
   const [splitUpi, setSplitUpi] = useState('')
   const [splitCard, setSplitCard] = useState('')
+  const [cardReference, setCardReference] = useState('')
+  const [upiReference, setUpiReference] = useState('')
   const [gatewayStatus, setGatewayStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
   const [gatewayOrderId, setGatewayOrderId] = useState<string>('')
   const [placing, setPlacing] = useState(false)
@@ -1009,6 +1011,18 @@ export default function POSScreen() {
         const tendered = parseFloat(cashTendered) || totals.total
         const change = Math.max(0, tendered - totals.total)
         tenders = [{ tenderType: 'cash', amount: tendered, changeGiven: change }]
+      } else if (paymentMode === 'card') {
+        tenders = [{
+          tenderType: 'card',
+          amount: totals.total,
+          reference: cardReference ? `EDC_${cardReference}` : `CARD_${lastOrderId.slice(-6)}`
+        }]
+      } else if (paymentMode === 'gateway_qr') {
+        tenders = [{
+          tenderType: 'upi',
+          amount: totals.total,
+          reference: upiReference ? `UPI_${upiReference}` : `UPI_QR_${lastOrderId.slice(-6)}`
+        }]
       } else if (paymentMode === 'split') {
         const c = parseFloat(splitCash) || 0
         const u = parseFloat(splitUpi) || 0
@@ -1017,10 +1031,8 @@ export default function POSScreen() {
           throw new Error(`Total split tender (₹${(c + u + card).toFixed(2)}) is less than bill amount (₹${totals.total.toFixed(2)})`)
         }
         if (c > 0) tenders.push({ tenderType: 'cash', amount: c, changeGiven: Math.max(0, c + u + card - totals.total) })
-        if (u > 0) tenders.push({ tenderType: 'upi', amount: u })
-        if (card > 0) tenders.push({ tenderType: 'card', amount: card })
-      } else if (paymentMode === 'gateway_qr') {
-        tenders = [{ tenderType: 'upi', amount: totals.total, reference: `UPI_QR_${lastOrderId.slice(-6)}` }]
+        if (u > 0) tenders.push({ tenderType: 'upi', amount: u, reference: upiReference ? `UPI_${upiReference}` : undefined })
+        if (card > 0) tenders.push({ tenderType: 'card', amount: card, reference: cardReference ? `EDC_${cardReference}` : undefined })
       } else {
         tenders = [{ tenderType: paymentMode as any, amount: totals.total }]
       }
@@ -2038,6 +2050,57 @@ export default function POSScreen() {
                     <p className="text-[11px] text-emerald-400 font-semibold">✓ Exact Amount Embedded</p>
                     <p className="text-[10px] text-white/30">Ask customer to scan with any UPI app</p>
                   </div>
+                </div>
+
+                <div className="pt-1.5 border-t border-white/10 text-left">
+                  <input
+                    type="text"
+                    value={upiReference}
+                    onChange={(e) => setUpiReference(e.target.value)}
+                    placeholder="Optional: UPI Ref / UTR # (e.g. 423891002341)"
+                    className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-red-500 font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 3. Card Tender (EDC Swiping Terminal or Online Gateway) */}
+            {paymentMode === 'card' && (
+              <div className="p-3 rounded-2xl bg-black/50 border border-white/15 space-y-2.5">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5 font-bold">
+                  <div className="flex items-center gap-1.5 text-white">
+                    <CreditCard size={14} className="text-blue-400" />
+                    <span>Credit / Debit Card Payment</span>
+                  </div>
+                  <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-white/60">
+                    EDC Machine Auth Code / Card Last 4 Digits (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={cardReference}
+                    onChange={(e) => setCardReference(e.target.value)}
+                    placeholder="e.g. Auth #849201 or Visa 4821"
+                    className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                  <p className="text-[10px] text-white/40">
+                    Swipe or tap customer card on your counter POS machine (Pine Labs / Paytm / Mosambee), then click Confirm below.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-[10px] text-white/50">Need online card processing instead?</span>
+                  <button
+                    onClick={launchRazorpayModal}
+                    disabled={gatewayStatus === 'loading'}
+                    className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[10px] font-bold flex items-center gap-1 transition"
+                  >
+                    {gatewayStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
+                    Launch Online Card Modal
+                  </button>
                 </div>
               </div>
             )}
