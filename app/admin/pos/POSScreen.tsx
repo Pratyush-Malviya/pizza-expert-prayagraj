@@ -251,7 +251,7 @@ export default function POSScreen() {
       const [{ data: cats }, { data: prods }, { data: prodImgs }] = await Promise.all([
         supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
         supabase.from('products').select('id, name, slug, price, category_id, is_available, is_veg').order('sort_order'),
-        supabase.from('product_images').select('product_id, image_url, is_primary').order('sort_order'),
+        supabase.from('product_images').select('product_id, image_url, sort_order').order('sort_order', { ascending: true }),
       ])
 
       const validCats: Category[] = cats && cats.length > 0
@@ -260,8 +260,7 @@ export default function POSScreen() {
 
       const validProds: Product[] = prods && prods.length > 0
         ? prods.map(p => {
-            const dbImg = prodImgs?.find(img => img.product_id === p.id && img.is_primary)?.image_url 
-              || prodImgs?.find(img => img.product_id === p.id)?.image_url
+            const dbImg = prodImgs?.find(img => img.product_id === p.id)?.image_url
             return {
               id: p.id,
               name: p.name,
