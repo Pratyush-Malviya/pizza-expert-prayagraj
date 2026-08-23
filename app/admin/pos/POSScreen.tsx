@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   createPOSOrder,
@@ -76,10 +76,48 @@ export const resolveProductImage = (prod?: { id?: string; name?: string; slug?: 
   return FOOD_IMAGES['hero-pizza'] || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'
 }
 
-interface Category {
+export interface Category {
   id: string
   name: string
   slug: string
+}
+
+export const matchProductToCategory = (p: Product, c: Category): boolean => {
+  if (p.category_id === c.id) return true
+  if (p.category_id === c.slug) return true
+  if (p.category_id === `cat-${c.slug}`) return true
+
+  const cSlug = (c.slug || c.name || '').toLowerCase()
+  const pCat = (p.category_id || '').toLowerCase()
+  const pName = (p.name || '').toLowerCase()
+  const pSlug = (p.slug || '').toLowerCase()
+
+  if (cSlug.includes('pizza')) {
+    return pCat.includes('pizza') || pCat === '1' || pCat === 'cat-pizzas' || pName.includes('pizza') || pName.includes('margherita') || pSlug.includes('pizza')
+  }
+  if (cSlug.includes('burger')) {
+    return pCat.includes('burger') || pCat === '2' || pCat === 'cat-burgers' || pName.includes('burger') || pName.includes('zinger') || pSlug.includes('burger')
+  }
+  if (cSlug.includes('pasta')) {
+    return pCat.includes('pasta') || pCat === '3' || pCat === 'cat-pasta' || pName.includes('pasta') || pName.includes('arrabiata') || pName.includes('alfredo') || pName.includes('penne')
+  }
+  if (cSlug.includes('sandwich')) {
+    return pCat.includes('sandwich') || pName.includes('sandwich') || pName.includes('club') || pName.includes('toast')
+  }
+  if (cSlug.includes('side')) {
+    return pCat.includes('side') || pCat === '4' || pCat === 'cat-sides' || pName.includes('bread') || pName.includes('fries') || pName.includes('balls') || pName.includes('dip') || pName.includes('wings') || pName.includes('rings')
+  }
+  if (cSlug.includes('beverage') || cSlug.includes('drink')) {
+    return pCat.includes('beverage') || pCat.includes('drink') || pCat === '5' || pCat === 'cat-beverages' || pName.includes('coke') || pName.includes('cola') || pName.includes('lassi') || pName.includes('coffee') || pName.includes('tea') || pName.includes('pepsi') || pName.includes('shake') || pName.includes('juice') || pName.includes('thums')
+  }
+  if (cSlug.includes('combo') || cSlug.includes('deal') || cSlug.includes('feast')) {
+    return pCat.includes('combo') || pCat.includes('deal') || pCat === '6' || pCat === 'cat-combos' || pName.includes('combo') || pName.includes('meal') || pName.includes('feast') || pName.includes('party')
+  }
+  if (cSlug.includes('dessert') || cSlug.includes('sweet')) {
+    return pCat.includes('dessert') || pName.includes('cake') || pName.includes('lava') || pName.includes('brownie') || pName.includes('pastry') || pName.includes('sweet') || pName.includes('ice cream')
+  }
+
+  return false
 }
 
 interface CartModifier {
@@ -329,50 +367,104 @@ export default function POSScreen() {
         supabase.from('product_images').select('product_id, image_url, sort_order').order('sort_order', { ascending: true }),
       ])
 
-      const validCats: Category[] = cats && cats.length > 0
-        ? cats
-        : FALLBACK_CATEGORIES.map(c => ({ id: c.id, name: c.name, slug: c.slug }))
+      // 1. Read local storage in case products/categories were modified via admin
+      let localProducts: any[] = []
+      let localCategories: any[] = []
+      try {
+        const rawLocalProds = typeof window !== 'undefined' ? localStorage.getItem('pizza_products') : null
+        if (rawLocalProds) localProducts = JSON.parse(rawLocalProds)
+        const rawLocalCats = typeof window !== 'undefined' ? localStorage.getItem('pizza_categories') : null
+        if (rawLocalCats) localCategories = JSON.parse(rawLocalCats)
+      } catch (_) {}
 
-      const validProds: Product[] = prods && prods.length > 0
-        ? prods.map(p => {
-            const dbImg = prodImgs?.find(img => img.product_id === p.id)?.image_url
-            return {
-              id: p.id,
+      // 2. Build complete Category list (DB + localStorage + Fallbacks)
+      const catMap = new Map<string, Category>()
+      FALLBACK_CATEGORIES.forEach((c) => catMap.set(c.slug, { id: c.id, name: c.name, slug: c.slug }))
+      if (Array.isArray(localCategories)) {
+        localCategories.forEach((c) => {
+          if (c.slug || c.id) catMap.set(c.slug || c.id, { id: c.id, name: c.name, slug: c.slug })
+        })
+      }
+      if (Array.isArray(cats)) {
+        cats.forEach((c) => {
+          if (c.slug || c.id) catMap.set(c.slug || c.id, { id: c.id, name: c.name, slug: c.slug })
+        })
+      }
+      const validCats = Array.from(catMap.values())
+
+      // 3. Build complete Product list (Fallback + localStorage + DB products merged)
+      const prodMap = new Map<string, Product>()
+
+      // A. Seed all fallback products
+      FALLBACK_PRODUCTS.forEach((p) => {
+        prodMap.set(p.slug || p.id, {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          price: p.price,
+          category_id: p.categoryId,
+          is_available: true,
+          is_veg: p.isVeg,
+          image_url: p.imageUrl || resolveProductImage(p),
+        })
+      })
+
+      // B. Merge local storage products
+      if (Array.isArray(localProducts)) {
+        localProducts.forEach((p) => {
+          const key = p.slug || p.id
+          if (key) {
+            prodMap.set(key, {
+              id: p.id || key,
               name: p.name,
-              slug: p.slug,
-              price: p.price,
-              category_id: p.category_id,
+              slug: p.slug || key,
+              price: Number(p.price) || 0,
+              category_id: p.category_id || p.categoryId || 'cat-pizzas',
               is_available: p.is_available !== false,
-              is_veg: p.is_veg,
-              image_url: dbImg || resolveProductImage(p),
-            }
-          })
-        : FALLBACK_PRODUCTS.map(p => ({
+              is_veg: p.is_veg ?? true,
+              image_url: p.image_url || p.imageUrl || resolveProductImage(p),
+            })
+          }
+        })
+      }
+
+      // C. Merge Supabase DB products (highest priority for real-time live data)
+      if (Array.isArray(prods) && prods.length > 0) {
+        prods.forEach((p) => {
+          const dbImg = prodImgs?.find((img) => img.product_id === p.id)?.image_url
+          const key = p.slug || p.id
+          prodMap.set(key, {
             id: p.id,
             name: p.name,
-            slug: p.slug,
-            price: p.price,
-            category_id: p.categoryId,
-            is_available: true,
-            is_veg: p.isVeg,
-            image_url: p.imageUrl || resolveProductImage(p),
-          }))
+            slug: p.slug || key,
+            price: Number(p.price) || 0,
+            category_id: p.category_id || 'cat-pizzas',
+            is_available: p.is_available !== false,
+            is_veg: p.is_veg ?? true,
+            image_url: dbImg || resolveProductImage(p),
+          })
+        })
+      }
+
+      const validProds = Array.from(prodMap.values())
 
       setCategories(validCats)
       setProducts(validProds)
     } catch (err) {
       console.warn('Catalog DB fallback to default menu:', err)
-      setCategories(FALLBACK_CATEGORIES.map(c => ({ id: c.id, name: c.name, slug: c.slug })))
-      setProducts(FALLBACK_PRODUCTS.map(p => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.price,
-        category_id: p.categoryId,
-        is_available: true,
-        is_veg: p.isVeg,
-        image_url: p.imageUrl || resolveProductImage(p),
-      })))
+      setCategories(FALLBACK_CATEGORIES.map((c) => ({ id: c.id, name: c.name, slug: c.slug })))
+      setProducts(
+        FALLBACK_PRODUCTS.map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          price: p.price,
+          category_id: p.categoryId,
+          is_available: true,
+          is_veg: p.isVeg,
+          image_url: p.imageUrl || resolveProductImage(p),
+        }))
+      )
     } finally {
       setLoadingCatalog(false)
     }
@@ -584,40 +676,71 @@ export default function POSScreen() {
   }, [customizingProduct, showHotkeysModal, showCustomerMenuModal, searchQuery, cart, paymentStep])
 
   // ── Filtered Products based on Menu View, Category, and Search ───────────
-  const filteredProducts = products.filter((p) => {
-    // 1. Menu view filter
-    let matchesMenuView = true
-    if (activeMenuView === 'combos') {
-      matchesMenuView = p.name.toLowerCase().includes('combo') || p.name.toLowerCase().includes('meal') || p.name.toLowerCase().includes('deal') || p.name.toLowerCase().includes('feast') || p.category_id.toLowerCase().includes('combo')
-    } else if (activeMenuView === 'bestsellers') {
-      matchesMenuView = Number(p.price) >= 240 || p.name.toLowerCase().includes('margherita') || p.name.toLowerCase().includes('farmhouse') || p.name.toLowerCase().includes('zinger') || p.name.toLowerCase().includes('supreme') || p.name.toLowerCase().includes('tikka') || p.name.toLowerCase().includes('crispy')
-    } else if (activeMenuView === 'beverages') {
-      matchesMenuView = p.name.toLowerCase().includes('coke') || p.name.toLowerCase().includes('pepsi') || p.name.toLowerCase().includes('lassi') || p.name.toLowerCase().includes('bread') || p.name.toLowerCase().includes('fries') || p.name.toLowerCase().includes('dessert') || p.name.toLowerCase().includes('shake') || p.category_id.toLowerCase().includes('beverage') || p.category_id.toLowerCase().includes('side')
-    } else if (activeMenuView === 'dine_in_special') {
-      matchesMenuView = Number(p.price) >= 250 || p.name.toLowerCase().includes('pizza') || p.name.toLowerCase().includes('pasta')
-    }
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      // 1. Menu view filter
+      let matchesMenuView = true
+      if (activeMenuView === 'combos') {
+        matchesMenuView =
+          p.name.toLowerCase().includes('combo') ||
+          p.name.toLowerCase().includes('meal') ||
+          p.name.toLowerCase().includes('deal') ||
+          p.name.toLowerCase().includes('feast') ||
+          p.name.toLowerCase().includes('party') ||
+          p.category_id.toLowerCase().includes('combo')
+      } else if (activeMenuView === 'bestsellers') {
+        matchesMenuView =
+          Number(p.price) >= 240 ||
+          p.name.toLowerCase().includes('margherita') ||
+          p.name.toLowerCase().includes('farmhouse') ||
+          p.name.toLowerCase().includes('zinger') ||
+          p.name.toLowerCase().includes('supreme') ||
+          p.name.toLowerCase().includes('tikka') ||
+          p.name.toLowerCase().includes('crispy')
+      } else if (activeMenuView === 'beverages') {
+        matchesMenuView =
+          p.name.toLowerCase().includes('coke') ||
+          p.name.toLowerCase().includes('pepsi') ||
+          p.name.toLowerCase().includes('lassi') ||
+          p.name.toLowerCase().includes('bread') ||
+          p.name.toLowerCase().includes('fries') ||
+          p.name.toLowerCase().includes('dessert') ||
+          p.name.toLowerCase().includes('shake') ||
+          p.name.toLowerCase().includes('coffee') ||
+          p.category_id.toLowerCase().includes('beverage') ||
+          p.category_id.toLowerCase().includes('side')
+      } else if (activeMenuView === 'dine_in_special') {
+        matchesMenuView =
+          Number(p.price) >= 200 ||
+          p.name.toLowerCase().includes('pizza') ||
+          p.name.toLowerCase().includes('pasta') ||
+          p.name.toLowerCase().includes('combo')
+      }
 
-    // 2. Category tab filter
-    const currentSelectedCat = categories.find(c => c.id === activeCategory)
-    const matchesCategory = activeCategory === 'all' 
-      || p.category_id === activeCategory
-      || (currentSelectedCat && (
-          p.category_id === currentSelectedCat.slug || 
-          p.category_id === `cat-${currentSelectedCat.slug}` ||
-          (currentSelectedCat.slug === 'pizzas' && (p.category_id === '1' || p.category_id === 'cat-pizzas')) ||
-          (currentSelectedCat.slug === 'burgers' && (p.category_id === '2' || p.category_id === 'cat-burgers')) ||
-          (currentSelectedCat.slug === 'pasta' && (p.category_id === '3' || p.category_id === 'cat-pasta')) ||
-          (currentSelectedCat.slug === 'sides' && (p.category_id === '4' || p.category_id === 'cat-sides')) ||
-          (currentSelectedCat.slug === 'beverages' && (p.category_id === '5' || p.category_id === 'cat-beverages')) ||
-          (currentSelectedCat.slug === 'combos' && (p.category_id === '6' || p.category_id === 'cat-combos'))
-        ))
+      // 2. Category tab filter
+      let matchesCategory = true
+      if (activeCategory !== 'all') {
+        const currentSelectedCat = categories.find((c) => c.id === activeCategory || c.slug === activeCategory)
+        if (currentSelectedCat) {
+          matchesCategory = matchProductToCategory(p, currentSelectedCat)
+        } else {
+          matchesCategory = p.category_id === activeCategory
+        }
+      }
 
-    // 3. Search & Veg filter
-    const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesVeg = !vegOnlyFilter || p.is_veg
+      // 3. Search & Veg filter
+      const q = searchQuery.toLowerCase().trim()
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.slug ? p.slug.toLowerCase().includes(q) : false) ||
+        p.price.toString().includes(q)
 
-    return matchesMenuView && matchesCategory && matchesSearch && matchesVeg
-  })
+      const matchesVeg = !vegOnlyFilter || p.is_veg
+
+      return matchesMenuView && matchesCategory && matchesSearch && matchesVeg
+    })
+  }, [products, activeMenuView, activeCategory, categories, searchQuery, vegOnlyFilter])
 
   // ── Fast Add to Cart ──────────────────────────────────────────────────────
   const fastAddToCart = useCallback((product: Product) => {
@@ -1225,20 +1348,10 @@ export default function POSScreen() {
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               )}
             >
-              All Items ({filteredProducts.length})
+              All Items ({products.length})
             </button>
             {categories.map((c) => {
-              const count = products.filter((p) => 
-                p.category_id === c.id || 
-                p.category_id === c.slug || 
-                p.category_id === `cat-${c.slug}` ||
-                (c.slug === 'pizzas' && (p.category_id === '1' || p.category_id === 'cat-pizzas')) ||
-                (c.slug === 'burgers' && (p.category_id === '2' || p.category_id === 'cat-burgers')) ||
-                (c.slug === 'pasta' && (p.category_id === '3' || p.category_id === 'cat-pasta')) ||
-                (c.slug === 'sides' && (p.category_id === '4' || p.category_id === 'cat-sides')) ||
-                (c.slug === 'beverages' && (p.category_id === '5' || p.category_id === 'cat-beverages')) ||
-                (c.slug === 'combos' && (p.category_id === '6' || p.category_id === 'cat-combos'))
-              ).length
+              const count = products.filter((p) => matchProductToCategory(p, c)).length
               return (
                 <button
                   key={c.id}
@@ -1282,7 +1395,7 @@ export default function POSScreen() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredProducts.map((product) => {
+              {filteredProducts.map((product: Product) => {
                 const prodImg = resolveProductImage(product)
                 return (
                   <div
