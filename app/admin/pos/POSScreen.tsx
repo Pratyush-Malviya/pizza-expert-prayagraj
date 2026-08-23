@@ -215,7 +215,7 @@ export default function POSScreen() {
     const supabase = createClient()
     const [{ data: cats }, { data: prods }] = await Promise.all([
       supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('products').select('id, name, price, category_id, is_available, is_veg, image_url').order('sort_order'),
+      supabase.from('products').select('id, name, price, category_id, is_available, is_veg').order('sort_order'),
     ])
     setCategories(cats || [])
     setProducts(prods || [])
