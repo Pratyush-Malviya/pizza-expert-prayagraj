@@ -143,14 +143,32 @@ export async function createPOSOrder(payload: CreatePOSOrderPayload) {
     if (orderErr) throw new Error(orderErr.message)
 
     // 4. Insert order items
-    const orderItems = payload.items.map((item) => ({
-      order_id: order.id,
-      product_id: item.productId,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      selected_options: { modifiers: item.modifiers || [], notes: item.notes || '' },
-    }))
-    await supabase.from('order_items').insert(orderItems)
+    const isUUID = (str?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || '')
+    const { data: dbProducts } = await supabase.from('products').select('id, name').limit(100)
+    const fallbackDbId = dbProducts?.[0]?.id
+
+    const orderItems = payload.items.map((item) => {
+      let resolvedProdId = item.productId
+      if (!isUUID(resolvedProdId)) {
+        const found = dbProducts?.find((p) => item.productName.toLowerCase().includes(p.name.toLowerCase()))
+        resolvedProdId = found ? found.id : (fallbackDbId || item.productId)
+      }
+      return {
+        order_id: order.id,
+        product_id: resolvedProdId,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        selected_options: { 
+          productName: item.productName,
+          modifiers: item.modifiers || [], 
+          notes: item.notes || '' 
+        },
+      }
+    })
+    
+    if (orderItems.length > 0 && orderItems.every(i => isUUID(i.product_id))) {
+      await supabase.from('order_items').insert(orderItems)
+    }
 
     // 5. Apply discount record
     if (totals.discount > 0 && payload.discountType) {

@@ -25,6 +25,8 @@ import {
   Percent, ShieldAlert, Coffee, QrCode, Globe, MessageSquare, Copy,
   ExternalLink, Share2, Flame, Gift
 } from 'lucide-react'
+import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/constants/defaultMenu'
+import { FOOD_IMAGES } from '@/lib/constants/foodImages'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -212,14 +214,44 @@ export default function POSScreen() {
 
   // ── Load Catalog ──────────────────────────────────────────────────────────
   const loadCatalog = useCallback(async () => {
-    const supabase = createClient()
-    const [{ data: cats }, { data: prods }] = await Promise.all([
-      supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('products').select('id, name, price, category_id, is_available, is_veg').order('sort_order'),
-    ])
-    setCategories(cats || [])
-    setProducts(prods || [])
-    setLoadingCatalog(false)
+    try {
+      const supabase = createClient()
+      const [{ data: cats }, { data: prods }] = await Promise.all([
+        supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
+        supabase.from('products').select('id, name, price, category_id, is_available, is_veg').order('sort_order'),
+      ])
+
+      const validCats: Category[] = cats && cats.length > 0
+        ? cats
+        : FALLBACK_CATEGORIES.map(c => ({ id: c.id, name: c.name, slug: c.slug }))
+
+      const validProds: Product[] = prods && prods.length > 0
+        ? prods
+        : FALLBACK_PRODUCTS.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            category_id: p.categoryId,
+            is_available: true,
+            is_veg: p.isVeg
+          }))
+
+      setCategories(validCats)
+      setProducts(validProds)
+    } catch (err) {
+      console.warn('Catalog DB fallback to default menu:', err)
+      setCategories(FALLBACK_CATEGORIES.map(c => ({ id: c.id, name: c.name, slug: c.slug })))
+      setProducts(FALLBACK_PRODUCTS.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        category_id: p.categoryId,
+        is_available: true,
+        is_veg: p.isVeg
+      })))
+    } finally {
+      setLoadingCatalog(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -405,17 +437,29 @@ export default function POSScreen() {
     // 1. Menu view filter
     let matchesMenuView = true
     if (activeMenuView === 'combos') {
-      matchesMenuView = p.name.toLowerCase().includes('combo') || p.name.toLowerCase().includes('meal') || p.name.toLowerCase().includes('deal')
+      matchesMenuView = p.name.toLowerCase().includes('combo') || p.name.toLowerCase().includes('meal') || p.name.toLowerCase().includes('deal') || p.name.toLowerCase().includes('feast') || p.category_id.toLowerCase().includes('combo')
     } else if (activeMenuView === 'bestsellers') {
-      matchesMenuView = p.price >= 250 || p.name.toLowerCase().includes('margherita') || p.name.toLowerCase().includes('farmhouse') || p.name.toLowerCase().includes('peppy')
+      matchesMenuView = Number(p.price) >= 240 || p.name.toLowerCase().includes('margherita') || p.name.toLowerCase().includes('farmhouse') || p.name.toLowerCase().includes('zinger') || p.name.toLowerCase().includes('supreme') || p.name.toLowerCase().includes('tikka') || p.name.toLowerCase().includes('crispy')
     } else if (activeMenuView === 'beverages') {
-      matchesMenuView = p.name.toLowerCase().includes('coke') || p.name.toLowerCase().includes('pepsi') || p.name.toLowerCase().includes('mojito') || p.name.toLowerCase().includes('garlic') || p.name.toLowerCase().includes('dessert') || p.name.toLowerCase().includes('lava')
+      matchesMenuView = p.name.toLowerCase().includes('coke') || p.name.toLowerCase().includes('pepsi') || p.name.toLowerCase().includes('lassi') || p.name.toLowerCase().includes('bread') || p.name.toLowerCase().includes('fries') || p.name.toLowerCase().includes('dessert') || p.name.toLowerCase().includes('shake') || p.category_id.toLowerCase().includes('beverage') || p.category_id.toLowerCase().includes('side')
     } else if (activeMenuView === 'dine_in_special') {
-      matchesMenuView = p.price >= 300 || p.name.toLowerCase().includes('gourmet') || p.name.toLowerCase().includes('special')
+      matchesMenuView = Number(p.price) >= 250 || p.name.toLowerCase().includes('pizza') || p.name.toLowerCase().includes('pasta')
     }
 
-    // 2. Category tab
-    const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory
+    // 2. Category tab filter
+    const currentSelectedCat = categories.find(c => c.id === activeCategory)
+    const matchesCategory = activeCategory === 'all' 
+      || p.category_id === activeCategory
+      || (currentSelectedCat && (
+          p.category_id === currentSelectedCat.slug || 
+          p.category_id === `cat-${currentSelectedCat.slug}` ||
+          (currentSelectedCat.slug === 'pizzas' && (p.category_id === '1' || p.category_id === 'cat-pizzas')) ||
+          (currentSelectedCat.slug === 'burgers' && (p.category_id === '2' || p.category_id === 'cat-burgers')) ||
+          (currentSelectedCat.slug === 'pasta' && (p.category_id === '3' || p.category_id === 'cat-pasta')) ||
+          (currentSelectedCat.slug === 'sides' && (p.category_id === '4' || p.category_id === 'cat-sides')) ||
+          (currentSelectedCat.slug === 'beverages' && (p.category_id === '5' || p.category_id === 'cat-beverages')) ||
+          (currentSelectedCat.slug === 'combos' && (p.category_id === '6' || p.category_id === 'cat-combos'))
+        ))
 
     // 3. Search & Veg filter
     const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -933,7 +977,17 @@ export default function POSScreen() {
               All Items ({filteredProducts.length})
             </button>
             {categories.map((c) => {
-              const count = products.filter((p) => p.category_id === c.id).length
+              const count = products.filter((p) => 
+                p.category_id === c.id || 
+                p.category_id === c.slug || 
+                p.category_id === `cat-${c.slug}` ||
+                (c.slug === 'pizzas' && (p.category_id === '1' || p.category_id === 'cat-pizzas')) ||
+                (c.slug === 'burgers' && (p.category_id === '2' || p.category_id === 'cat-burgers')) ||
+                (c.slug === 'pasta' && (p.category_id === '3' || p.category_id === 'cat-pasta')) ||
+                (c.slug === 'sides' && (p.category_id === '4' || p.category_id === 'cat-sides')) ||
+                (c.slug === 'beverages' && (p.category_id === '5' || p.category_id === 'cat-beverages')) ||
+                (c.slug === 'combos' && (p.category_id === '6' || p.category_id === 'cat-combos'))
+              ).length
               return (
                 <button
                   key={c.id}
@@ -945,7 +999,7 @@ export default function POSScreen() {
                       : 'bg-white/5 text-white/60 hover:bg-white/10'
                   )}
                 >
-                  {c.name} ({count})
+                  {c.name} {count > 0 ? `(${count})` : ''}
                 </button>
               )
             })}
