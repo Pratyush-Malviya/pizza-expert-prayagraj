@@ -19,6 +19,7 @@ import {
   assignOrderToDriver,
   fetchAvailableDrivers
 } from '@/app/actions/deliveries'
+import { STORE_LOCATION } from '@/lib/tracking/types'
 import { playNotificationSound, requestNotificationPermission, triggerSystemNotification } from '@/lib/utils/notifications'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
@@ -629,13 +630,13 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="rounded-xl overflow-hidden shadow-xs border border-[#E7E0D8]">
                   <LiveDeliveryMap
-                    driverLocation={{ lat: 25.4410, lng: 81.8590, updatedAt: Date.now() }}
-                    destinationLocation={{ lat: 25.4528, lng: 81.8346 }}
+                    driverLocation={selectedOrder.status === 'out_for_delivery' ? { lat: STORE_LOCATION.lat, lng: STORE_LOCATION.lng, updatedAt: Date.now() } : null}
+                    destinationLocation={undefined}
                     destinationAddress={selectedOrder.address}
                     driverName={selectedOrder.driver_name || 'Delivery Partner'}
                     status={selectedOrder.status}
-                    etaMinutes={12}
-                    distanceKm={2.4}
+                    etaMinutes={selectedOrder.status === 'out_for_delivery' ? 12 : 0}
+                    distanceKm={selectedOrder.status === 'out_for_delivery' ? 2.4 : 0}
                   />
                 </div>
               </div>

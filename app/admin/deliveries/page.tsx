@@ -265,6 +265,12 @@ export default function AdminDeliveriesPage() {
           const isOnline = live?.is_online ?? details?.is_online ?? true
           const isBusy = Boolean(activeOrd || live?.is_busy)
 
+          const destCoords = (activeOrd?.delivery_lat && activeOrd?.delivery_lng)
+            ? { lat: Number(activeOrd.delivery_lat), lng: Number(activeOrd.delivery_lng) }
+            : (addr?.lat && addr?.lng)
+            ? { lat: Number(addr.lat), lng: Number(addr.lng) }
+            : undefined
+
           driverMap.set(p.id, {
             id: p.id,
             name: p.name || 'Delivery Partner',
@@ -278,10 +284,10 @@ export default function AdminDeliveriesPage() {
             current_lat: Number(live?.current_lat || STORE_LOCATION.lat),
             current_lng: Number(live?.current_lng || STORE_LOCATION.lng),
             activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 8) : undefined,
-            destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj') : undefined,
-            destinationCoords: { lat: 25.4528, lng: 81.8346 },
-            eta: activeOrd ? '10-15 mins' : undefined,
-            distanceKm: activeOrd ? 2.4 : undefined,
+            destination: isBusy && activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Customer Address') : undefined,
+            destinationCoords: isBusy ? destCoords : undefined,
+            eta: isBusy && activeOrd ? '10-15 mins' : undefined,
+            distanceKm: isBusy && activeOrd ? (activeOrd.distance_km || 2.4) : undefined,
           })
         }
       }
@@ -292,6 +298,13 @@ export default function AdminDeliveriesPage() {
           if (!driverMap.has(ld.id)) {
             const activeOrd = activeOrderMap[ld.id] || deliveryByDriverId[ld.id]
             const addr = activeOrd?.address_json || {}
+            const isBusy = Boolean(activeOrd || ld.is_busy)
+            const destCoords = (activeOrd?.delivery_lat && activeOrd?.delivery_lng)
+              ? { lat: Number(activeOrd.delivery_lat), lng: Number(activeOrd.delivery_lng) }
+              : (addr?.lat && addr?.lng)
+              ? { lat: Number(addr.lat), lng: Number(addr.lng) }
+              : undefined
+
             driverMap.set(ld.id, {
               id: ld.id,
               name: ld.name || 'Delivery Partner',
@@ -301,14 +314,14 @@ export default function AdminDeliveriesPage() {
               rating: 5.0,
               total_deliveries: deliveredToday.length,
               is_online: ld.is_online !== false,
-              is_busy: Boolean(activeOrd || ld.is_busy),
+              is_busy: isBusy,
               current_lat: Number(ld.current_lat || STORE_LOCATION.lat),
               current_lng: Number(ld.current_lng || STORE_LOCATION.lng),
               activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 8) : undefined,
-              destination: activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Prayagraj') : undefined,
-              destinationCoords: { lat: 25.4528, lng: 81.8346 },
-              eta: activeOrd ? '10-15 mins' : undefined,
-              distanceKm: activeOrd ? 2.4 : undefined,
+              destination: isBusy && activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Customer Address') : undefined,
+              destinationCoords: isBusy ? destCoords : undefined,
+              eta: isBusy && activeOrd ? '10-15 mins' : undefined,
+              distanceKm: isBusy && activeOrd ? 2.4 : undefined,
             })
           }
         }
@@ -686,12 +699,12 @@ export default function AdminDeliveriesPage() {
                     heading: 90,
                     updatedAt: Date.now(),
                   }}
-                  destinationLocation={selectedRider?.destinationCoords || { lat: 25.4528, lng: 81.8346 }}
-                  destinationAddress={selectedRider?.destination || 'Civil Lines, Prayagraj'}
+                  destinationLocation={selectedRider?.is_busy ? selectedRider.destinationCoords : undefined}
+                  destinationAddress={selectedRider?.is_busy ? selectedRider.destination : undefined}
                   driverName={selectedRider?.name || 'Allapur Fleet'}
                   status={selectedRider?.is_busy ? 'heading_to_customer' : 'ready'}
                   etaMinutes={selectedRider?.is_busy ? 12 : 0}
-                  distanceKm={selectedRider?.is_busy ? 2.4 : 0}
+                  distanceKm={selectedRider?.is_busy ? (selectedRider.distanceKm || 0) : 0}
                 />
               </div>
 

@@ -34,6 +34,8 @@ export default function LiveDeliveryMap({
 
   const isDriverActive = Boolean(
     driverLocation &&
+    destinationLocation &&
+    status !== 'ready' &&
     (driverLocation.lat !== STORE_LOCATION.lat || driverLocation.lng !== STORE_LOCATION.lng || distanceKm > 0 || (etaMinutes && etaMinutes > 0))
   )
 
@@ -62,7 +64,7 @@ export default function LiveDeliveryMap({
 
         map = L.map(mapContainerRef.current, {
           center: [STORE_LOCATION.lat, STORE_LOCATION.lng],
-          zoom: 14,
+          zoom: 15,
           zoomControl: false,
           attributionControl: false,
         })
@@ -137,17 +139,17 @@ export default function LiveDeliveryMap({
 
       layerGroup.clearLayers()
 
-      // ── Store Pin (Allapur Hub) ──
+      // ── Store Pin (Pizza Expert Allapur Hub) ──
       const storeIcon = L.divIcon({
         className: 'custom-store-marker',
         html: `
           <div style="position:relative;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);">
             <span style="position:absolute;width:36px;height:36px;background:rgba(239,68,68,0.3);border-radius:9999px;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></span>
-            <div style="width:32px;height:32px;border-radius:9999px;background:#B91C1C;border:2px solid #FFFFFF;box-shadow:0 4px 6px -1px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:15px;font-weight:bold;">
+            <div style="width:34px;height:34px;border-radius:9999px;background:#B91C1C;border:2px solid #FFFFFF;box-shadow:0 4px 6px -1px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:16px;font-weight:bold;">
               🍕
             </div>
             <div style="position:absolute;bottom:-20px;background:#1C1917;color:#FFFFFF;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-              Pizza Expert (Allapur)
+              Pizza Expert (Allapur Kitchen)
             </div>
           </div>
         `,
@@ -158,8 +160,16 @@ export default function LiveDeliveryMap({
         .addTo(layerGroup)
         .bindPopup('<b>Pizza Expert Kitchen</b><br/>Shop 4, Allapur Main Road, Prayagraj')
 
-      // ── Destination Pin (Customer) ──
-      if (destinationLocation && (destinationLocation.lat !== STORE_LOCATION.lat || destinationLocation.lng !== STORE_LOCATION.lng)) {
+      // ── Destination Pin & Route (Only if real destination is provided) ──
+      const hasRealDestination = Boolean(
+        destinationLocation &&
+        destinationLocation.lat &&
+        destinationLocation.lng &&
+        (Math.abs(destinationLocation.lat - STORE_LOCATION.lat) > 0.0001 || Math.abs(destinationLocation.lng - STORE_LOCATION.lng) > 0.0001) &&
+        status !== 'ready'
+      )
+
+      if (hasRealDestination && destinationLocation) {
         const destIcon = L.divIcon({
           className: 'custom-dest-marker',
           html: `
@@ -168,7 +178,7 @@ export default function LiveDeliveryMap({
                 🏠
               </div>
               <div style="position:absolute;bottom:-20px;background:#15803D;color:#FFFFFF;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-                Delivery Address
+                Customer Address
               </div>
             </div>
           `,
@@ -177,19 +187,18 @@ export default function LiveDeliveryMap({
 
         L.marker([destinationLocation.lat, destinationLocation.lng], { icon: destIcon })
           .addTo(layerGroup)
-          .bindPopup(`<b>Destination</b><br/>${destinationAddress}`)
+          .bindPopup(`<b>Delivery Destination</b><br/>${destinationAddress || 'Prayagraj Address'}`)
 
-        // Polyline Route
-        const defaultRoute: [number, number][] = routeWaypoints.length > 0
+        // Route Polyline between Store, Driver, and Destination
+        const routePoints: [number, number][] = routeWaypoints.length > 0
           ? routeWaypoints
           : [
               [STORE_LOCATION.lat, STORE_LOCATION.lng],
-              [25.4410, 81.8590],
-              [25.4472, 81.8445],
+              ...(driverLocation ? [[driverLocation.lat, driverLocation.lng] as [number, number]] : []),
               [destinationLocation.lat, destinationLocation.lng],
             ]
 
-        L.polyline(defaultRoute, {
+        L.polyline(routePoints, {
           color: '#B91C1C',
           weight: 4,
           opacity: 0.85,
@@ -198,14 +207,15 @@ export default function LiveDeliveryMap({
         }).addTo(layerGroup)
       }
 
-      // ── Driver Pin (Rider on road) ──
-      if (isDriverActive && driverLocation) {
+      // ── Driver Pin (Rider) ──
+      if (driverLocation) {
+        const isLiveOnRoad = isDriverActive && hasRealDestination
         const driverIcon = L.divIcon({
           className: 'custom-driver-marker',
           html: `
             <div style="position:relative;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);">
-              <span style="position:absolute;width:42px;height:42px;background:rgba(245,158,11,0.4);border-radius:9999px;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></span>
-              <div style="width:36px;height:36px;border-radius:9999px;background:#1C1917;border:2px solid #F59E0B;box-shadow:0 6px 10px -2px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;">
+              ${isLiveOnRoad ? '<span style="position:absolute;width:42px;height:42px;background:rgba(245,158,11,0.4);border-radius:9999px;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></span>' : ''}
+              <div style="width:34px;height:34px;border-radius:9999px;background:#1C1917;border:2px solid #F59E0B;box-shadow:0 6px 10px -2px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:16px;">
                 🛵
               </div>
               <div style="position:absolute;top:-22px;background:#1C1917;color:#F59E0B;font-size:10px;font-family:monospace;font-weight:bold;padding:2px 6px;border-radius:4px;white-space:nowrap;border:1px solid rgba(245,158,11,0.4);">
@@ -216,19 +226,24 @@ export default function LiveDeliveryMap({
           iconSize: [0, 0],
         })
 
-        L.marker([driverLocation.lat, driverLocation.lng], { icon: driverIcon }).addTo(layerGroup)
+        L.marker([driverLocation.lat, driverLocation.lng], { icon: driverIcon })
+          .addTo(layerGroup)
+          .bindPopup(`<b>${driverName}</b><br/>${isLiveOnRoad ? 'Out for Delivery' : 'At Allapur Kitchen / Available'}`)
 
-        // Fit bounds on active route
-        if (destinationLocation) {
+        // If on active delivery trip, fit bounds to include store, driver and destination
+        if (hasRealDestination && destinationLocation) {
           const bounds = L.latLngBounds([
             [STORE_LOCATION.lat, STORE_LOCATION.lng],
             [destinationLocation.lat, destinationLocation.lng],
             [driverLocation.lat, driverLocation.lng],
           ])
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 })
+        } else {
+          // Center clearly on Pizza Expert Allapur Kitchen Hub
+          map.setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 15)
         }
       } else {
-        map.setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14)
+        map.setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 15)
       }
 
       map.invalidateSize()
