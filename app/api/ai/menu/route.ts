@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { FOOD_IMAGES } from '@/lib/constants/foodImages'
+import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/constants/defaultMenu'
 
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'
 
@@ -29,49 +30,78 @@ export async function GET(req: Request) {
     const storeId = searchParams.get('storeId') || null
     const categoryId = searchParams.get('categoryId') || null
 
-    const supabase = await createAdminClient()
+    let supabase: any = null
+    try {
+      supabase = await createClient()
+    } catch {
+      try {
+        supabase = await createAdminClient()
+      } catch {}
+    }
+
+    if (!supabase) {
+      return returnFallbackResponse(categoryId)
+    }
 
     // ── 1. Fetch active categories ──────────────────────────────────────
-    let categoriesQuery = supabase
-      .from('categories')
-      .select('id, name, slug')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-    const { data: rawCategories, error: categoryError } = await categoriesQuery
+    let rawCategories: any[] | null = null
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (!error && data && data.length > 0) {
+        rawCategories = data
+      }
+    } catch (e) {
+      console.warn('Could not query categories from DB, falling back to seed:', e)
+    }
 
-    if (categoryError) {
-      return NextResponse.json({ success: false, error: categoryError.message }, { status: 500 })
+    if (!rawCategories || rawCategories.length === 0) {
+      return returnFallbackResponse(categoryId)
     }
 
     // ── 2. Fetch available products (optionally scoped) ────────────────
-    let productsQuery = supabase
-      .from('products')
-      .select('id, name, slug, description, price, is_veg, is_spicy, category_id')
-      .eq('is_available', true)
+    let rawProducts: any[] | null = null
+    try {
+      let productsQuery = supabase
+        .from('products')
+        .select('id, name, slug, description, price, is_veg, is_spicy, category_id')
+        .eq('is_available', true)
 
-    if (storeId) productsQuery = productsQuery.eq('store_id', storeId)
-    if (categoryId) productsQuery = productsQuery.eq('category_id', categoryId)
+      if (storeId) productsQuery = productsQuery.eq('store_id', storeId)
+      if (categoryId) productsQuery = productsQuery.eq('category_id', categoryId)
 
-    const { data: rawProducts, error: productError } = await productsQuery
-    if (productError) {
-      return NextResponse.json({ success: false, error: productError.message }, { status: 500 })
+      const { data, error } = await productsQuery
+      if (!error && data) {
+        rawProducts = data
+      }
+    } catch (e) {
+      console.warn('Could not query products from DB, using fallback:', e)
+    }
+
+    if (!rawProducts || rawProducts.length === 0) {
+      return returnFallbackResponse(categoryId)
     }
 
     // ── 3. Fetch product images ─────────────────────────────────────────
-    const productIds = (rawProducts || []).map((p) => p.id)
+    const productIds = rawProducts.map((p) => p.id)
     let productImages: Array<{ product_id: string; image_url: string }> = []
     if (productIds.length > 0) {
-      const { data: images } = await supabase
-        .from('product_images')
-        .select('product_id, image_url')
-        .in('product_id', productIds)
-      productImages = (images || []) as Array<{ product_id: string; image_url: string }>
+      try {
+        const { data: images } = await supabase
+          .from('product_images')
+          .select('product_id, image_url')
+          .in('product_id', productIds)
+        productImages = (images || []) as Array<{ product_id: string; image_url: string }>
+      } catch {}
     }
 
     const imageByProductId = new Map(productImages.map((img) => [img.product_id, img.image_url]))
 
     // ── 4. Build products payload ───────────────────────────────────────
-    const products = (rawProducts || []).map((p) => ({
+    const products = rawProducts.map((p) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,
@@ -84,7 +114,7 @@ export async function GET(req: Request) {
     }))
 
     // ── 5. Build categories payload with image + product count ─────────
-    const categories = (rawCategories || []).map((cat) => {
+    const categories = rawCategories.map((cat) => {
       const catProducts = products.filter((p) => p.categoryId === cat.id)
       const firstImage = catProducts[0]?.imageUrl
       return {
@@ -102,7 +132,26 @@ export async function GET(req: Request) {
       products: categoryId ? products : null,
     })
   } catch (err: any) {
-    console.error('Menu fetch error:', err)
-    return NextResponse.json({ success: false, error: err.message || 'Failed to load menu' }, { status: 500 })
+    console.error('Menu fetch exception, serving fallback:', err)
+    const { searchParams } = new URL(req.url)
+    const categoryId = searchParams.get('categoryId') || null
+    return returnFallbackResponse(categoryId)
   }
+}
+
+function returnFallbackResponse(categoryId: string | null) {
+  const filteredProducts = categoryId
+    ? FALLBACK_PRODUCTS.filter(
+        (p) =>
+          p.categoryId === categoryId ||
+          p.categoryId.includes(categoryId) ||
+          categoryId.includes(p.categoryId)
+      )
+    : FALLBACK_PRODUCTS
+
+  return NextResponse.json({
+    success: true,
+    categories: FALLBACK_CATEGORIES,
+    products: categoryId ? (filteredProducts.length > 0 ? filteredProducts : FALLBACK_PRODUCTS) : null,
+  })
 }

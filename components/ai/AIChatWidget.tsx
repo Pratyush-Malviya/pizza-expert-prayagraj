@@ -28,6 +28,7 @@ import { createRazorpayOrder, verifyRazorpayPayment } from '@/app/actions/razorp
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/utils'
+import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/constants/defaultMenu'
 
 // ─── Types ───────────────────────────────────────────────────────────────
 interface CategoryItem {
@@ -225,10 +226,18 @@ export default function AIChatWidget() {
           { kind: 'categories', role: 'model', categories: data.categories },
         ])
       } else {
-        setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Sorry, the menu is unavailable right now. Please try again in a moment.' }])
+        setMessages((m) => [
+          ...m,
+          { kind: 'text', role: 'model', text: 'Select any category below to browse our fresh hot items with photos and prices: 👇' },
+          { kind: 'categories', role: 'model', categories: FALLBACK_CATEGORIES as any },
+        ])
       }
     } catch {
-      setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Oops! I could not load the menu. Please check your connection and try again.' }])
+      setMessages((m) => [
+        ...m,
+        { kind: 'text', role: 'model', text: 'Select any category below to browse our fresh hot items with photos and prices: 👇' },
+        { kind: 'categories', role: 'model', categories: FALLBACK_CATEGORIES as any },
+      ])
     } finally {
       setIsLoading(false)
     }
@@ -246,20 +255,18 @@ export default function AIChatWidget() {
       if (data.success && data.products?.length) {
         setMessages((m) => [...m, { kind: 'products', role: 'model', categoryName, products: data.products }])
       } else {
-        setMessages((m) => [
-          ...m,
-          { kind: 'text', role: 'model', text: `Nothing available in ${categoryName} right now. Please pick another category! 👇` },
-        ])
-        const params2 = new URLSearchParams()
-        if (activeStoreId) params2.set('storeId', activeStoreId)
-        const res2 = await fetch(`/api/ai/menu?${params2.toString()}`)
-        const data2 = await res2.json()
-        if (data2.success && data2.categories?.length) {
-          setMessages((m) => [...m, { kind: 'categories', role: 'model', categories: data2.categories }])
-        }
+        const fallbackMatched = FALLBACK_PRODUCTS.filter(
+          (p) => p.categoryId === categoryId || categoryId.includes(p.categoryId) || p.categoryId.includes(categoryId)
+        )
+        const productsToUse = fallbackMatched.length > 0 ? fallbackMatched : FALLBACK_PRODUCTS
+        setMessages((m) => [...m, { kind: 'products', role: 'model', categoryName, products: productsToUse as any }])
       }
     } catch {
-      setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Could not load that category. Please try again.' }])
+      const fallbackMatched = FALLBACK_PRODUCTS.filter(
+        (p) => p.categoryId === categoryId || categoryId.includes(p.categoryId) || p.categoryId.includes(categoryId)
+      )
+      const productsToUse = fallbackMatched.length > 0 ? fallbackMatched : FALLBACK_PRODUCTS
+      setMessages((m) => [...m, { kind: 'products', role: 'model', categoryName, products: productsToUse as any }])
     } finally {
       setIsLoading(false)
     }
@@ -272,15 +279,19 @@ export default function AIChatWidget() {
       if (activeStoreId) params.set('storeId', activeStoreId)
       const res = await fetch(`/api/ai/menu?${params.toString()}`)
       const data = await res.json()
-      if (data.success && data.categories?.length) {
-        const foundCat = data.categories.find((c: CategoryItem) => c.slug.toLowerCase().includes(slug.toLowerCase()) || slug.toLowerCase().includes(c.slug.toLowerCase()))
-        if (foundCat) {
-          await handleOpenCategory(foundCat.id, foundCat.name)
-          return
-        }
+      const cats = (data.success && data.categories?.length) ? data.categories : FALLBACK_CATEGORIES
+      const foundCat = cats.find((c: CategoryItem) => c.slug.toLowerCase().includes(slug.toLowerCase()) || slug.toLowerCase().includes(c.slug.toLowerCase()))
+      if (foundCat) {
+        await handleOpenCategory(foundCat.id, foundCat.name)
+        return
       }
       await handleBrowse()
     } catch {
+      const foundCat = FALLBACK_CATEGORIES.find((c) => c.slug.toLowerCase().includes(slug.toLowerCase()) || slug.toLowerCase().includes(c.slug.toLowerCase()))
+      if (foundCat) {
+        await handleOpenCategory(foundCat.id, foundCat.name)
+        return
+      }
       await handleBrowse()
     }
   }

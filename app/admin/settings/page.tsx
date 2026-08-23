@@ -19,24 +19,20 @@ import {
   Truck,
   ShieldCheck,
   Globe,
-  Share2,
   Copy,
   Check,
   ExternalLink,
   Download,
   UploadCloud,
-  RotateCcw,
-  Sparkles,
   Percent,
   Phone,
   MessageCircle,
-  AlertCircle,
   QrCode,
-  DollarSign,
   Utensils,
   Store,
   ChevronRight,
   Info,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/lib/store/useSettingsStore'
@@ -77,12 +73,14 @@ function AdminSettingsContent() {
   const storeSettings = useSettingsStore()
   const { logoDataUrl, setLogoDataUrl, updateSettings } = storeSettings
 
+  const [isSaving, setIsSaving] = useState(false)
+
   // Form State
   const [formData, setFormData] = useState({
     // 1. Identity & Branding
-    businessName: '',
+    businessName: 'Pizza Expert',
     brandBadge: 'PRO',
-    locationTagline: '',
+    locationTagline: 'ALLAPUR • PRAYAGRAJ',
     businessBio: '',
     storeStatus: 'open' as 'open' | 'closed' | 'busy',
     adminName: 'Pratyush Malviya',
@@ -90,16 +88,16 @@ function AdminSettingsContent() {
     adminAvatarUrl: '',
 
     // 2. Contact & Physical Location
-    phone: '',
-    whatsapp: '',
-    email: '',
-    address: '',
+    phone: '+91-9999999999',
+    whatsapp: '919999999999',
+    email: 'hello@pizzaexpert.in',
+    address: 'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
     landmark: '',
     googleMapsDirectionsUrl: '',
     googleMapsEmbedUrl: '',
 
     // 3. Operating Schedule
-    operatingHoursText: '',
+    operatingHoursText: '11:00 AM – 11:30 PM (All Days)',
     weeklySchedule: {
       monday: { open: '11:00', close: '23:30', closed: false },
       tuesday: { open: '11:00', close: '23:30', closed: false },
@@ -131,7 +129,7 @@ function AdminSettingsContent() {
     invoiceFooterNote: '',
 
     // 6. Payments & Banking
-    enableRazorpay: false,
+    enableRazorpay: true,
     razorpayKeyId: '',
     razorpayKeySecret: '',
     upiId: '',
@@ -148,8 +146,7 @@ function AdminSettingsContent() {
     googleReviewsLink: '',
     reviewsRatingScore: '4.9 / 5.0',
     reviewsSectionTitle: 'PRAYAGRAJ REVIEWS',
-    reviewsSectionSubtitle:
-      'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+    reviewsSectionSubtitle: '',
     enableInstagramCarousel: false,
 
     // 8. Flash Announcement Banner
@@ -166,35 +163,32 @@ function AdminSettingsContent() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Hydrate from global Zustand store
+  // Hydrate from global Zustand store on mount and store updates
+  // Uses nullish coalescing (??) so that empty strings saved by the user are preserved!
   useEffect(() => {
     queueMicrotask(() => {
       setFormData({
-        businessName: storeSettings.businessName || 'Pizza Expert',
-        brandBadge: storeSettings.brandBadge !== undefined ? storeSettings.brandBadge : 'PRO',
-        locationTagline: storeSettings.locationTagline || 'ALLAPUR • PRAYAGRAJ',
-        businessBio:
-          storeSettings.businessBio ||
-          'Authentic wood-fired Neapolitan pizzeria serving slow-fermented crusts, artisanal toppings, and handcrafted sides in the heart of Prayagraj.',
-        storeStatus: (storeSettings.storeStatus as any) || 'open',
-        adminName: storeSettings.adminName || 'Pratyush Malviya',
-        adminEmail: storeSettings.adminEmail || 'malviya.pratyush26@gmail.com',
-        adminAvatarUrl: storeSettings.adminAvatarUrl || '',
+        businessName: storeSettings.businessName ?? 'Pizza Expert',
+        brandBadge: storeSettings.brandBadge ?? 'PRO',
+        locationTagline: storeSettings.locationTagline ?? 'ALLAPUR • PRAYAGRAJ',
+        businessBio: storeSettings.businessBio ?? '',
+        storeStatus: (storeSettings.storeStatus as any) ?? 'open',
+        adminName: storeSettings.adminName ?? 'Pratyush Malviya',
+        adminEmail: storeSettings.adminEmail ?? 'malviya.pratyush26@gmail.com',
+        adminAvatarUrl: storeSettings.adminAvatarUrl ?? '',
 
-        phone: storeSettings.phone || '+91-9999999999',
-        whatsapp: storeSettings.whatsapp || '919999999999',
-        email: storeSettings.email || 'hello@pizzaexpert.in',
+        phone: storeSettings.phone ?? '+91-9999999999',
+        whatsapp: storeSettings.whatsapp ?? '919999999999',
+        email: storeSettings.email ?? 'hello@pizzaexpert.in',
         address:
-          storeSettings.address ||
+          storeSettings.address ??
           'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
-        landmark: storeSettings.landmark || 'Near Allapur Water Tank, Opposite SBI Branch',
-        googleMapsDirectionsUrl:
-          storeSettings.googleMapsDirectionsUrl ||
-          'https://maps.google.com/?q=Pizza+Expert+Allapur+Prayagraj',
-        googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl || '',
+        landmark: storeSettings.landmark ?? '',
+        googleMapsDirectionsUrl: storeSettings.googleMapsDirectionsUrl ?? '',
+        googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl ?? '',
 
-        operatingHoursText: storeSettings.operatingHoursText || '11:00 AM – 11:30 PM (All Days)',
-        weeklySchedule: storeSettings.weeklySchedule || {
+        operatingHoursText: storeSettings.operatingHoursText ?? '11:00 AM – 11:30 PM (All Days)',
+        weeklySchedule: (storeSettings.weeklySchedule as any) ?? {
           monday: { open: '11:00', close: '23:30', closed: false },
           tuesday: { open: '11:00', close: '23:30', closed: false },
           wednesday: { open: '11:00', close: '23:30', closed: false },
@@ -203,10 +197,10 @@ function AdminSettingsContent() {
           saturday: { open: '11:00', close: '23:59', closed: false },
           sunday: { open: '11:00', close: '23:59', closed: false },
         },
-        prepTimeMinutes: storeSettings.prepTimeMinutes || 15,
-        deliveryTimeText: storeSettings.deliveryTimeText || '30-45 mins',
+        prepTimeMinutes: storeSettings.prepTimeMinutes ?? 15,
+        deliveryTimeText: storeSettings.deliveryTimeText ?? '30-45 mins',
 
-        deliveryRadiusKm: storeSettings.deliveryRadiusKm || 8,
+        deliveryRadiusKm: storeSettings.deliveryRadiusKm ?? 8,
         deliveryFee: storeSettings.deliveryFee ?? 40,
         freeDeliveryAbove: storeSettings.freeDeliveryAbove ?? 499,
         minOrderValue: storeSettings.minOrderValue ?? 149,
@@ -217,45 +211,35 @@ function AdminSettingsContent() {
         enableCod: storeSettings.enableCod ?? true,
 
         taxRate: storeSettings.taxRate ?? 5,
-        gstinNumber: storeSettings.gstinNumber || '09ABCDE1234F1Z5',
-        fssaiNumber: storeSettings.fssaiNumber || '12723999000123',
-        panNumber: storeSettings.panNumber || 'ABCDE1234F',
-        invoiceFooterNote:
-          storeSettings.invoiceFooterNote ||
-          'Thank you for choosing Pizza Expert Prayagraj! For party bookings & queries, call +91-9999999999.',
+        gstinNumber: storeSettings.gstinNumber ?? '',
+        fssaiNumber: storeSettings.fssaiNumber ?? '',
+        panNumber: storeSettings.panNumber ?? '',
+        invoiceFooterNote: storeSettings.invoiceFooterNote ?? '',
 
         enableRazorpay: storeSettings.enableRazorpay ?? true,
-        razorpayKeyId: storeSettings.razorpayKeyId || 'rzp_test_TOUKlh4UdsSiXL',
-        razorpayKeySecret: storeSettings.razorpayKeySecret || '7jQXoto16ovDYBjCXXv6rFTM',
-        upiId: storeSettings.upiId || 'pizzaexpert@okhdfcbank',
-        bankName: storeSettings.bankName || 'HDFC Bank Ltd.',
-        bankAccountNumber: storeSettings.bankAccountNumber || '50200012345678',
-        bankIfsc: storeSettings.bankIfsc || 'HDFC0001234',
+        razorpayKeyId: storeSettings.razorpayKeyId ?? '',
+        razorpayKeySecret: storeSettings.razorpayKeySecret ?? '',
+        upiId: storeSettings.upiId ?? '',
+        bankName: storeSettings.bankName ?? '',
+        bankAccountNumber: storeSettings.bankAccountNumber ?? '',
+        bankIfsc: storeSettings.bankIfsc ?? '',
 
-        facebookUrl: storeSettings.facebookUrl || 'https://facebook.com/pizzaexpertprayagraj',
-        instagramUrl: storeSettings.instagramUrl || 'https://instagram.com/pizzaexpertprayagraj',
-        twitterUrl: storeSettings.twitterUrl || 'https://twitter.com/pizzaexpert',
-        zomatoUrl:
-          storeSettings.zomatoUrl || 'https://www.zomato.com/allahabad/pizza-expert-allapur',
-        swiggyUrl:
-          storeSettings.swiggyUrl ||
-          'https://www.swiggy.com/restaurants/pizza-expert-allapur-prayagraj',
-        googleReviewsLink:
-          storeSettings.googleReviewsLink || 'https://g.page/r/pizzaexpert-prayagraj/review',
-        reviewsRatingScore: storeSettings.reviewsRatingScore || '4.9 / 5.0',
-        reviewsSectionTitle: storeSettings.reviewsSectionTitle || 'PRAYAGRAJ REVIEWS',
-        reviewsSectionSubtitle:
-          storeSettings.reviewsSectionSubtitle ||
-          'Over 500+ verified 5-star ratings on Google from pizza lovers across Allahabad.',
+        facebookUrl: storeSettings.facebookUrl ?? '',
+        instagramUrl: storeSettings.instagramUrl ?? '',
+        twitterUrl: storeSettings.twitterUrl ?? '',
+        zomatoUrl: storeSettings.zomatoUrl ?? '',
+        swiggyUrl: storeSettings.swiggyUrl ?? '',
+        googleReviewsLink: storeSettings.googleReviewsLink ?? '',
+        reviewsRatingScore: storeSettings.reviewsRatingScore ?? '4.9 / 5.0',
+        reviewsSectionTitle: storeSettings.reviewsSectionTitle ?? 'PRAYAGRAJ REVIEWS',
+        reviewsSectionSubtitle: storeSettings.reviewsSectionSubtitle ?? '',
         enableInstagramCarousel: storeSettings.enableInstagramCarousel ?? false,
 
         enableFlashBanner: storeSettings.enableFlashBanner ?? true,
-        flashBannerText:
-          storeSettings.flashBannerText ||
-          '🔥 FLAT 20% OFF on all Wood-Fired Pizzas! Use coupon code: PIZZA20',
-        flashBannerBadge: storeSettings.flashBannerBadge || 'FLASH OFFER',
-        flashBannerLink: storeSettings.flashBannerLink || '/menu',
-        flashBannerImageUrl: storeSettings.flashBannerImageUrl || '',
+        flashBannerText: storeSettings.flashBannerText ?? '',
+        flashBannerBadge: storeSettings.flashBannerBadge ?? '',
+        flashBannerLink: storeSettings.flashBannerLink ?? '',
+        flashBannerImageUrl: storeSettings.flashBannerImageUrl ?? '',
       })
       setMounted(true)
     })
@@ -271,14 +255,24 @@ function AdminSettingsContent() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    updateSettings(formData)
-    await updateHomepageReviewSettings({
-      ratingScore: formData.reviewsRatingScore,
-      sectionTitle: formData.reviewsSectionTitle,
-      sectionSubtitle: formData.reviewsSectionSubtitle,
-      googleReviewsLink: formData.googleReviewsLink,
-    })
-    toast.success('All client business details saved successfully!')
+    setIsSaving(true)
+    try {
+      updateSettings(formData)
+      await updateHomepageReviewSettings({
+        ratingScore: formData.reviewsRatingScore,
+        sectionTitle: formData.reviewsSectionTitle,
+        sectionSubtitle: formData.reviewsSectionSubtitle,
+        googleReviewsLink: formData.googleReviewsLink,
+      })
+      // Small visual pause for smooth feedback
+      await new Promise((r) => setTimeout(r, 600))
+      toast.success('All client business details saved successfully!')
+    } catch (err: any) {
+      console.error('Save settings error:', err)
+      toast.error(err?.message || 'Failed to save settings. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,7 +317,7 @@ function AdminSettingsContent() {
     downloadAnchor.setAttribute('href', dataStr)
     downloadAnchor.setAttribute(
       'download',
-      `${formData.businessName.toLowerCase().replace(/\s+/g, '-')}-settings-backup.json`
+      `${(formData.businessName || 'pizza-expert').toLowerCase().replace(/\s+/g, '-')}-settings-backup.json`
     )
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
@@ -339,7 +333,7 @@ function AdminSettingsContent() {
       try {
         const parsed = JSON.parse(event.target?.result as string)
         setFormData((prev) => ({ ...prev, ...parsed }))
-        toast.success('Settings loaded from file! Click "Save All Settings" to apply.')
+        toast.success('Settings loaded from file! Click "Save All Business Settings" to apply.')
       } catch (err) {
         toast.error('Invalid JSON settings backup file')
       }
@@ -1599,7 +1593,7 @@ function AdminSettingsContent() {
                     <Globe size={18} className="text-[#B91C1C]" /> Social Media & Food Portals
                   </h2>
                   <p className="text-xs text-[#78716C] mt-0.5">
-                    Connect customer reviews, social pages, and your Zomato / Swiggy listings.
+                    Connect customer reviews, social pages, and your Zomato / Swiggy listings. Leave fields empty if not in use.
                   </p>
                 </div>
 
@@ -1659,6 +1653,19 @@ function AdminSettingsContent() {
                       onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })}
                       className="input-field"
                       placeholder="https://facebook.com/..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#1C1917] mb-1">
+                      Twitter / X Profile URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.twitterUrl}
+                      onChange={(e) => setFormData({ ...formData, twitterUrl: e.target.value })}
+                      className="input-field"
+                      placeholder="https://twitter.com/..."
                     />
                   </div>
 
@@ -1802,18 +1809,29 @@ function AdminSettingsContent() {
             </div>
 
             {/* ── STICKY SAVE ACTION BAR ── */}
-            <div className="sticky bottom-4 z-40 bg-white/90 backdrop-blur-md p-4 rounded-2xl border border-[#E7E0D8] shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="sticky bottom-4 z-40 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-[#E7E0D8] shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-xs text-[#57534E]">
                 <Info size={15} className="text-[#B91C1C]" />
-                <span>Changes will be instantly synced across the client app & backend.</span>
+                <span>Changes are saved instantly to the client database & local storage.</span>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <button
                   type="submit"
-                  className="btn btn-primary btn-lg flex-1 sm:flex-initial flex items-center justify-center gap-2 shadow-md"
+                  disabled={isSaving}
+                  className="btn btn-primary btn-lg flex-1 sm:flex-initial flex items-center justify-center gap-2 shadow-md disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer transition-all"
                 >
-                  <Save size={18} /> Save All Business Settings
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      <span>Saving Settings...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={18} />
+                      <span>Save All Business Settings</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
