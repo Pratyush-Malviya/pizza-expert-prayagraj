@@ -8,6 +8,8 @@ import {
 import { toast } from 'sonner'
 import { useSettingsStore, FaqItem } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
+import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
+import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
 
 const FONT_OPTIONS = [
   { label: 'Plus Jakarta Sans (Default)', value: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif" },
@@ -21,6 +23,7 @@ export default function AdminThemeCustomizerPage() {
   const store = useSettingsStore()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'theme' | 'hero' | 'content' | 'faqs'>('theme')
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
 
   // Form State
   const [themeState, setThemeState] = useState({
@@ -116,7 +119,9 @@ export default function AdminThemeCustomizerPage() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setThemeState((prev) => ({ ...prev, heroImageUrl: reader.result as string }))
+      const result = reader.result as string
+      setThemeState((prev) => ({ ...prev, heroImageUrl: result }))
+      saveUploadedImageToHistory(result, 'Hero Featured Image')
       toast.success('Hero image updated')
     }
     reader.readAsDataURL(file)
@@ -491,8 +496,15 @@ export default function AdminThemeCustomizerPage() {
                     className="input-field text-xs"
                     placeholder="https://..."
                   />
-                  <div className="flex items-center gap-2">
-                    <label className="btn btn-outline btn-sm inline-flex items-center gap-2 cursor-pointer relative overflow-hidden text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMediaModalOpen(true)}
+                      className="btn btn-outline btn-sm inline-flex items-center gap-2 text-xs bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                    >
+                      <ImageIcon size={14} /> Choose from Library
+                    </button>
+                    <label className="btn btn-outline btn-sm inline-flex items-center gap-2 cursor-pointer relative overflow-hidden text-xs bg-white">
                       <Upload size={14} /> Upload Custom Hero Image
                       <input
                         type="file"
@@ -705,6 +717,18 @@ export default function AdminThemeCustomizerPage() {
           </div>
         </div>
       )}
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        currentImage={themeState.heroImageUrl}
+        title="Select Hero Featured Image"
+        onSelect={(url) => {
+          setThemeState((prev) => ({ ...prev, heroImageUrl: url }))
+          toast.success('Hero image selected from library!')
+        }}
+      />
     </div>
   )
 }

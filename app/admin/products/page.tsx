@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
+import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
 
 interface CategoryOption {
   id: string
@@ -152,6 +154,8 @@ export default function AdminProductsPage() {
   const [newCategoryInput, setNewCategoryInput] = useState('')
   const [newCategoryImageUrl, setNewCategoryImageUrl] = useState('')
   const [formData, setFormData] = useState<Omit<Product, 'id'>>(emptyProductForm(DEFAULT_CATEGORIES[0]))
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
+  const [mediaTarget, setMediaTarget] = useState<'product' | 'category'>('product')
 
   const categoryNames = useMemo(() => ['All', ...categories.map((category) => category.name)], [categories])
 
@@ -303,7 +307,11 @@ export default function AdminProductsPage() {
     }
 
     const reader = new FileReader()
-    reader.onloadend = () => setFormData({ ...formData, image_url: reader.result as string })
+    reader.onloadend = () => {
+      const result = reader.result as string
+      setFormData({ ...formData, image_url: result })
+      saveUploadedImageToHistory(result, formData.name || 'Product Image')
+    }
     reader.readAsDataURL(file)
   }
 
@@ -420,7 +428,9 @@ export default function AdminProductsPage() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setNewCategoryImageUrl(reader.result as string)
+      const result = reader.result as string
+      setNewCategoryImageUrl(result)
+      saveUploadedImageToHistory(result, newCategoryInput || 'Category Image')
       toast.success('Category image uploaded')
     }
     reader.readAsDataURL(file)
@@ -744,11 +754,20 @@ export default function AdminProductsPage() {
                     <ImageIcon size={28} className="text-[#A8A29E]" />
                   )}
                 </div>
-                <label className="btn btn-outline btn-sm w-full justify-center flex items-center gap-2 cursor-pointer relative overflow-hidden text-xs">
-                  <Upload size={14} /> Upload Image
-                  <input type="file" accept="image/png, image/jpeg, image/webp" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
-                </label>
-                <button type="button" onClick={() => setFormData({ ...formData, image_url: '' })} className="btn btn-outline btn-sm w-full text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMediaTarget('product'); setMediaModalOpen(true) }}
+                    className="btn btn-outline btn-sm justify-center flex items-center gap-1.5 text-xs bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                  >
+                    <ImageIcon size={14} /> From Library
+                  </button>
+                  <label className="btn btn-outline btn-sm justify-center flex items-center gap-1.5 cursor-pointer relative overflow-hidden text-xs bg-white">
+                    <Upload size={14} /> Upload
+                    <input type="file" accept="image/png, image/jpeg, image/webp" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} />
+                  </label>
+                </div>
+                <button type="button" onClick={() => setFormData({ ...formData, image_url: '' })} className="btn btn-outline btn-sm w-full text-xs text-[#78716C]">
                   Remove Image
                 </button>
                 <div className="pt-3 flex items-center justify-end gap-2">
@@ -812,10 +831,18 @@ export default function AdminProductsPage() {
                   </div>
                 )}
 
-                <div className="space-y-2 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMediaTarget('category'); setMediaModalOpen(true) }}
+                    className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 text-xs py-2 bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                  >
+                    <ImageIcon size={13} />
+                    <span>From Library</span>
+                  </button>
                   <label className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 cursor-pointer relative overflow-hidden text-xs py-2 bg-white">
                     <Upload size={13} className="text-[#B91C1C]" />
-                    <span>Upload Image File</span>
+                    <span>Upload File</span>
                     <input
                       type="file"
                       accept="image/png, image/jpeg, image/webp"
@@ -823,15 +850,14 @@ export default function AdminProductsPage() {
                       onChange={handleNewCategoryImageUpload}
                     />
                   </label>
-
-                  <input
-                    type="url"
-                    value={newCategoryImageUrl.startsWith('data:') ? '' : newCategoryImageUrl}
-                    onChange={(e) => setNewCategoryImageUrl(e.target.value)}
-                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
-                    placeholder="Or paste image URL"
-                  />
                 </div>
+                <input
+                  type="url"
+                  value={newCategoryImageUrl.startsWith('data:') ? '' : newCategoryImageUrl}
+                  onChange={(e) => setNewCategoryImageUrl(e.target.value)}
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                  placeholder="Or paste image URL"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E7E0D8]">
@@ -875,6 +901,21 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        currentImage={mediaTarget === 'product' ? formData.image_url : newCategoryImageUrl}
+        title={mediaTarget === 'product' ? 'Select Product Image' : 'Select Category Banner Image'}
+        onSelect={(url) => {
+          if (mediaTarget === 'product') {
+            setFormData({ ...formData, image_url: url })
+          } else {
+            setNewCategoryImageUrl(url)
+          }
+        }}
+      />
     </div>
   )
 }

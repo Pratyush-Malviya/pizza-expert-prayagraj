@@ -28,6 +28,8 @@ import {
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { Category } from '@/types'
+import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
+import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
 import {
   createCategoryAction,
   deleteCategoryAction,
@@ -89,6 +91,7 @@ export default function AdminCategoriesPage() {
   const [formImageUrl, setFormImageUrl] = useState('')
   const [formSortOrder, setFormSortOrder] = useState(1)
   const [formIsActive, setFormIsActive] = useState(true)
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const persistCategories = useCallback((updated: Category[]) => {
@@ -314,7 +317,9 @@ export default function AdminCategoriesPage() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setFormImageUrl(reader.result as string)
+      const result = reader.result as string
+      setFormImageUrl(result)
+      saveUploadedImageToHistory(result, formName || 'Category Image')
       toast.success('Category image uploaded')
     }
     reader.readAsDataURL(file)
@@ -994,11 +999,19 @@ export default function AdminCategoriesPage() {
                   </div>
                 )}
 
-                {/* Upload Button + URL Input */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {/* Upload Button + Library Button + URL Input */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setMediaModalOpen(true)}
+                    className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 text-xs py-2 bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                  >
+                    <ImageIcon size={14} />
+                    <span>From Library</span>
+                  </button>
                   <label className="btn btn-outline btn-sm w-full flex items-center justify-center gap-1.5 cursor-pointer relative overflow-hidden text-xs py-2 bg-white">
                     <Upload size={14} className="text-[#B91C1C]" />
-                    <span>Upload Image File</span>
+                    <span>Upload File</span>
                     <input
                       type="file"
                       accept="image/png, image/jpeg, image/webp"
@@ -1006,15 +1019,15 @@ export default function AdminCategoriesPage() {
                       onChange={handleImageUpload}
                     />
                   </label>
-
-                  <input
-                    type="url"
-                    value={formImageUrl.startsWith('data:') ? '' : formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
-                    placeholder="Or paste image URL"
-                  />
                 </div>
+
+                <input
+                  type="url"
+                  value={formImageUrl.startsWith('data:') ? '' : formImageUrl}
+                  onChange={(e) => setFormImageUrl(e.target.value)}
+                  className="w-full bg-white border border-[#E7E0D8] text-[#1C1917] placeholder:text-[#A8A29E] text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-[#FF3B00] focus:ring-2 focus:ring-[#FF3B00]/15 transition-all shadow-xs"
+                  placeholder="Or paste image URL"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1316,6 +1329,15 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        currentImage={formImageUrl}
+        title="Select Category Banner Image"
+        onSelect={(url) => setFormImageUrl(url)}
+      />
     </div>
   )
 }

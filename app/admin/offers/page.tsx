@@ -8,12 +8,15 @@ import {
 import { toast } from 'sonner'
 import { useSettingsStore, CarouselOffer } from '@/lib/store/useSettingsStore'
 import Image from 'next/image'
+import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
+import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
 
 export default function AdminOffersPage() {
   const store = useSettingsStore()
   const [mounted, setMounted] = useState(false)
 
   const [modalOpen, setModalOpen] = useState(false)
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
   const [editingOffer, setEditingOffer] = useState<CarouselOffer | null>(null)
   const [previewOffer, setPreviewOffer] = useState<CarouselOffer | null>(null)
 
@@ -130,7 +133,9 @@ export default function AdminOffersPage() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setFormData({ ...formData, imageUrl: reader.result as string })
+      const result = reader.result as string
+      setFormData({ ...formData, imageUrl: result })
+      saveUploadedImageToHistory(result, formData.title || 'Offer Banner')
       toast.success('Image uploaded successfully!')
     }
     reader.readAsDataURL(file)
@@ -485,15 +490,24 @@ export default function AdminOffersPage() {
                         placeholder="Paste image URL (Unsplash, CDN, etc.)"
                         className="input-field text-xs sm:text-sm"
                       />
-                      <label className="btn btn-outline btn-xs inline-flex items-center gap-2 cursor-pointer relative overflow-hidden">
-                        <Upload size={13} /> Upload Local Image File
-                        <input
-                          type="file"
-                          accept="image/png, image/jpeg, image/webp"
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          onChange={handleImageFileUpload}
-                        />
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMediaModalOpen(true)}
+                          className="btn btn-outline btn-xs inline-flex items-center gap-1.5 bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                        >
+                          <ImageIcon size={13} /> Choose from Library
+                        </button>
+                        <label className="btn btn-outline btn-xs inline-flex items-center gap-1.5 cursor-pointer relative overflow-hidden bg-white">
+                          <Upload size={13} /> Upload File
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={handleImageFileUpload}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -530,6 +544,15 @@ export default function AdminOffersPage() {
           </div>
         </div>
       )}
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        currentImage={formData.imageUrl}
+        title="Select Offer Artwork Image"
+        onSelect={(url) => setFormData({ ...formData, imageUrl: url })}
+      />
     </div>
   )
 }

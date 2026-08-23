@@ -22,6 +22,8 @@ import { useSettingsStore } from '@/lib/store/useSettingsStore'
 import { updateHomepageReviewSettings } from '@/app/actions/settings'
 import EmailTemplateManager from '@/components/admin/EmailTemplateManager'
 import Image from 'next/image'
+import MediaLibraryModal from '@/components/admin/MediaLibraryModal'
+import { saveUploadedImageToHistory } from '@/lib/utils/mediaLibrary'
 
 function AdminSettingsContent() {
   const searchParams = useSearchParams()
@@ -71,6 +73,9 @@ function AdminSettingsContent() {
 
   // Hydrate local state from global store on mount
   const [mounted, setMounted] = useState(false)
+  const [mediaModalOpen, setMediaModalOpen] = useState(false)
+  const [mediaTarget, setMediaTarget] = useState<'avatar' | 'logo' | 'banner'>('logo')
+
   useEffect(() => {
     queueMicrotask(() => {
       setFormData({
@@ -134,7 +139,9 @@ function AdminSettingsContent() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setLogoDataUrl(reader.result as string)
+      const result = reader.result as string
+      setLogoDataUrl(result)
+      saveUploadedImageToHistory(result, 'Store Logo')
       toast.success('Logo updated successfully!')
     }
     reader.readAsDataURL(file)
@@ -151,7 +158,9 @@ function AdminSettingsContent() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setFormData({ ...formData, flashBannerImageUrl: reader.result as string })
+      const result = reader.result as string
+      setFormData({ ...formData, flashBannerImageUrl: result })
+      saveUploadedImageToHistory(result, 'Flash Banner Image')
       toast.success('Offer image added')
     }
     reader.readAsDataURL(file)
@@ -168,7 +177,9 @@ function AdminSettingsContent() {
 
     const reader = new FileReader()
     reader.onloadend = () => {
-      setFormData({ ...formData, adminAvatarUrl: reader.result as string })
+      const result = reader.result as string
+      setFormData({ ...formData, adminAvatarUrl: result })
+      saveUploadedImageToHistory(result, 'Admin Avatar')
       toast.success('Admin avatar photo uploaded!')
     }
     reader.readAsDataURL(file)
@@ -277,12 +288,19 @@ function AdminSettingsContent() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="btn btn-secondary text-xs inline-flex items-center gap-2 cursor-pointer mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMediaTarget('avatar'); setMediaModalOpen(true) }}
+                    className="btn btn-outline text-xs inline-flex items-center gap-1.5 bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                  >
+                    <ImageIcon size={14} /> Choose from Library
+                  </button>
+                  <label className="btn btn-secondary text-xs inline-flex items-center gap-2 cursor-pointer">
                     <Upload size={14} /> Upload Avatar Photo
                     <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
                   </label>
-                  <span className="text-[11px] text-[#78716C] ml-3">Recommended: 400x400 JPG/PNG &lt; 2MB</span>
+                  <span className="text-[11px] text-[#78716C] ml-1">Recommended: 400x400 JPG/PNG &lt; 2MB</span>
                 </div>
               </div>
             </div>
@@ -440,12 +458,21 @@ function AdminSettingsContent() {
                   <span className="text-xs text-[#78716C] font-semibold text-center">No Logo Uploaded</span>
                 )}
               </div>
-              <div>
-                <label className="btn btn-secondary text-xs inline-flex items-center gap-2 cursor-pointer">
-                  <Upload size={14} /> Upload Custom Logo
-                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                </label>
-                <p className="text-[11px] text-[#78716C] mt-2">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMediaTarget('logo'); setMediaModalOpen(true) }}
+                    className="btn btn-outline text-xs inline-flex items-center gap-1.5 bg-white text-[#B91C1C] border-[#B91C1C]/40 hover:bg-[#B91C1C]/5 font-semibold"
+                  >
+                    <ImageIcon size={14} /> Choose from Library
+                  </button>
+                  <label className="btn btn-secondary text-xs inline-flex items-center gap-2 cursor-pointer">
+                    <Upload size={14} /> Upload Custom Logo
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                </div>
+                <p className="text-[11px] text-[#78716C]">
                   Recommended: High-resolution transparent PNG (max 2MB). Replaces the default text in header & invoices.
                 </p>
               </div>
@@ -691,6 +718,23 @@ function AdminSettingsContent() {
           </button>
         </form>
       )}
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        currentImage={mediaTarget === 'logo' ? logoDataUrl : formData.adminAvatarUrl}
+        title={mediaTarget === 'logo' ? 'Select Store Logo' : 'Select Admin Avatar Photo'}
+        onSelect={(url) => {
+          if (mediaTarget === 'logo') {
+            setLogoDataUrl(url)
+            toast.success('Logo selected from library!')
+          } else {
+            setFormData({ ...formData, adminAvatarUrl: url })
+            toast.success('Avatar selected from library!')
+          }
+        }}
+      />
     </div>
   )
 }
