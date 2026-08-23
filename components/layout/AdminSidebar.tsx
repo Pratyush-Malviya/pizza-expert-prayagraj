@@ -159,8 +159,8 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
   const [activeQueryTab, setActiveQueryTab] = useState<string>('users')
   const [role, setRole] = useState<string | null>(null)
   
-  // Track open state of collapsible groups
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ operations: true, analytics: true })
+  // Track open state of collapsible groups (Single-open accordion: only one open at a time)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
   const syncActiveTabFromUrl = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -204,27 +204,36 @@ export default function AdminSidebar({ mobileOpen = false, setMobileOpen }: Admi
     return pathname === href
   }
 
-  // Initialize from localStorage and auto-expand active parent group
+  // Initialize and auto-expand ONLY the active parent group (closing all others)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('admin_sidebar_open_groups')
-      if (saved) {
-        setOpenGroups(JSON.parse(saved))
-      }
-    } catch {}
-
-    // Auto-expand group containing current route
+    let activeGroupId: string | null = null
     ADMIN_NAV_GROUPS.forEach((group) => {
       if (group.items?.some((item) => checkIsActive(item.href))) {
-        setOpenGroups((prev) => ({ ...prev, [group.id]: true }))
+        activeGroupId = group.id
       }
     })
+
+    if (activeGroupId) {
+      setOpenGroups({ [activeGroupId]: true })
+    } else {
+      try {
+        const saved = localStorage.getItem('admin_sidebar_open_groups')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          // Ensure only one group is active if multiple were previously saved
+          const openKey = Object.keys(parsed).find((k) => parsed[k])
+          setOpenGroups(openKey ? { [openKey]: true } : {})
+        }
+      } catch {}
+    }
   }, [pathname, activeQueryTab])
 
-  // Save expanded states
+  // Accordion toggle: opening any menu automatically closes all other menus
   const toggleGroup = (groupId: string) => {
     setOpenGroups((prev) => {
-      const updated = { ...prev, [groupId]: !prev[groupId] }
+      const isCurrentlyOpen = Boolean(prev[groupId])
+      // If open, collapse it; if closed, open ONLY this group
+      const updated: Record<string, boolean> = isCurrentlyOpen ? {} : { [groupId]: true }
       try {
         localStorage.setItem('admin_sidebar_open_groups', JSON.stringify(updated))
       } catch {}
