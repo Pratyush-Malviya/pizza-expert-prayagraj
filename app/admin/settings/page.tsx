@@ -28,6 +28,8 @@ import {
   Phone,
   MessageCircle,
   QrCode,
+  Compass,
+  AlertCircle,
   Utensils,
   Store,
   ChevronRight,
@@ -93,6 +95,8 @@ function AdminSettingsContent() {
     email: 'hello@pizzaexpert.in',
     address: 'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
     landmark: '',
+    storeLat: 25.4358,
+    storeLng: 81.8682,
     googleMapsDirectionsUrl: '',
     googleMapsEmbedUrl: '',
 
@@ -184,6 +188,8 @@ function AdminSettingsContent() {
           storeSettings.address ??
           'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
         landmark: storeSettings.landmark ?? '',
+        storeLat: storeSettings.storeLat ?? 25.4358,
+        storeLng: storeSettings.storeLng ?? 81.8682,
         googleMapsDirectionsUrl: storeSettings.googleMapsDirectionsUrl ?? '',
         googleMapsEmbedUrl: storeSettings.googleMapsEmbedUrl ?? '',
 
@@ -1089,6 +1095,76 @@ function AdminSettingsContent() {
                       className="input-field text-xs"
                       placeholder="https://maps.google.com/?q=..."
                     />
+                  </div>
+
+                  {/* Store GPS Coordinates for Live Delivery Radar */}
+                  <div className="sm:col-span-3 bg-[#FBF9F5] p-4 rounded-xl border border-[#E7E0D8] space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-[#1C1917] flex items-center gap-1.5">
+                          <MapPin size={14} className="text-[#B91C1C]" />
+                          <span>Store Hub GPS Coordinates (For Live Delivery Radar & Fleet Tracking)</span>
+                        </label>
+                        <p className="text-[11px] text-[#78716C] mt-0.5">
+                          These coordinates set your exact kitchen hub pin on the admin Live Deliveries map.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  storeLat: Number(pos.coords.latitude.toFixed(6)),
+                                  storeLng: Number(pos.coords.longitude.toFixed(6)),
+                                }))
+                                toast.success(`📍 GPS Location detected: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`)
+                              },
+                              (err) => {
+                                toast.error('Unable to fetch device GPS location: ' + err.message)
+                              },
+                              { enableHighAccuracy: true }
+                            )
+                          } else {
+                            toast.error('Geolocation is not supported by your browser')
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-white hover:bg-stone-50 border border-[#E7E0D8] rounded-lg text-xs font-bold text-[#1C1917] shadow-2xs flex items-center gap-1.5 transition-all"
+                      >
+                        <Compass size={13} className="text-[#B91C1C]" />
+                        <span>Detect My Current GPS Location</span>
+                      </button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#57534E] mb-1">
+                          Store Latitude (e.g. 25.4358)
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={formData.storeLat}
+                          onChange={(e) => setFormData({ ...formData, storeLat: parseFloat(e.target.value) || 0 })}
+                          className="input-field font-mono text-xs"
+                          placeholder="25.4358"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#57534E] mb-1">
+                          Store Longitude (e.g. 81.8682)
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={formData.storeLng}
+                          onChange={(e) => setFormData({ ...formData, storeLng: parseFloat(e.target.value) || 0 })}
+                          className="input-field font-mono text-xs"
+                          placeholder="81.8682"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

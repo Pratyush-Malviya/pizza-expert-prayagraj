@@ -84,6 +84,8 @@ interface SettingsState {
   email: string
   address: string
   landmark: string
+  storeLat: number
+  storeLng: number
   googleMapsDirectionsUrl: string
   
   // Operating Schedule
@@ -304,6 +306,8 @@ export const useSettingsStore = create<SettingsState>()(
       email: 'hello@pizzaexpert.in',
       address: 'Shop No. 4, Ground Floor, Allapur Main Road, Prayagraj, Uttar Pradesh 211006',
       landmark: 'Near Allapur Water Tank, Opposite SBI Branch',
+      storeLat: 25.4358,
+      storeLng: 81.8682,
       googleMapsDirectionsUrl: 'https://maps.google.com/?q=Pizza+Expert+Allapur+Prayagraj',
 
       // Operating Schedule

@@ -7,6 +7,9 @@ import { STORE_LOCATION } from '@/lib/tracking/types'
 import { Compass, MapPin, Navigation, RefreshCw } from 'lucide-react'
 
 interface LiveDeliveryMapProps {
+  storeLocation?: { lat: number; lng: number }
+  storeAddress?: string
+  storeName?: string
   driverLocation?: GPSLocation | null
   destinationLocation?: { lat: number; lng: number }
   destinationAddress?: string
@@ -18,9 +21,12 @@ interface LiveDeliveryMapProps {
 }
 
 export default function LiveDeliveryMap({
+  storeLocation = STORE_LOCATION,
+  storeAddress = 'Shop 4, Allapur Main Road, Prayagraj',
+  storeName = 'Pizza Expert Kitchen',
   driverLocation,
   destinationLocation,
-  destinationAddress = 'Pizza Expert Kitchen (Allapur)',
+  destinationAddress = 'Customer Address',
   status = 'ready',
   driverName = 'Delivery Partner',
   routeWaypoints = [],
@@ -32,11 +38,14 @@ export default function LiveDeliveryMap({
   const layerGroupRef = useRef<any>(null)
   const [mapReady, setMapReady] = useState(false)
 
+  const hubLat = storeLocation?.lat || STORE_LOCATION.lat
+  const hubLng = storeLocation?.lng || STORE_LOCATION.lng
+
   const isDriverActive = Boolean(
     driverLocation &&
     destinationLocation &&
     status !== 'ready' &&
-    (driverLocation.lat !== STORE_LOCATION.lat || driverLocation.lng !== STORE_LOCATION.lng || distanceKm > 0 || (etaMinutes && etaMinutes > 0))
+    (driverLocation.lat !== hubLat || driverLocation.lng !== hubLng || distanceKm > 0 || (etaMinutes && etaMinutes > 0))
   )
 
   // 1. Initialize Map Instance Once
@@ -63,7 +72,7 @@ export default function LiveDeliveryMap({
         }
 
         map = L.map(mapContainerRef.current, {
-          center: [STORE_LOCATION.lat, STORE_LOCATION.lng],
+          center: [hubLat, hubLng],
           zoom: 15,
           zoomControl: false,
           attributionControl: false,
@@ -123,7 +132,7 @@ export default function LiveDeliveryMap({
       mapInstanceRef.current = null
       layerGroupRef.current = null
     }
-  }, [])
+  }, [hubLat, hubLng])
 
   // 2. Update Markers and Polylines inside LayerGroup without destroying map
   useEffect(() => {
@@ -139,7 +148,7 @@ export default function LiveDeliveryMap({
 
       layerGroup.clearLayers()
 
-      // ── Store Pin (Pizza Expert Allapur Hub) ──
+      // ── Store Pin (Pizza Expert Hub) ──
       const storeIcon = L.divIcon({
         className: 'custom-store-marker',
         html: `
@@ -149,23 +158,23 @@ export default function LiveDeliveryMap({
               🍕
             </div>
             <div style="position:absolute;bottom:-20px;background:#1C1917;color:#FFFFFF;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-              Pizza Expert (Allapur Kitchen)
+              ${storeName}
             </div>
           </div>
         `,
         iconSize: [0, 0],
       })
 
-      L.marker([STORE_LOCATION.lat, STORE_LOCATION.lng], { icon: storeIcon })
+      L.marker([hubLat, hubLng], { icon: storeIcon })
         .addTo(layerGroup)
-        .bindPopup('<b>Pizza Expert Kitchen</b><br/>Shop 4, Allapur Main Road, Prayagraj')
+        .bindPopup(`<b>${storeName}</b><br/>${storeAddress}`)
 
       // ── Destination Pin & Route (Only if real destination is provided) ──
       const hasRealDestination = Boolean(
         destinationLocation &&
         destinationLocation.lat &&
         destinationLocation.lng &&
-        (Math.abs(destinationLocation.lat - STORE_LOCATION.lat) > 0.0001 || Math.abs(destinationLocation.lng - STORE_LOCATION.lng) > 0.0001) &&
+        (Math.abs(destinationLocation.lat - hubLat) > 0.0001 || Math.abs(destinationLocation.lng - hubLng) > 0.0001) &&
         status !== 'ready'
       )
 
@@ -193,7 +202,7 @@ export default function LiveDeliveryMap({
         const routePoints: [number, number][] = routeWaypoints.length > 0
           ? routeWaypoints
           : [
-              [STORE_LOCATION.lat, STORE_LOCATION.lng],
+              [hubLat, hubLng],
               ...(driverLocation ? [[driverLocation.lat, driverLocation.lng] as [number, number]] : []),
               [destinationLocation.lat, destinationLocation.lng],
             ]
@@ -228,22 +237,22 @@ export default function LiveDeliveryMap({
 
         L.marker([driverLocation.lat, driverLocation.lng], { icon: driverIcon })
           .addTo(layerGroup)
-          .bindPopup(`<b>${driverName}</b><br/>${isLiveOnRoad ? 'Out for Delivery' : 'At Allapur Kitchen / Available'}`)
+          .bindPopup(`<b>${driverName}</b><br/>${isLiveOnRoad ? 'Out for Delivery' : `${storeName} / Available`}`)
 
         // If on active delivery trip, fit bounds to include store, driver and destination
         if (hasRealDestination && destinationLocation) {
           const bounds = L.latLngBounds([
-            [STORE_LOCATION.lat, STORE_LOCATION.lng],
+            [hubLat, hubLng],
             [destinationLocation.lat, destinationLocation.lng],
             [driverLocation.lat, driverLocation.lng],
           ])
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 })
         } else {
-          // Center clearly on Pizza Expert Allapur Kitchen Hub
-          map.setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 15)
+          // Center clearly on Pizza Expert Kitchen Hub
+          map.setView([hubLat, hubLng], 15)
         }
       } else {
-        map.setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 15)
+        map.setView([hubLat, hubLng], 15)
       }
 
       map.invalidateSize()
@@ -253,6 +262,10 @@ export default function LiveDeliveryMap({
       isMounted = false
     }
   }, [
+    hubLat,
+    hubLng,
+    storeName,
+    storeAddress,
     driverLocation?.lat,
     driverLocation?.lng,
     destinationLocation?.lat,

@@ -21,6 +21,7 @@ import {
   fetchAvailableDrivers
 } from '@/app/actions/deliveries'
 import { useStoreStore } from '@/lib/store/useStoreStore'
+import { useSettingsStore } from '@/lib/store/useSettingsStore'
 
 const LiveDeliveryMap = dynamic(() => import('@/components/tracking/LiveDeliveryMap'), {
   ssr: false,
@@ -67,6 +68,18 @@ export interface KitchenSyncOrder {
 
 export default function AdminDeliveriesPage() {
   const { activeStoreId } = useStoreStore()
+  const storeSettings = useSettingsStore()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const currentStoreLat = mounted && typeof storeSettings.storeLat === 'number' ? storeSettings.storeLat : STORE_LOCATION.lat
+  const currentStoreLng = mounted && typeof storeSettings.storeLng === 'number' ? storeSettings.storeLng : STORE_LOCATION.lng
+  const currentStoreAddress = mounted && storeSettings.address ? storeSettings.address : STORE_DETAILS.address
+  const currentStoreName = mounted && storeSettings.businessName ? storeSettings.businessName : 'Pizza Expert Kitchen'
+
   const [activeTab, setActiveTab] = useState<'radar' | 'dispatch_queue' | 'kitchen_sync' | 'active_trips'>('radar')
   const [drivers, setDrivers] = useState<DeliveryRiderItem[]>([])
   const [allOrdersList, setAllOrdersList] = useState<any[]>([])
@@ -281,8 +294,8 @@ export default function AdminDeliveriesPage() {
             total_deliveries: deliveredToday.length,
             is_online: isOnline,
             is_busy: isBusy,
-            current_lat: Number(live?.current_lat || STORE_LOCATION.lat),
-            current_lng: Number(live?.current_lng || STORE_LOCATION.lng),
+            current_lat: Number(live?.current_lat || currentStoreLat),
+            current_lng: Number(live?.current_lng || currentStoreLng),
             activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 8) : undefined,
             destination: isBusy && activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Customer Address') : undefined,
             destinationCoords: isBusy ? destCoords : undefined,
@@ -315,8 +328,8 @@ export default function AdminDeliveriesPage() {
               total_deliveries: deliveredToday.length,
               is_online: ld.is_online !== false,
               is_busy: isBusy,
-              current_lat: Number(ld.current_lat || STORE_LOCATION.lat),
-              current_lng: Number(ld.current_lng || STORE_LOCATION.lng),
+              current_lat: Number(ld.current_lat || currentStoreLat),
+              current_lng: Number(ld.current_lng || currentStoreLng),
               activeOrderId: activeOrd?.id ? String(activeOrd.id).slice(0, 8) : undefined,
               destination: isBusy && activeOrd ? ([addr.line1, addr.city].filter(Boolean).join(', ') || 'Customer Address') : undefined,
               destinationCoords: isBusy ? destCoords : undefined,
@@ -673,10 +686,10 @@ export default function AdminDeliveriesPage() {
                 <div>
                   <h3 className="font-serif font-bold text-lg text-[#1C1917] flex items-center gap-2">
                     <Compass size={18} className="text-[#B91C1C]" />
-                    <span>Prayagraj Fleet GPS Radar</span>
+                    <span>{currentStoreName} Fleet GPS Radar</span>
                   </h3>
                   <p className="text-xs text-[#78716C]">
-                    Hub: {STORE_DETAILS.address}
+                    Hub: {currentStoreAddress}
                   </p>
                 </div>
 
@@ -692,16 +705,19 @@ export default function AdminDeliveriesPage() {
               {/* Leaflet Map */}
               <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-[#E7E0D8] shadow-inner relative">
                 <LiveDeliveryMap
+                  storeLocation={{ lat: currentStoreLat, lng: currentStoreLng }}
+                  storeAddress={currentStoreAddress}
+                  storeName={currentStoreName}
                   driverLocation={{
-                    lat: selectedRider?.current_lat || STORE_LOCATION.lat,
-                    lng: selectedRider?.current_lng || STORE_LOCATION.lng,
+                    lat: selectedRider?.current_lat || currentStoreLat,
+                    lng: selectedRider?.current_lng || currentStoreLng,
                     speed: selectedRider?.is_busy ? 28 : 0,
                     heading: 90,
                     updatedAt: Date.now(),
                   }}
                   destinationLocation={selectedRider?.is_busy ? selectedRider.destinationCoords : undefined}
                   destinationAddress={selectedRider?.is_busy ? selectedRider.destination : undefined}
-                  driverName={selectedRider?.name || 'Allapur Fleet'}
+                  driverName={selectedRider?.name || `${currentStoreName} Fleet`}
                   status={selectedRider?.is_busy ? 'heading_to_customer' : 'ready'}
                   etaMinutes={selectedRider?.is_busy ? 12 : 0}
                   distanceKm={selectedRider?.is_busy ? (selectedRider.distanceKm || 0) : 0}
@@ -712,10 +728,10 @@ export default function AdminDeliveriesPage() {
               <div className="flex items-center justify-between text-xs text-[#78716C] pt-1 flex-wrap gap-2">
                 <div className="flex items-center gap-3 font-mono text-[11px]">
                   <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Allapur Hub Online
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> {currentStoreName} Hub Online
                   </span>
                   <span>•</span>
-                  <span>Lat: {STORE_LOCATION.lat.toFixed(4)}, Lng: {STORE_LOCATION.lng.toFixed(4)}</span>
+                  <span>Lat: {currentStoreLat.toFixed(4)}, Lng: {currentStoreLng.toFixed(4)}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
