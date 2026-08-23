@@ -472,19 +472,8 @@ export default function AIChatWidget() {
     const windowWithRzp = window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => RazorpayCheckout }
 
     if (!windowWithRzp.Razorpay) {
-      const verifyRes = await verifyRazorpayPayment({
-        orderId: pending.orderId,
-        razorpayPaymentId: `pay_demo_${Date.now()}`,
-        razorpayOrderId: pending.razorpayOrderId,
-        razorpaySignature: 'demo_sig',
-        isTestMode: true,
-      })
       setIsLoading(false)
-      if (verifyRes.success) {
-        handlePaymentSuccess(pending.orderId, pending.total)
-      } else {
-        setMessages((m) => [...m, { kind: 'error', role: 'model', text: verifyRes.error || 'Payment verification failed.' }])
-      }
+      setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Razorpay SDK is not ready. Please check your internet connection or try again.' }])
       return
     }
 
@@ -505,12 +494,17 @@ export default function AIChatWidget() {
       },
       theme: { color: '#B91C1C' },
       handler: async (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) => {
+        if (!response?.razorpay_payment_id || !response?.razorpay_signature) {
+          setIsLoading(false)
+          setMessages((m) => [...m, { kind: 'error', role: 'model', text: 'Payment response was rejected by gateway.' }])
+          return
+        }
+
         const verifyRes = await verifyRazorpayPayment({
           orderId: pending.orderId,
-          razorpayPaymentId: response?.razorpay_payment_id || `pay_${Date.now()}`,
-          razorpayOrderId: response?.razorpay_order_id || pending.razorpayOrderId,
-          razorpaySignature: response?.razorpay_signature || 'mock_sig',
-          isTestMode: pending.isTestMode,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpayOrderId: response.razorpay_order_id || pending.razorpayOrderId,
+          razorpaySignature: response.razorpay_signature,
         })
         if (verifyRes.success) {
           handlePaymentSuccess(pending.orderId, pending.total)

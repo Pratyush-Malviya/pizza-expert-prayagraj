@@ -80,19 +80,23 @@ export async function verifyRazorpayPayment(payload: {
   isTestMode?: boolean
 }): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!payload.razorpayPaymentId || !payload.razorpayOrderId || !payload.razorpaySignature) {
+      return { success: false, error: 'Incomplete payment response from gateway. Payment verification failed.' }
+    }
+
     const isUUID = (str?: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || '')
     const keySecret = payload.customKeySecret || process.env.RAZORPAY_KEY_SECRET || ''
 
-    if (keySecret && !keySecret.includes('your-') && payload.razorpaySignature !== 'mock_sig') {
-      const body = payload.razorpayOrderId + '|' + payload.razorpayPaymentId
+    if (keySecret && !keySecret.includes('your-')) {
+      const body = `${payload.razorpayOrderId}|${payload.razorpayPaymentId}`
       const expectedSignature = crypto
         .createHmac('sha256', keySecret)
-        .update(body.toString())
+        .update(body)
         .digest('hex')
 
       if (expectedSignature !== payload.razorpaySignature) {
-        return { success: false, error: 'Payment signature verification failed' }
+        return { success: false, error: 'Payment signature verification failed. The transaction was not verified.' }
       }
     }
 

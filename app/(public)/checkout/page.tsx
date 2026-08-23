@@ -428,13 +428,19 @@ export default function CheckoutPage() {
           color: '#FF3B00',
         },
         handler: async function (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) {
+          if (!response?.razorpay_payment_id || !response?.razorpay_signature) {
+            setLoading(false)
+            setPaymentError('Payment was not completed or rejected by gateway.')
+            toast.error('Payment rejected.')
+            return
+          }
+
           setLoading(true)
           const verifyRes = await verifyRazorpayPayment({
             orderId,
-            razorpayPaymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
+            razorpayPaymentId: response.razorpay_payment_id,
             razorpayOrderId: response.razorpay_order_id || rzpRes.razorpayOrderId!,
-            razorpaySignature: response.razorpay_signature || 'mock_sig',
-            isTestMode: rzpRes.isTestMode,
+            razorpaySignature: response.razorpay_signature,
           })
 
           if (verifyRes.success) {
@@ -458,27 +464,17 @@ export default function CheckoutPage() {
 
       if (windowWithRzp.Razorpay) {
         const rzp = new windowWithRzp.Razorpay(options)
-        rzp.on('payment.failed', function (response: { error?: { description?: string } }) {
+        rzp.on('payment.failed', function (response: { error?: { description?: string; reason?: string } }) {
           setLoading(false)
-          const errReason = response.error?.description || 'Payment failed on Razorpay.'
+          const errReason = response.error?.description || response.error?.reason || 'Payment failed on Razorpay.'
           setPaymentError(errReason)
-          toast.error(errReason)
+          toast.error(`❌ Payment Failed: ${errReason}`)
         })
         rzp.open()
       } else {
-        // Fallback simulation if SDK script blocked by browser extension
-        const verifyRes = await verifyRazorpayPayment({
-          orderId,
-          razorpayPaymentId: `pay_demo_${Date.now()}`,
-          razorpayOrderId: rzpRes.razorpayOrderId!,
-          razorpaySignature: 'demo_sig',
-          isTestMode: true,
-        })
-        if (verifyRes.success) {
-          toast.success('Order Placed Successfully!')
-          clearCart()
-          router.push(`/order/${orderId}`)
-        }
+        setLoading(false)
+        setPaymentError('Razorpay Payment Gateway SDK could not load. Please check your internet connection or ad-blocker.')
+        toast.error('Payment Gateway failed to load')
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Connection error. Please check your internet and try again.'

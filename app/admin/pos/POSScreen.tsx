@@ -951,17 +951,22 @@ export default function POSScreen() {
           color: '#B91C1C',
         },
         handler: async function (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) {
-          toast.info('Verifying payment gateway capture...')
+          if (!response?.razorpay_payment_id || !response?.razorpay_signature) {
+            toast.error('Payment response was incomplete or rejected by gateway.')
+            setGatewayStatus('failed')
+            return
+          }
+
+          toast.info('Verifying payment gateway capture with bank signature...')
           const verifyRes = await verifyRazorpayPayment({
             orderId: tempRef,
-            razorpayPaymentId: response.razorpay_payment_id || `pay_pos_${Date.now()}`,
+            razorpayPaymentId: response.razorpay_payment_id,
             razorpayOrderId: response.razorpay_order_id || rzpRes.razorpayOrderId!,
-            razorpaySignature: response.razorpay_signature || 'mock_sig',
-            isTestMode: rzpRes.isTestMode,
+            razorpaySignature: response.razorpay_signature,
           })
 
           if (verifyRes.success) {
-            // Place Order in DB & fire KOT ONLY after payment capture is verified
+            // Place Order in DB & fire KOT ONLY after payment capture is cryptographically verified
             const orderPayload = getOrderPayload()
             const orderRes = await createPOSOrder(orderPayload)
             if (!orderRes.success || !orderRes.orderId) {
@@ -1019,7 +1024,7 @@ export default function POSScreen() {
             setGatewayStatus('success')
             loadTables()
           } else {
-            toast.error(verifyRes.error || 'Payment signature verification failed. No order was placed.')
+            toast.error(verifyRes.error || 'Payment verification failed. No order was placed.')
             setGatewayStatus('failed')
           }
         },
@@ -1032,6 +1037,11 @@ export default function POSScreen() {
       }
 
       const rzpInstance = new windowWithRzp.Razorpay(options)
+      rzpInstance.on('payment.failed', function (response: { error?: { description?: string; reason?: string } }) {
+        const errorDesc = response.error?.description || response.error?.reason || 'Transaction failed or declined by UPI/Bank.'
+        toast.error(`❌ Payment Failed: ${errorDesc}`)
+        setGatewayStatus('failed')
+      })
       rzpInstance.open()
     } catch (err: any) {
       toast.error(err.message || 'Failed to open Razorpay gateway')
