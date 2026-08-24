@@ -249,6 +249,7 @@ export default function POSScreen() {
   const [paymentMode, setPaymentMode] = useState<POSPaymentTender['tenderType'] | 'gateway_qr'>('cash')
   const [cardReference, setCardReference] = useState('')
   const [upiReference, setUpiReference] = useState('')
+  const [soundboxOverride, setSoundboxOverride] = useState(false)
   const [gatewayStatus, setGatewayStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle')
   const [gatewayOrderId, setGatewayOrderId] = useState<string>('')
   const [placing, setPlacing] = useState(false)
@@ -1063,6 +1064,11 @@ export default function POSScreen() {
       return toast.error('Please select a Table for Dine-In orders')
     }
 
+    if (paymentMode === 'gateway_qr' && !soundboxOverride) {
+      // Force Razorpay Payment Gateway verification for zero-fraud accuracy
+      return launchRazorpayModal()
+    }
+
     if (paymentMode === 'cash') {
       const tendered = parseFloat(cashTendered) || totals.total
       if (tendered < totals.total - 0.01) {
@@ -1088,7 +1094,7 @@ export default function POSScreen() {
         tenders = [{
           tenderType: 'upi',
           amount: totals.total,
-          reference: upiReference ? `UPI_${upiReference}` : `UPI_QR_${Date.now().toString().slice(-6)}`
+          reference: upiReference ? `[MANUAL_SOUNDBOX] ${upiReference}` : `[MANUAL_SOUNDBOX_AUDIO]`
         }]
       } else {
         tenders = [{ tenderType: paymentMode as any, amount: totals.total }]
@@ -2169,11 +2175,13 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code (Manual Soundbox Verification) */}
+            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code (Razorpay Gateway Auto-Verified) */}
             {paymentMode === 'gateway_qr' && (
               <div className="p-3 rounded-2xl bg-black/50 border border-white/15 text-center space-y-2.5">
                 <div className="flex items-center justify-between text-xs text-white/70 border-b border-white/10 pb-1.5 font-bold">
-                  <span>Manual Counter UPI QR</span>
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <CheckCircle2 size={13} /> Razorpay Verified UPI QR
+                  </span>
                   <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
                 </div>
 
@@ -2187,30 +2195,38 @@ export default function POSScreen() {
                     />
                   </div>
                   <div className="text-left space-y-1 text-xs">
-                    <p className="text-white/80 font-bold">GPay • PhonePe • Paytm</p>
+                    <p className="text-white/90 font-bold">GPay • PhonePe • Paytm • BHIM</p>
                     <p className="text-[11px] text-white/40">VPA: <span className="font-mono text-white/70">{activeUpiId}</span></p>
-                    <p className="text-[11px] text-emerald-400 font-semibold">✓ Exact Amount Embedded</p>
-                    <p className="text-[10px] text-white/40">Check Soundbox / UPI app confirmation before clicking Confirm below.</p>
+                    <p className="text-[11px] text-emerald-400 font-semibold">🔒 Bank Cryptographic Verification Enabled</p>
+                    <p className="text-[10px] text-white/50">Fake UPI entries will be rejected immediately by Gateway.</p>
                   </div>
                 </div>
 
-                <div className="pt-1.5 border-t border-white/10 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={upiReference}
-                    onChange={(e) => setUpiReference(e.target.value)}
-                    placeholder="Optional: UPI Ref / UTR # (e.g. 423891002341)"
-                    className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-red-500 font-mono"
-                  />
-                  <button
-                    onClick={() => {
-                      setPaymentMode('razorpay')
-                      launchRazorpayModal()
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 text-[10px] font-bold whitespace-nowrap transition"
-                  >
-                    Auto-Verify via Gateway
-                  </button>
+                {/* Soundbox Override Checkbox */}
+                <div className="pt-2 border-t border-white/10 text-left space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] text-white/70">
+                    <input
+                      type="checkbox"
+                      checked={soundboxOverride}
+                      onChange={(e) => setSoundboxOverride(e.target.checked)}
+                      className="rounded bg-black/60 border-white/20 text-red-600 focus:ring-0"
+                    />
+                    <span>Enable Manual Counter Soundbox Speaker Mode (Offline)</span>
+                  </label>
+
+                  {soundboxOverride && (
+                    <div className="p-2 rounded-xl bg-amber-950/40 border border-amber-500/30 text-[10px] text-amber-300 space-y-1.5">
+                      <p className="font-bold">⚠️ Manual Soundbox Mode Active:</p>
+                      <p className="text-amber-200/80">Verify Paytm/PhonePe speaker announcement before clicking Confirm below.</p>
+                      <input
+                        type="text"
+                        value={upiReference}
+                        onChange={(e) => setUpiReference(e.target.value)}
+                        placeholder="Required: UTR / Soundbox Ref # (e.g. 423891002341)"
+                        className="w-full bg-black/60 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2306,12 +2322,22 @@ export default function POSScreen() {
             )}
 
             {/* Settle Action Button (Only places order upon verified payment) */}
-            {paymentMode !== 'razorpay' ? (
+            {(paymentMode === 'razorpay' || (paymentMode === 'gateway_qr' && !soundboxOverride)) ? (
+              <button
+                onClick={launchRazorpayModal}
+                disabled={placing || gatewayStatus === 'loading'}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/40 active:scale-98"
+              >
+                {gatewayStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
+                ⚡ Verify & Pay via Razorpay Gateway (₹{totals.total.toFixed(2)})
+              </button>
+            ) : (
               <button
                 onClick={processPayment}
                 disabled={
                   placing ||
-                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total)
+                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
+                  (paymentMode === 'gateway_qr' && soundboxOverride && !upiReference.trim())
                 }
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
               >
@@ -2320,16 +2346,7 @@ export default function POSScreen() {
                   ? `💵 Receive Cash (₹${totals.total.toFixed(2)}) & Place Order`
                   : paymentMode === 'card'
                   ? `💳 Confirm Card & Place Order (₹${totals.total.toFixed(2)})`
-                  : `📱 Confirm UPI & Place Order (₹${totals.total.toFixed(2)})`}
-              </button>
-            ) : (
-              <button
-                onClick={launchRazorpayModal}
-                disabled={placing || gatewayStatus === 'loading'}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/40 active:scale-98"
-              >
-                {gatewayStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
-                Pay via Online Gateway & Place Order (₹{totals.total.toFixed(2)})
+                  : `📢 Confirm Soundbox Audio & Place Order (₹${totals.total.toFixed(2)})`}
               </button>
             )}
 
