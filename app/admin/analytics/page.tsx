@@ -23,6 +23,8 @@ import {
   getLocalTelemetryEvents, TelemetryEvent, posthog
 } from '@/lib/posthog'
 import { toast } from 'sonner'
+import AskYourDataPanel from '@/components/admin/ai/AskYourDataPanel'
+import DemandForecastWidget from '@/components/admin/ai/DemandForecastWidget'
 import {
   fetchPostHogMetrics, fetchSupabaseMetrics,
   fetchProductPerformance, fetchCategoryDistribution,
@@ -459,6 +461,12 @@ export default function AdminAnalyticsPage() {
           </button>
         </div>
       ))}
+
+      {/* ── Gemini AI Analytics Section ── */}
+      <div className="space-y-4">
+        <AskYourDataPanel storeId={activeStoreId || undefined} />
+        <DemandForecastWidget storeId={activeStoreId || undefined} />
+      </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

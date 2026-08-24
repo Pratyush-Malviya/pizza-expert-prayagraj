@@ -5,6 +5,9 @@ import { formatPrice } from '@/lib/utils'
 import { DollarSign, ShoppingBag, Pizza, Star, TrendingUp, UtensilsCrossed, Truck, CreditCard, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import AskYourDataPanel from '@/components/admin/ai/AskYourDataPanel'
+import DemandForecastWidget from '@/components/admin/ai/DemandForecastWidget'
+import SmartInventoryAlerts from '@/components/admin/ai/SmartInventoryAlerts'
 
 interface DashboardOrder {
   id: string
@@ -268,6 +271,15 @@ export default function AdminDashboardPage() {
             <CreditCard size={16} className="text-[#2563EB]" />
             <span>Payments</span>
           </Link>
+        </div>
+      </div>
+
+      {/* AI Operational Intelligence Section */}
+      <div className="space-y-4">
+        <AskYourDataPanel />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DemandForecastWidget />
+          <SmartInventoryAlerts />
         </div>
       </div>
 

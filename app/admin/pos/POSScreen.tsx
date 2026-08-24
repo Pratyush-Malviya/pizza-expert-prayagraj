@@ -2163,11 +2163,11 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code */}
+            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code (Manual Soundbox Verification) */}
             {paymentMode === 'gateway_qr' && (
               <div className="p-3 rounded-2xl bg-black/50 border border-white/15 text-center space-y-2.5">
                 <div className="flex items-center justify-between text-xs text-white/70 border-b border-white/10 pb-1.5 font-bold">
-                  <span>Customer Scan-to-Pay QR</span>
+                  <span>Manual Counter UPI QR</span>
                   <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
                 </div>
 
@@ -2184,18 +2184,27 @@ export default function POSScreen() {
                     <p className="text-white/80 font-bold">GPay • PhonePe • Paytm</p>
                     <p className="text-[11px] text-white/40">VPA: <span className="font-mono text-white/70">{activeUpiId}</span></p>
                     <p className="text-[11px] text-emerald-400 font-semibold">✓ Exact Amount Embedded</p>
-                    <p className="text-[10px] text-white/30">Ask customer to scan with any UPI app</p>
+                    <p className="text-[10px] text-white/40">Check Soundbox / UPI app confirmation before clicking Confirm below.</p>
                   </div>
                 </div>
 
-                <div className="pt-1.5 border-t border-white/10 text-left">
+                <div className="pt-1.5 border-t border-white/10 flex items-center gap-2">
                   <input
                     type="text"
                     value={upiReference}
                     onChange={(e) => setUpiReference(e.target.value)}
                     placeholder="Optional: UPI Ref / UTR # (e.g. 423891002341)"
-                    className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-red-500 font-mono"
+                    className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-red-500 font-mono"
                   />
+                  <button
+                    onClick={() => {
+                      setPaymentMode('razorpay')
+                      launchRazorpayModal()
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 text-[10px] font-bold whitespace-nowrap transition"
+                  >
+                    Auto-Verify via Gateway
+                  </button>
                 </div>
               </div>
             )}
@@ -2206,7 +2215,7 @@ export default function POSScreen() {
                 <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5 font-bold">
                   <div className="flex items-center gap-1.5 text-white">
                     <CreditCard size={14} className="text-blue-400" />
-                    <span>Credit / Debit Card Payment</span>
+                    <span>Counter EDC Card Swiping</span>
                   </div>
                   <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
                 </div>
@@ -2223,19 +2232,22 @@ export default function POSScreen() {
                     className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 font-mono"
                   />
                   <p className="text-[10px] text-white/40">
-                    Swipe or tap customer card on your counter POS machine (Pine Labs / Paytm / Mosambee), then click Confirm below.
+                    Swipe or tap customer card on your counter POS machine, verify slip, then click Confirm below.
                   </p>
                 </div>
 
                 <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] text-white/50">Need online card processing instead?</span>
+                  <span className="text-[10px] text-white/50">Need online card processing with auto-verification?</span>
                   <button
-                    onClick={launchRazorpayModal}
+                    onClick={() => {
+                      setPaymentMode('razorpay')
+                      launchRazorpayModal()
+                    }}
                     disabled={gatewayStatus === 'loading'}
                     className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[10px] font-bold flex items-center gap-1 transition"
                   >
                     {gatewayStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
-                    Launch Online Card Modal
+                    Launch Razorpay Gateway
                   </button>
                 </div>
               </div>
@@ -2247,15 +2259,15 @@ export default function POSScreen() {
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5 font-bold text-white">
                     <CreditCard size={14} className="text-red-400" />
-                    <span>Online Payment Gateway</span>
+                    <span>Razorpay Online Gateway (Auto-Verified)</span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-red-900/50 text-red-300 font-bold">
-                    Cards / Netbanking / Wallets
+                    UPI / Cards / NetBanking
                   </span>
                 </div>
 
                 <p className="text-[11px] text-white/60">
-                  Accept customer payment via Credit/Debit Cards, Net Banking, or send a payment link directly to customer.
+                  Launches authentic Razorpay payment popup. Automatically verifies bank cryptographic signatures — fails and rejects immediately if payment fails or invalid UPI is entered.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -2265,7 +2277,7 @@ export default function POSScreen() {
                     className="py-2.5 px-3 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
                   >
                     {gatewayStatus === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
-                    Launch Gateway on POS
+                    Open Razorpay Popup
                   </button>
 
                   <button

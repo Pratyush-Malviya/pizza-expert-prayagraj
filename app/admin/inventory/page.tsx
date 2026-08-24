@@ -11,6 +11,7 @@ import { useStoreStore } from '@/lib/store/useStoreStore'
 import { Ingredient, Product, RecipeItem } from '@/types'
 import { syncIngredientZeroStockAction } from '@/app/actions/inventoryLedger'
 import { toast } from 'sonner'
+import SmartInventoryAlerts from '@/components/admin/ai/SmartInventoryAlerts'
 
 // Mock seed ingredients for initial display if DB table is fresh
 const INITIAL_INGREDIENTS: Ingredient[] = [
@@ -277,6 +278,9 @@ export default function AdminInventoryPage() {
           </button>
         </div>
       </div>
+
+      {/* AI Smart Inventory & Purchase Recommendations */}
+      <SmartInventoryAlerts storeId={activeStoreId || undefined} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
