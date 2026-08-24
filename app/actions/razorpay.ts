@@ -104,11 +104,13 @@ export async function verifyRazorpayPayment(payload: {
     if (isUUID(payload.orderId)) {
       const adminClient = createAdminClient()
 
-      // 1. Update order status in Supabase to 'confirmed'
+      // 1. Update order status in Supabase to 'confirmed' and payment_status to 'paid'
       const { data: updatedOrder, error: updateErr } = await adminClient
         .from('orders')
         .update({
           status: 'confirmed',
+          payment_status: 'paid',
+          updated_at: new Date().toISOString(),
         })
         .eq('id', payload.orderId)
         .select()

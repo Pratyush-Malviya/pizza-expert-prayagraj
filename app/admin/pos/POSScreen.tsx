@@ -895,10 +895,24 @@ export default function POSScreen() {
 
     setGatewayStatus('loading')
     try {
-      const tempRef = `POS_${Date.now().toString().slice(-6)}`
+      // 1. Create canonical order in DB first to get a real Order UUID & KOT number
+      const orderPayload = getOrderPayload()
+      const orderRes = await createPOSOrder(orderPayload)
+      if (!orderRes.success || !orderRes.orderId) {
+        toast.error(orderRes.error || 'Failed to initialize pending order in DB.')
+        setGatewayStatus('failed')
+        return
+      }
+
+      const realOrderId = orderRes.orderId
+      const realKotNumber = orderRes.kotNumber || '00'
+
+      // 2. Initialize Razorpay order with real orderId and store settings keys
       const rzpRes = await createRazorpayOrder({
         amount: totals.total,
-        orderId: tempRef,
+        orderId: realOrderId,
+        customKeyId: settings.razorpayKeyId,
+        customKeySecret: settings.razorpayKeySecret,
       })
 
       if (!rzpRes.success || !rzpRes.razorpayOrderId) {
@@ -936,11 +950,11 @@ export default function POSScreen() {
       }
 
       const options = {
-        key: rzpRes.keyId,
+        key: rzpRes.keyId || settings.razorpayKeyId,
         amount: rzpRes.amount,
         currency: rzpRes.currency || 'INR',
         name: settings.businessName || 'Pizza Expert Prayagraj',
-        description: `POS Counter Order (₹${totals.total.toFixed(2)})`,
+        description: `POS Counter Order #${realKotNumber} (₹${totals.total.toFixed(2)})`,
         image: '/favicon.ico',
         order_id: rzpRes.razorpayOrderId,
         prefill: {
@@ -957,27 +971,19 @@ export default function POSScreen() {
             return
           }
 
-          toast.info('Verifying payment gateway capture with bank signature...')
+          toast.info('Verifying payment gateway capture with bank HMAC signature...')
           const verifyRes = await verifyRazorpayPayment({
-            orderId: tempRef,
+            orderId: realOrderId,
             razorpayPaymentId: response.razorpay_payment_id,
             razorpayOrderId: response.razorpay_order_id || rzpRes.razorpayOrderId!,
             razorpaySignature: response.razorpay_signature,
+            customKeySecret: settings.razorpayKeySecret,
           })
 
           if (verifyRes.success) {
-            // Place Order in DB & fire KOT ONLY after payment capture is cryptographically verified
-            const orderPayload = getOrderPayload()
-            const orderRes = await createPOSOrder(orderPayload)
-            if (!orderRes.success || !orderRes.orderId) {
-              toast.error(orderRes.error || 'Payment succeeded but order creation failed.')
-              setGatewayStatus('failed')
-              return
-            }
-
-            // Record POS payment tender in DB
+            // Record POS cashier shift payment tender in DB
             await processPOSPayment({
-              orderId: orderRes.orderId,
+              orderId: realOrderId,
               shiftId,
               tenders: [{ tenderType: 'razorpay', amount: totals.total, reference: response.razorpay_payment_id }],
               orderTotal: totals.total,
@@ -1002,8 +1008,8 @@ export default function POSScreen() {
             })
 
             setLastOrderSnapshot({
-              orderId: orderRes.orderId,
-              kotNumber: orderRes.kotNumber,
+              orderId: realOrderId,
+              kotNumber: realKotNumber,
               orderType,
               tableNumber: tables.find((t) => t.id === tableId)?.table_number,
               customerName: customerName || 'Counter Customer',
@@ -1017,21 +1023,21 @@ export default function POSScreen() {
               notes: orderNotes,
             })
 
-            setLastOrderId(orderRes.orderId)
-            setLastKotNumber(orderRes.kotNumber!)
-            toast.success(`🎉 Online Payment Verified & Order Placed! #${orderRes.kotNumber}`)
+            setLastOrderId(realOrderId)
+            setLastKotNumber(realKotNumber)
+            toast.success(`🎉 Online Payment Verified & Order Confirmed! #${realKotNumber}`)
             setPaymentStep('success')
             setGatewayStatus('success')
             loadTables()
           } else {
-            toast.error(verifyRes.error || 'Payment verification failed. No order was placed.')
+            toast.error(verifyRes.error || 'Payment verification failed. Transaction signature rejected.')
             setGatewayStatus('failed')
           }
         },
         modal: {
           ondismiss: function () {
             setGatewayStatus('idle')
-            toast.info('Payment window closed. Order was not placed.')
+            toast.info('Payment window closed. Order remains pending.')
           },
         },
       }
