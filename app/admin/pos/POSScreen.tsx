@@ -2113,25 +2113,29 @@ export default function POSScreen() {
               </span>
             </div>
 
-            {/* Tender Mode Tabs (Cash, UPI QR, Online Gateway / Razorpay, Card) */}
-            <div className="grid grid-cols-4 gap-1.5">
+            {/* Tender Mode Tabs (Cash, Razorpay Gateway, Counter EDC Card) */}
+            <div className="grid grid-cols-3 gap-2">
               {([
-                { type: 'cash', icon: Banknote, label: 'Cash' },
-                { type: 'gateway_qr', icon: QrCode, label: 'UPI QR' },
-                { type: 'card', icon: CreditCard, label: 'Card' },
-                { type: 'razorpay', icon: CreditCard, label: 'Gateway' },
+                { type: 'cash', icon: Banknote, label: 'Cash (Counter)' },
+                { type: 'razorpay', icon: CreditCard, label: 'Razorpay Gateway (UPI/Card)' },
+                { type: 'card', icon: CreditCard, label: 'Counter EDC Swiping' },
               ] as const).map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
-                  onClick={() => setPaymentMode(type as any)}
+                  onClick={() => {
+                    setPaymentMode(type as any)
+                    if (type === 'razorpay') {
+                      launchRazorpayModal()
+                    }
+                  }}
                   className={cn(
-                    'flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all text-center',
-                    paymentMode === type
+                    'flex flex-col items-center gap-1 py-2.5 rounded-xl border text-[11px] font-bold transition-all text-center',
+                    paymentMode === type || (type === 'razorpay' && paymentMode === 'gateway_qr')
                       ? 'border-red-500 bg-red-600/20 text-white ring-1 ring-red-500/40 shadow-sm'
-                      : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
+                      : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <Icon size={14} />
+                  <Icon size={16} />
                   <span>{label}</span>
                 </button>
               ))}
@@ -2175,63 +2179,58 @@ export default function POSScreen() {
               </div>
             )}
 
-            {/* 2. Customer Scan-to-Pay Dynamic UPI QR Code (Razorpay Gateway Auto-Verified) */}
-            {paymentMode === 'gateway_qr' && (
-              <div className="p-3 rounded-2xl bg-black/50 border border-white/15 text-center space-y-2.5">
-                <div className="flex items-center justify-between text-xs text-white/70 border-b border-white/10 pb-1.5 font-bold">
-                  <span className="flex items-center gap-1 text-emerald-400">
-                    <CheckCircle2 size={13} /> Razorpay Verified UPI QR
+            {/* 2. Authentic Razorpay Gateway (UPI QR, GPay, PhonePe, Paytm, Cards, NetBanking) */}
+            {(paymentMode === 'razorpay' || paymentMode === 'gateway_qr') && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-b from-red-950/40 via-zinc-900 to-black border border-red-500/40 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-1.5 font-bold text-white">
+                    <CreditCard size={15} className="text-red-400" />
+                    <span>Razorpay Official Payment Gateway</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-900/60 text-red-200 font-mono font-bold">
+                    UPI • Cards • NetBanking • QR
                   </span>
-                  <span className="text-amber-300 font-mono">₹{totals.total.toFixed(2)}</span>
                 </div>
 
-                <div className="flex items-center justify-center gap-4">
-                  <div className="p-2 rounded-xl bg-white shadow-lg inline-block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={dynamicQrImgUrl}
-                      alt="UPI Payment QR"
-                      className="w-28 h-28 object-contain"
-                    />
-                  </div>
-                  <div className="text-left space-y-1 text-xs">
-                    <p className="text-white/90 font-bold">GPay • PhonePe • Paytm • BHIM</p>
-                    <p className="text-[11px] text-white/40">VPA: <span className="font-mono text-white/70">{activeUpiId}</span></p>
-                    <p className="text-[11px] text-emerald-400 font-semibold">🔒 Bank Cryptographic Verification Enabled</p>
-                    <p className="text-[10px] text-white/50">Fake UPI entries will be rejected immediately by Gateway.</p>
-                  </div>
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 text-xs text-white/80 space-y-1.5">
+                  <p className="font-bold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={14} /> Real-Time Bank Cryptographic Verification
+                  </p>
+                  <p className="text-[11px] text-white/60">
+                    Launches official Razorpay Checkout window. Supports GPay, PhonePe, Paytm, BHIM, Dynamic Razorpay QR, Credit/Debit Cards, and NetBanking.
+                  </p>
                 </div>
 
-                {/* Soundbox Override Checkbox */}
-                <div className="pt-2 border-t border-white/10 text-left space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] text-white/70">
-                    <input
-                      type="checkbox"
-                      checked={soundboxOverride}
-                      onChange={(e) => setSoundboxOverride(e.target.checked)}
-                      className="rounded bg-black/60 border-white/20 text-red-600 focus:ring-0"
-                    />
-                    <span>Enable Manual Counter Soundbox Speaker Mode (Offline)</span>
-                  </label>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={launchRazorpayModal}
+                    disabled={gatewayStatus === 'loading'}
+                    className="py-3 px-4 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/50"
+                  >
+                    {gatewayStatus === 'loading' ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}
+                    Open Razorpay Gateway
+                  </button>
 
-                  {soundboxOverride && (
-                    <div className="p-2 rounded-xl bg-amber-950/40 border border-amber-500/30 text-[10px] text-amber-300 space-y-1.5">
-                      <p className="font-bold">⚠️ Manual Soundbox Mode Active:</p>
-                      <p className="text-amber-200/80">Verify Paytm/PhonePe speaker announcement before clicking Confirm below.</p>
-                      <input
-                        type="text"
-                        value={upiReference}
-                        onChange={(e) => setUpiReference(e.target.value)}
-                        placeholder="Required: UTR / Soundbox Ref # (e.g. 423891002341)"
-                        className="w-full bg-black/60 border border-amber-500/30 rounded-lg px-2.5 py-1 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500 font-mono"
-                      />
-                    </div>
-                  )}
+                  <button
+                    onClick={() => {
+                      if (!customerPhone) {
+                        toast.error('Please enter customer phone number first')
+                        return
+                      }
+                      const paymentLink = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Hi ${customerName || 'Customer'}, please complete your payment of ₹${totals.total.toFixed(2)} for Wood-Fired Pizza order at Pizza Expert Prayagraj: ${window.location.origin}/checkout`)}`
+                      window.open(paymentLink, '_blank')
+                      toast.success('WhatsApp payment message initiated!')
+                    }}
+                    className="py-3 px-4 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition"
+                  >
+                    <MessageSquare size={15} />
+                    Send WhatsApp Link
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* 3. Card Tender (EDC Swiping Terminal or Online Gateway) */}
+            {/* 3. Counter EDC Card Swiping Terminal */}
             {paymentMode === 'card' && (
               <div className="p-3 rounded-2xl bg-black/50 border border-white/15 space-y-2.5">
                 <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5 font-bold">
@@ -2257,96 +2256,32 @@ export default function POSScreen() {
                     Swipe or tap customer card on your counter POS machine, verify slip, then click Confirm below.
                   </p>
                 </div>
-
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] text-white/50">Need online card processing with auto-verification?</span>
-                  <button
-                    onClick={() => {
-                      setPaymentMode('razorpay')
-                      launchRazorpayModal()
-                    }}
-                    disabled={gatewayStatus === 'loading'}
-                    className="px-2.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[10px] font-bold flex items-center gap-1 transition"
-                  >
-                    {gatewayStatus === 'loading' ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
-                    Launch Razorpay Gateway
-                  </button>
-                </div>
               </div>
             )}
 
-            {/* 4. Razorpay Payment Gateway Modal / Link Trigger */}
-            {paymentMode === 'razorpay' && (
-              <div className="p-3 rounded-2xl bg-gradient-to-b from-red-950/30 to-black/40 border border-red-500/30 space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 font-bold text-white">
-                    <CreditCard size={14} className="text-red-400" />
-                    <span>Razorpay Online Gateway (Auto-Verified)</span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-900/50 text-red-300 font-bold">
-                    UPI / Cards / NetBanking
-                  </span>
-                </div>
-
-                <p className="text-[11px] text-white/60">
-                  Launches authentic Razorpay payment popup. Automatically verifies bank cryptographic signatures — fails and rejects immediately if payment fails or invalid UPI is entered.
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    onClick={launchRazorpayModal}
-                    disabled={gatewayStatus === 'loading'}
-                    className="py-2.5 px-3 rounded-xl bg-[#B91C1C] hover:bg-[#DC2626] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
-                  >
-                    {gatewayStatus === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
-                    Open Razorpay Popup
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (!customerPhone) {
-                        toast.error('Please enter customer phone number first')
-                        return
-                      }
-                      const paymentLink = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(`Hi ${customerName || 'Customer'}, please complete your payment of ₹${totals.total.toFixed(2)} for Wood-Fired Pizza order at Pizza Expert Prayagraj: ${window.location.origin}/checkout`)}`
-                      window.open(paymentLink, '_blank')
-                      toast.success('WhatsApp payment message initiated!')
-                    }}
-                    className="py-2.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                  >
-                    <MessageSquare size={13} />
-                    Send WhatsApp Link
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Settle Action Button (Only places order upon verified payment) */}
-            {(paymentMode === 'razorpay' || (paymentMode === 'gateway_qr' && !soundboxOverride)) ? (
+            {/* Settle Action Button */}
+            {(paymentMode === 'razorpay' || paymentMode === 'gateway_qr') ? (
               <button
                 onClick={launchRazorpayModal}
                 disabled={placing || gatewayStatus === 'loading'}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/40 active:scale-98"
               >
                 {gatewayStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
-                ⚡ Verify & Pay via Razorpay Gateway (₹{totals.total.toFixed(2)})
+                ⚡ Pay & Verify via Razorpay Gateway (₹{totals.total.toFixed(2)})
               </button>
             ) : (
               <button
                 onClick={processPayment}
                 disabled={
                   placing ||
-                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total) ||
-                  (paymentMode === 'gateway_qr' && soundboxOverride && !upiReference.trim())
+                  (paymentMode === 'cash' && parseFloat(cashTendered || '0') < totals.total)
                 }
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-green-950/40 active:scale-98"
               >
                 {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                 {paymentMode === 'cash'
                   ? `💵 Receive Cash (₹${totals.total.toFixed(2)}) & Place Order`
-                  : paymentMode === 'card'
-                  ? `💳 Confirm Card & Place Order (₹${totals.total.toFixed(2)})`
-                  : `📢 Confirm Soundbox Audio & Place Order (₹${totals.total.toFixed(2)})`}
+                  : `💳 Confirm EDC Card Slip & Place Order (₹${totals.total.toFixed(2)})`}
               </button>
             )}
 
