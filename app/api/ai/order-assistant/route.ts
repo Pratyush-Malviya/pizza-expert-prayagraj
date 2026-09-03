@@ -4,7 +4,12 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/utils/rateLimiter'
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from '@/lib/constants/defaultMenu'
 
-const SUPPORTED_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+const SUPPORTED_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+]
 
 function localFallbackResponse(text: string) {
   const lower = (text || '').toLowerCase()
@@ -188,13 +193,14 @@ Respond ONLY with the valid JSON object. Do not include markdown code block back
         const response = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
+          config: { responseMimeType: 'application/json' },
         })
         if (response?.text) {
           generatedText = response.text
           break
         }
       } catch (geminiErr: any) {
-        console.warn(`Gemini model ${modelName} attempt failed:`, geminiErr.message)
+        console.warn(`Gemini Flash model ${modelName} attempt failed:`, geminiErr.message)
       }
     }
 

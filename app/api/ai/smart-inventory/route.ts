@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 
-const SUPPORTED_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+const SUPPORTED_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+];
 
 export async function POST(req: Request) {
   try {

@@ -272,6 +272,9 @@ export default function POSScreen() {
   const [staffList, setStaffList] = useState<any[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
 
+  // ── State: Mobile View Tab ──
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'bill'>('catalog')
+
   // ── State: Resizable Splitter (Cart Panel Width %) ──
   const [cartPanelWidth, setCartPanelWidth] = useState<number>(40) // Default 40% cart width
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false)
@@ -1326,14 +1329,85 @@ export default function POSScreen() {
     <div
       ref={containerRef}
       className={cn(
-        'flex h-[calc(100vh-56px)] overflow-hidden bg-[#0A0A0A] text-white font-sans relative',
+        'flex flex-col lg:flex-row h-[calc(100vh-56px)] overflow-hidden bg-[#0A0A0A] text-white font-sans relative',
         isDraggingSplitter ? 'cursor-col-resize select-none' : ''
       )}
     >
+      {/* ─── MOBILE TOP CONTROL & TAB SWITCHER (< lg) ─── */}
+      <div className="lg:hidden flex-none bg-[#161616] border-b border-white/10 p-2.5 space-y-2 z-20">
+        {/* Row 1: Order Type Selector & Customer Menu Trigger */}
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-none py-0.5">
+            {(Object.keys(ORDER_TYPE_LABELS) as OrderType[]).map((type) => {
+              const Icon = ORDER_TYPE_ICONS[type]
+              return (
+                <button
+                  key={type}
+                  onClick={() => setOrderType(type)}
+                  className={cn(
+                    'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shadow-xs',
+                    orderType === type
+                      ? 'bg-gradient-to-r from-[#B91C1C] to-[#DC2626] text-white ring-1 ring-red-500/40'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <Icon size={13} />
+                  <span>{ORDER_TYPE_LABELS[type]}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <button
+            onClick={() => setShowCustomerMenuModal(true)}
+            className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold transition flex items-center gap-1 shrink-0"
+            title="Customer QR Menu"
+          >
+            <QrCode size={14} />
+          </button>
+        </div>
+
+        {/* Row 2: Segmented Mobile View Switcher (Menu vs Current Bill) */}
+        <div className="grid grid-cols-2 gap-1.5 bg-black/50 p-1 rounded-xl border border-white/10">
+          <button
+            onClick={() => setMobileTab('catalog')}
+            className={cn(
+              'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5',
+              mobileTab === 'catalog'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-white/60 hover:text-white'
+            )}
+          >
+            <UtensilsCrossed size={14} />
+            <span>Menu & Items</span>
+          </button>
+
+          <button
+            onClick={() => setMobileTab('bill')}
+            className={cn(
+              'py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5',
+              mobileTab === 'bill'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-white/60 hover:text-white'
+            )}
+          >
+            <Receipt size={14} />
+            <span>Ticket / Bill</span>
+            {cart.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white text-red-700 text-[10px] font-black leading-none">
+                {cart.reduce((s, l) => s + l.quantity, 0)} • ₹{totals.total.toFixed(0)}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* ─── LEFT PANEL: Menu & Catalog ──────────────────────────────────── */}
       <div
-        className="flex flex-col border-r border-white/10 overflow-hidden bg-[#111111]"
+        className={cn(
+          'flex flex-col border-r border-white/10 overflow-hidden bg-[#111111] flex-1 lg:flex-none',
+          mobileTab === 'catalog' ? 'flex w-full' : 'hidden lg:flex'
+        )}
         style={{ width: `${100 - cartPanelWidth}%` }}
       >
 
@@ -1658,9 +1732,31 @@ export default function POSScreen() {
             </div>
           )}
         </div>
+
+        {/* Sticky Mobile Floating Order Bar (< lg) */}
+        {cart.length > 0 && mobileTab === 'catalog' && (
+          <div className="lg:hidden flex-none bg-[#181818]/95 backdrop-blur-md border-t border-red-500/30 p-3 shadow-2xl z-20">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-white/50 uppercase font-semibold">Running Ticket</span>
+                <span className="text-sm font-black text-amber-300 font-mono">
+                  ₹{totals.total.toFixed(2)} <span className="text-white/60 font-sans text-xs font-normal">({cart.reduce((s, l) => s + l.quantity, 0)} items)</span>
+                </span>
+              </div>
+
+              <button
+                onClick={() => setMobileTab('bill')}
+                className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-xs flex items-center gap-1.5 shadow-lg shadow-red-950/60 active:scale-95 transition"
+              >
+                <span>View Bill & Pay</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ─── RESIZABLE SPLITTER DRAG HANDLE ──────────────────────────────── */}
+      {/* ─── RESIZABLE SPLITTER DRAG HANDLE (Desktop only) ──────────────── */}
       <div
         onMouseDown={handleSplitterMouseDown}
         onTouchStart={handleSplitterTouchStart}
@@ -1670,7 +1766,7 @@ export default function POSScreen() {
           toast.info('Layout reset to default 60/40 ratio')
         }}
         className={cn(
-          'relative z-30 flex-none w-2 hover:w-3 -mx-1 flex items-center justify-center cursor-col-resize select-none transition-all group',
+          'relative z-30 flex-none w-2 hover:w-3 -mx-1 items-center justify-center cursor-col-resize select-none transition-all group hidden lg:flex',
           isDraggingSplitter ? 'w-3 bg-red-600/40' : 'bg-transparent hover:bg-red-500/20'
         )}
         title="Drag left/right to resize menu & cart panel. Double-click to reset."
@@ -1692,9 +1788,24 @@ export default function POSScreen() {
 
       {/* ─── RIGHT PANEL: Live Order, Running Ticket & Billing ───────────── */}
       <div
-        className="flex flex-col bg-[#141414] overflow-hidden border-l border-white/10"
+        className={cn(
+          'flex flex-col bg-[#141414] overflow-hidden border-l border-white/10 flex-1 lg:flex-none',
+          mobileTab === 'bill' ? 'flex w-full' : 'hidden lg:flex'
+        )}
         style={{ width: `${cartPanelWidth}%` }}
       >
+        {/* Mobile Back Button to Menu (< lg) */}
+        <div className="lg:hidden bg-red-950/40 border-b border-red-500/30 px-3 py-2 flex items-center justify-between">
+          <button
+            onClick={() => setMobileTab('catalog')}
+            className="text-xs font-bold text-red-300 hover:text-white flex items-center gap-1"
+          >
+            <span>← Back to Menu / Add Items</span>
+          </button>
+          <span className="text-[11px] font-bold text-amber-300 font-mono">
+            {cart.reduce((s, l) => s + l.quantity, 0)} Items • ₹{totals.total.toFixed(0)}
+          </span>
+        </div>
 
         {/* Panel Header: Mode, Table Info & Shift Details */}
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[#191919]">
@@ -2367,8 +2478,8 @@ export default function POSScreen() {
 
       {/* ─── MODAL: Item Customizer (Sizes, Crust, Toppings & Courses) ────── */}
       {customizingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-[#181818] border border-white/15 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-[#181818] border border-white/15 shadow-2xl p-4 sm:p-5 space-y-4 animate-in zoom-in-95 duration-150 scrollbar-thin">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-white/10 pb-3 gap-3">

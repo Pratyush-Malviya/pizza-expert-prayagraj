@@ -116,50 +116,46 @@ function ensureRazorpayScript(): Promise<void> {
 }
 
 const CATEGORY_KEYWORDS: Record<string, RegExp> = {
-  pizzas: /pizza|pizzas|margherita|paneer|capsicum|farmhouse|cheese burst/i,
-  burgers: /burger|burgers|zinger|crispy veg|patty/i,
-  beverages: /drink|drinks|beverage|beverages|coke|pepsi|cola|shake|lassi|juice|water|soda/i,
-  sides: /side|sides|garlic bread|fries|finger|nugget|dips/i,
-  desserts: /dessert|desserts|sweet|cake|brownie|ice cream|mousse|choco/i,
-  combos: /combo|combos|meal|family feast|offer/i,
-  pasta: /pasta|pastas|white sauce|red sauce|arrabiata/i,
+  pizzas: /^(show|open|view|see)?\s*(pizzas?)$/i,
+  burgers: /^(show|open|view|see)?\s*(burgers?)$/i,
+  beverages: /^(show|open|view|see)?\s*(beverages?|drinks?|cold drinks?|beverage)$/i,
+  sides: /^(show|open|view|see)?\s*(sides?|garlic breads?|fries)$/i,
+  desserts: /^(show|open|view|see)?\s*(desserts?|sweets?)$/i,
+  combos: /^(show|open|view|see)?\s*(combos?|deals?|offers?)$/i,
+  pasta: /^(show|open|view|see)?\s*(pastas?)$/i,
 }
 
 function matchCategoryKeyword(text: string): string | null {
+  const trimmed = text.trim().toLowerCase()
   for (const [slug, regex] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (regex.test(text)) return slug
+    if (regex.test(trimmed)) return slug
   }
   return null
 }
 
 function isGeneralMenuIntent(text: string): boolean {
+  const trimmed = text.trim().toLowerCase()
   return (
-    text.includes('menu') ||
-    text.includes('khana') ||
-    text.includes('khaana') ||
-    text.includes('food') ||
-    text.includes('items') ||
-    text.includes('categories') ||
-    text.includes('options') ||
-    text.includes('what do you have') ||
-    text.includes('what can i eat') ||
-    text.includes('recommend') ||
-    text.includes('popular') ||
-    text.includes('best seller') ||
-    text.includes('rate list') ||
-    text.includes('price list')
+    trimmed === 'menu' ||
+    trimmed === 'show menu' ||
+    trimmed === 'open menu' ||
+    trimmed === 'view menu' ||
+    trimmed === 'food menu' ||
+    trimmed === 'rate list' ||
+    trimmed === 'price list'
   )
 }
 
 function isCheckoutIntent(text: string): boolean {
+  const lower = text.toLowerCase()
   return (
-    text.includes('checkout') ||
-    text.includes('pay now') ||
-    text.includes('proceed to pay') ||
-    text.includes('ready to pay') ||
-    (text.includes('cart') && (text.includes('pay') || text.includes('buy'))) ||
-    text.includes('place my order') ||
-    text.includes('place order')
+    lower === 'checkout' ||
+    lower === 'pay' ||
+    lower.includes('proceed to pay') ||
+    lower.includes('ready to pay') ||
+    (lower.includes('cart') && (lower.includes('pay') || lower.includes('buy'))) ||
+    lower.includes('place my order') ||
+    lower.includes('place order')
   )
 }
 
@@ -550,25 +546,28 @@ export default function AIChatWidget() {
   const handleSend = async () => {
     const text = input.trim()
     if (!text) return
-    setMessages((m) => [...m, { kind: 'text', role: 'user', text }])
+
+    const userMessage: ChatMsg = { kind: 'text', role: 'user', text }
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
     setInput('')
 
     const lower = text.toLowerCase()
 
-    // 1. Checkout intent
+    // 1. Direct Checkout intent (e.g. "checkout", "pay now")
     if (isCheckoutIntent(lower)) {
       await handleCheckout()
       return
     }
 
-    // 2. Direct category intent (e.g. "pizzas", "burger", "drinks", "sides", "desserts", "pasta")
+    // 2. Direct single-word category commands (e.g. "pizzas", "show drinks")
     const matchedCategory = matchCategoryKeyword(lower)
     if (matchedCategory) {
       await handleOpenCategoryBySlug(matchedCategory)
       return
     }
 
-    // 3. General menu intent
+    // 3. Exact menu intent (e.g. "menu", "show menu")
     if (isGeneralMenuIntent(lower)) {
       await handleBrowse()
       return
@@ -594,26 +593,26 @@ export default function AIChatWidget() {
     }
 
     // 5. Help intent
-    if (lower.includes('help') || lower.includes('what can you do')) {
+    if (lower === 'help' || lower === 'hi' || lower === 'hello') {
       setMessages((m) => [
         ...m,
         {
           kind: 'text',
           role: 'model',
-          text: 'I can help you browse our visual menu and place your complete delivery order right here! 🍕',
+          text: 'Hello! I am your AI Pizza Assistant 🍕 Ask me anything about our wood-fired pizzas, burgers, combos, or tap below to browse!',
         },
         { kind: 'welcome', role: 'model' },
       ])
       return
     }
 
-    // 6. Conversational AI fallback with structured card integration
+    // 6. Conversational AI powered by Gemini Flash
     setIsLoading(true)
     try {
       const response = await fetch('/api/ai/order-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history: messages, storeId: activeStoreId }),
+        body: JSON.stringify({ history: updatedMessages, storeId: activeStoreId }),
       })
       const data = await response.json()
       if (data.success) {
@@ -622,11 +621,7 @@ export default function AIChatWidget() {
           { kind: 'text', role: 'model', text: data.reply || 'Here is what we have on our menu! 🍕' },
         ])
 
-        if (data.categorySlug) {
-          await handleOpenCategoryBySlug(data.categorySlug)
-        } else if (data.showCategories) {
-          await handleBrowse()
-        } else if (data.productIds && data.productIds.length > 0) {
+        if (data.productIds && Array.isArray(data.productIds) && data.productIds.length > 0) {
           // Fetch and display specific recommended products
           const params = new URLSearchParams()
           if (activeStoreId) params.set('storeId', activeStoreId)
@@ -637,17 +632,21 @@ export default function AIChatWidget() {
             if (matchedProducts.length > 0) {
               setMessages((m) => [
                 ...m,
-                { kind: 'products', role: 'model', categoryName: 'Recommended For You', products: matchedProducts },
+                { kind: 'products', role: 'model', categoryName: 'Chef Recommendations', products: matchedProducts },
               ])
-            } else {
-              await handleBrowse()
+            } else if (data.categorySlug) {
+              await handleOpenCategoryBySlug(data.categorySlug)
             }
           }
+        } else if (data.categorySlug) {
+          await handleOpenCategoryBySlug(data.categorySlug)
+        } else if (data.showCategories) {
+          await handleBrowse()
         }
       } else {
         setMessages((m) => [
           ...m,
-          { kind: 'text', role: 'model', text: 'Here are all our menu categories so you can easily pick what you like: 👇' },
+          { kind: 'text', role: 'model', text: 'Here is our menu to browse through our bestselling pizzas and sides: 👇' },
         ])
         await handleBrowse()
       }
@@ -743,7 +742,7 @@ export default function AIChatWidget() {
 
       {/* Chat Window */}
       <div
-        className={`fixed bottom-20 md:bottom-6 right-6 w-[360px] sm:w-[380px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
+        className={`fixed bottom-20 md:bottom-6 right-3 sm:right-6 w-[calc(100vw-24px)] sm:w-[380px] max-w-[390px] bg-white rounded-2xl shadow-2xl border border-[#E7E0D8] z-50 flex flex-col transition-all duration-300 origin-bottom-right ${
           isOpen ? 'scale-100 opacity-100 pointer-events-auto' : 'scale-0 opacity-0 pointer-events-none'
         }`}
         style={{ height: '580px', maxHeight: 'calc(100vh - 100px)' }}

@@ -58,7 +58,7 @@ export default function AskYourDataPanel({ storeId }: { storeId?: string }) {
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               Ask-Your-Data Intelligence
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono font-normal">
-                Gemini 2.5 AI
+                Gemini 3.7 Flash AI
               </span>
             </h3>
             <p className="text-[11px] text-white/50">Natural language business queries over your live sales & operational data</p>
